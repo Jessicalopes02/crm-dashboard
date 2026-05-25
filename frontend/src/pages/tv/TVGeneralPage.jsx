@@ -79,7 +79,7 @@ function TVGeneralPage() {
 
       const goalPeriod = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
 
-      const achievementResponse = await api.get('/goals/achievement', {
+      const achievementResponse = await api.get('api/goals/achievement', {
         params: {
           period: goalPeriod
         }
