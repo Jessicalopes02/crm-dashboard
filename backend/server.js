@@ -2269,17 +2269,16 @@ async function syncRecentLeads({
 
 const syncLeads = require('./scripts/syncNutshellLeads');
 
-cron.schedule('*/15 * * * *', async () => {
-  console.log('Iniciando sincronização automática...');
+//cron.schedule('*/15 * * * *', async () => {
+  //console.log('Iniciando sincronização automática...');
 
-  try {
-    await syncLeads();
-    console.log('Sincronização finalizada.');
-  } catch (err) {
-    console.error('Erro na sincronização:', err);
-  }
-});
-
+  //try {
+    //await syncLeads();
+    //console.log('Sincronização finalizada.');
+  //} catch (err) {
+    //console.error('Erro na sincronização:', err);
+  //}
+//});
 async function enrichPriorityLeads({ limit = 50 } = {}) {
   const leads = await Lead.find({
     status: { $in: PRIORITY_STATUS },
@@ -2396,7 +2395,7 @@ async function syncCurrentMonthClosedLeads() {
     const urlEnd = endDate.toISOString().slice(0, 10);
 
     const response = await axios.get(
-      `http://localhost:3000/api/sync/nutshell/leads/closed-period?startDate=${urlStart}&endDate=${urlEnd}&maxPages=5`
+      `${process.env.API_BASE_URL || 'http://localhost:3000'}/api/sync/nutshell/leads/closed-period?startDate=${urlStart}&endDate=${urlEnd}&maxPages=5`
     );
 
     console.log('Sync mês atual finalizada:', response.data);
