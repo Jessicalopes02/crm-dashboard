@@ -1,0 +1,940 @@
+import { useEffect, useMemo, useState } from 'react';
+import { motion } from 'framer-motion';
+import Chart from 'react-apexcharts';
+import api from '../../services/api';
+
+function TVGeneralPage() {
+  const [data, setData] = useState(null);
+  const [period, setPeriod] = useState('month');
+  const [viewMode, setViewMode] = useState('general');
+  const [rotationSeconds, setRotationSeconds] = useState(20);
+  const [autoRotate, setAutoRotate] = useState(true);
+  const [achievement, setAchievement] = useState(null);
+
+  useEffect(() => {
+    loadData();
+
+    const interval = setInterval(() => {
+      loadData();
+    }, 60000);
+
+    return () => clearInterval(interval);
+  }, [period]);
+
+  useEffect(() => {
+    if (!autoRotate) return;
+
+    const rotation = setInterval(() => {
+      setViewMode((current) =>
+        current === 'general' ? 'sector' : 'general'
+      );
+    }, rotationSeconds * 1000);
+
+    return () => clearInterval(rotation);
+  }, [autoRotate, rotationSeconds]);
+
+  async function loadData() {
+    try {
+      const now = new Date();
+
+      let startDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1,
+        0,
+        0,
+        0
+      );
+
+      let endDate = new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        now.getDate(),
+        23,
+        59,
+        59
+      );
+
+      if (period === 'quarter') {
+        const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+
+        startDate = new Date(
+          now.getFullYear(),
+          quarterStartMonth,
+          1,
+          0,
+          0,
+          0
+        );
+      }
+
+      const response = await api.get('/dashboard/full', {
+        params: {
+          startDate: startDate.toLocaleString('sv-SE').replace(' ', 'T'),
+          endDate: endDate.toLocaleString('sv-SE').replace(' ', 'T')
+        }
+      });
+
+      setData(response.data);
+
+      const goalPeriod = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+
+      const achievementResponse = await api.get('/goals/achievement', {
+        params: {
+          period: goalPeriod
+        }
+      });
+
+      setAchievement(achievementResponse.data);
+
+    } catch (error) {
+      console.error(error);
+    }
+  }
+
+
+
+
+  const formatBRL = (value) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value || 0);
+  };
+
+  const formatNumber = (value) => {
+    return new Intl.NumberFormat('pt-BR').format(value || 0);
+  };
+
+  if (!data) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-white flex items-center justify-center text-4xl font-bold">
+        Carregando Meta Geral...
+      </div>
+    );
+  }
+
+  const metrics = data.general.metrics;
+
+  // Temporário: depois vamos puxar da página Campanhas
+  const generalGoal =
+    achievement?.results
+      ?.filter((item) => item.goal.sector === 'geral')
+      ?.reduce((sum, item) => sum + Number(item.goal.targetRevenue || 0), 0) || 0;
+  
+  const sdrGoal =
+  achievement?.results
+    ?.filter((item) => item.goal.sector === 'sdr')
+    ?.reduce(
+      (sum, item) =>
+        sum +
+        Number(
+          item.goal.targetMeetings ||
+          item.goal.targetLeads ||
+          0
+        ),
+      0
+    ) || 0;
+
+const closerGoal =
+  achievement?.results
+    ?.filter((item) => item.goal.sector === 'closer')
+    ?.reduce(
+      (sum, item) =>
+        sum + Number(item.goal.targetRevenue || 0),
+      0
+    ) || 0;
+  const currentRevenue = metrics.totalRevenue || 0;
+
+  const goalPercent =
+    generalGoal > 0
+      ? Math.min((currentRevenue / generalGoal) * 100, 100)
+      : 0;
+
+  const remaining = Math.max(generalGoal - currentRevenue, 0);
+
+  const chartData =
+  data.general.charts.leadsByMonth?.map((item) => ({
+    label: `${String(item._id.month).padStart(2, '0')}/${item._id.year}`,
+    revenue: item.revenue || 0
+  })) || [];
+
+  const teamGoals = [
+  {
+    name: 'Closer',
+    goal: closerGoal,
+    actual:
+      achievement?.results
+        ?.filter((item) => item.goal.sector === 'closer')
+        ?.reduce(
+          (sum, item) =>
+            sum + Number(item.actual.revenue || 0),
+          0
+        ) || 0
+  },
+
+  {
+    name: 'SDR',
+    goal: sdrGoal,
+    actual:
+      achievement?.results
+        ?.filter((item) => item.goal.sector === 'sdr')
+        ?.reduce(
+          (sum, item) =>
+            sum +
+            Number(
+              item.actual.meetings ||
+              item.actual.leads ||
+              0
+            ),
+          0
+        ) || 0
+  }
+];
+
+  const radialOptions = {
+    chart: {
+      type: 'radialBar',
+      background: 'transparent',
+      sparkline: {
+        enabled: true
+      }
+    },
+    plotOptions: {
+      radialBar: {
+        hollow: {
+          size: '70%'
+        },
+        track: {
+          background: '#1e293b'
+        },
+        dataLabels: {
+          name: {
+            show: true,
+            color: '#94a3b8',
+            fontSize: '18px'
+          },
+          value: {
+            show: true,
+            color: '#ffffff',
+            fontSize: '42px',
+            fontWeight: 800,
+            formatter: function (val) {
+              return `${Number(val).toFixed(1)}%`;
+            }
+          }
+        }
+      }
+    },
+    labels: ['Meta Geral'],
+    colors: ['#2563eb']
+  };
+
+  const lineOptions = {
+    chart: {
+      type: 'area',
+      toolbar: {
+        show: false
+      },
+      background: 'transparent'
+    },
+    stroke: {
+      curve: 'smooth',
+      width: 4
+    },
+    fill: {
+      type: 'gradient',
+      gradient: {
+        shadeIntensity: 1,
+        opacityFrom: 0.35,
+        opacityTo: 0.05,
+        stops: [0, 90, 100]
+      }
+    },
+    grid: {
+      borderColor: '#1e293b'
+    },
+    xaxis: {
+      categories: chartData.map((item) => item.label),
+      labels: {
+        style: {
+          colors: '#94a3b8'
+        }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          colors: '#94a3b8'
+        },
+        formatter: function (value) {
+          return `R$ ${(value / 1000).toFixed(0)}k`;
+        }
+      }
+    },
+    theme: {
+      mode: 'dark'
+    },
+    tooltip: {
+      theme: 'dark',
+      y: {
+        formatter: function (value) {
+          return formatBRL(value);
+        }
+      }
+    },
+    colors: ['#2563eb']
+  };
+
+  const lineSeries = [
+    {
+      name: 'Receita',
+      data: chartData.map((item) => item.revenue)
+    }
+  ];
+
+  const teamOptions = {
+    chart: {
+      type: 'bar',
+      toolbar: {
+        show: false
+      },
+      background: 'transparent'
+    },
+    plotOptions: {
+      bar: {
+        horizontal: true,
+        borderRadius: 10,
+        barHeight: '55%'
+      }
+    },
+    grid: {
+      borderColor: '#1e293b'
+    },
+    xaxis: {
+      labels: {
+        style: {
+          colors: '#94a3b8'
+        },
+        formatter: function (value) {
+          return `R$ ${(value / 1000).toFixed(0)}k`;
+        }
+      }
+    },
+    yaxis: {
+      labels: {
+        style: {
+          colors: '#e2e8f0',
+          fontSize: '16px'
+        }
+      }
+    },
+    theme: {
+      mode: 'dark'
+    },
+    tooltip: {
+      theme: 'dark',
+      y: {
+        formatter: function (value) {
+          return formatBRL(value);
+        }
+      }
+    },
+    colors: ['#2563eb', '#16a34a']
+  };
+
+  const teamSeries = [
+    {
+      name: 'Realizado',
+      data: teamGoals.map((item) => item.actual)
+    },
+    {
+      name: 'Meta',
+      data: teamGoals.map((item) => item.goal)
+    }
+  ];
+
+  function handleFullscreen() {
+  const element = document.documentElement;
+
+  if (!document.fullscreenElement) {
+    element.requestFullscreen();
+    document.body.classList.add('tv-fullscreen');
+  } else {
+    document.exitFullscreen();
+    document.body.classList.remove('tv-fullscreen');
+  }
+}
+const userPhotos = {
+  'Gabriel Lopes': '/photos/gabriel.png',
+  'Fábio Souza': '/photos/fabio.png',
+  'Giovanna Fernandes': '/photos/giovanna.png',
+  'Alba Danielly Rezende Lima': '/photos/alba.png',
+  'Fabiane Carvalho Nascimento': '/photos/fabiane.png',
+  'Beatriz Costa  Costa ': '/photos/beatriz.png',
+  'Pedro Scarillo': '/photos/pedro.png',
+  'Marcus Santana': '/photos/marcus.png',
+  'Edson da silva bomfim júnior ': '/photos/edson.png',
+  'Luiza Carvalho': '/photos/luiza.png',
+  'Beatriz Costa  Costa ': '/photos/beatriz.png'
+};
+const goalResults = achievement?.results || [];
+
+const sumGoalBySector = (sector) =>
+  goalResults
+    .filter((item) => item.goal.sector === sector)
+    .reduce((sum, item) => sum + Number(item.goal.targetRevenue || 0), 0);
+
+const sumActualBySector = (sector) =>
+  goalResults
+    .filter((item) => item.goal.sector === sector)
+    .reduce((sum, item) => sum + Number(item.actual.revenue || 0), 0);
+
+
+
+function normalizeName(name) {
+  return String(name || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+
+const closerGoals = goalResults.filter(
+  (item) => item.goal.sector === 'closer'
+);
+
+const closerCards = closerGoals.map((goalItem) => {
+  const displayName = goalItem.goal.userName || 'Sem responsável';
+
+  const matchedActual = goalResults.find(
+    (item) =>
+      normalizeName(item.goal.userName) === normalizeName(displayName) &&
+      item.goal.sector === 'closer'
+  );
+
+  const matchedPhotoKey = Object.keys(userPhotos).find(
+    (key) => normalizeName(key) === normalizeName(displayName)
+  );
+
+  return {
+    name: displayName,
+    goal: Number(goalItem.goal.targetRevenue || 0),
+    actual: Number(matchedActual?.actual?.revenue || 0),
+    estimated: Number(matchedActual?.actual?.estimatedRevenue || 0),
+    photo: matchedPhotoKey ? userPhotos[matchedPhotoKey] : null
+  };
+});
+ 
+
+const getGoalBySector = (sector) => {
+  return goalResults.find(
+    (item) => item.goal.sector === sector
+  );
+};
+
+const generalCards = [
+  {
+    name: 'Closers',
+    goal: sumGoalBySector('closer'),
+    actual: sumActualBySector('closer')
+  },
+  {
+    name: 'Accounts',
+    goal: sumGoalBySector('accounts'),
+    actual: sumActualBySector('accounts')
+  },
+  {
+    name: 'Transportes',
+    goal: getGoalBySector('transportes')?.goal?.targetRevenue || 0,
+    actual: getGoalBySector('transportes')?.actual?.revenue || 0
+  },
+  {
+    name: 'Geral',
+    goal: getGoalBySector('geral')?.goal?.targetRevenue || 0,
+    actual: getGoalBySector('geral')?.actual?.revenue || 0
+  }
+];
+
+  return (
+  <div
+    className="h-screen text-white px-4 pt-8 pb-4 overflow-hidden bg-cover bg-center bg-no-repeat"
+    style={{
+      backgroundImage: `
+        linear-gradient(
+          135deg,
+        rgba(15, 23, 42, 0.45),
+        rgba(30, 41, 59, 0.35),
+        rgba(37, 99, 235, 0.18)
+      ),
+      url('/background-tv.png')
+    `
+  }}
+>
+
+    <header className="flex items-center justify-between mb-2 bg-white/5 border border-white/10 rounded-2xl px-3 py-2 shadow-2xl backdrop-blur">
+      <div>
+        <h1 className="text-3xl font-black tracking-tight">
+          ProcessLog&Comex - Meta Geral
+        </h1>
+
+        <p className="text-slate-400 text-sm mt-1">
+          Acompanhamento geral do período.
+        </p>
+      </div>
+
+      <div className="flex items-center gap-3">
+        <button
+          onClick={() => setPeriod('month')}
+          className={`px-5 py-2 rounded-2xl font-bold transition ${
+            period === 'month'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-800 text-slate-300'
+          }`}
+        >
+          Mês Atual
+        </button>
+
+        <button
+          onClick={() => setPeriod('quarter')}
+          className={`px-5 py-2 rounded-2xl font-bold transition ${
+            period === 'quarter'
+              ? 'bg-blue-600 text-white'
+              : 'bg-slate-800 text-slate-300'
+          }`}
+        >
+          Trimestre
+        </button>
+
+        <div className="text-right ml-4">
+          <div className="text-xs text-slate-400">
+            Atualização automática
+          </div>
+
+          <div className="text-base font-bold text-blue-400">
+            a cada 60s
+          </div>
+
+          <div className="flex items-center justify-end gap-2 mt-1 text-green-400 text-xs font-bold">
+            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            AO VIVO
+          </div>
+        </div>
+      </div>
+      <button
+  onClick={() => setViewMode('general')}
+  className={`px-4 py-2 rounded-2xl font-bold text-sm ${
+    viewMode === 'general'
+      ? 'bg-blue-600 text-white'
+      : 'bg-slate-800 text-slate-300'
+  }`}
+>
+  Meta Geral
+</button>
+
+<button
+  onClick={() => setViewMode('sector')}
+  className={`px-4 py-2 rounded-2xl font-bold text-sm ${
+    viewMode === 'sector'
+      ? 'bg-blue-600 text-white'
+      : 'bg-slate-800 text-slate-300'
+  }`}
+>
+  Por Setor
+</button>
+
+<select
+  value={rotationSeconds}
+  onChange={(e) => setRotationSeconds(Number(e.target.value))}
+  className="bg-slate-800 text-white rounded-2xl px-3 py-2 text-sm"
+>
+  <option value={10}>10s</option>
+  <option value={20}>20s</option>
+  <option value={30}>30s</option>
+  <option value={60}>60s</option>
+</select>
+
+<button
+  onClick={() => setAutoRotate(!autoRotate)}
+  className="px-4 py-2 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm"
+>
+  {autoRotate ? 'Auto ON' : 'Auto OFF'}
+</button>
+
+<button
+  onClick={handleFullscreen}
+  className="px-4 py-2 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm"
+>
+  Tela cheia
+</button>
+    </header>
+
+    {viewMode === 'general' && (
+  <div className="h-[calc(100vh-170px)] flex items-center">
+    <section className="grid grid-cols-2 gap-5 w-full">
+      {generalCards.map((item) => (
+        <SectorKpi
+          key={item.name}
+          name={item.name}
+          goal={item.goal}
+          actual={item.actual}
+          formatBRL={formatBRL}
+        />
+      ))}
+    </section>
+  </div>
+)}
+
+{viewMode === 'sector' && (
+  <div className="space-y-2">
+    <section className="grid grid-cols-4 gap-2">
+      {closerCards.map((item, index) => (
+        <CloserGoalCard
+          key={`${item.name}-${index}`}
+          name={item.name}
+          goal={item.goal}
+          actual={item.actual}
+          estimated={item.estimated}
+          photo={item.photo}
+          formatBRL={formatBRL}
+        />
+      ))}
+    </section>
+  </div>
+)}
+  </div>
+);
+}
+
+
+function BigKpi({ title, value, subtitle }) {
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white/10 backdrop-blur rounded-3xl p-4 h-[72px] border border-white/10 shadow-2xl overflow-hidden"
+    >
+      <div className="text-slate-400 text-xs">
+        {title}
+      </div>
+
+      <div className="text-sm xl:text-base font-black mt-2 leading-tight truncate">
+        {value}
+      </div>
+
+      <div className="text-slate-500 mt-1 text-xs">
+        {subtitle}
+      </div>
+    </motion.div>
+  );
+}
+
+function MiniKpi({ label, value }) {
+  return (
+    <div className="bg-slate-950/50 rounded-2xl p-2 border border-white/5">
+      <div className="text-slate-400 text-xs">
+        {label}
+      </div>
+
+      <div className="text-base font-bold mt-1">
+        {value}
+      </div>
+    </div>
+  );
+}
+
+function ProgressBar({ label, current, goal, formatBRL }) {
+  const percent =
+    goal > 0 ? Math.min((current / goal) * 100, 100) : 0;
+
+
+  
+  return (
+    <div className="h-full bg-white/10 backdrop-blur rounded-2xl p-2 border border-white/10 shadow-2xl">
+      <div className="flex items-start justify-between mb-4">
+        <div>
+          <div className="text-slate-400 text-xs">
+            {label}
+          </div>
+
+          <div className="text-xl font-black mt-1">
+            {formatBRL(current)}
+          </div>
+        </div>
+
+        <div className="text-3xl font-black text-blue-400">
+          {percent.toFixed(1)}%
+        </div>
+      </div>
+
+      <div className="w-full h-5 bg-slate-800 rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${percent}%` }}
+          transition={{ duration: 1.4, ease: 'easeOut' }}
+          className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400 rounded-full shadow-lg shadow-blue-500/40"
+        />
+      </div>
+
+      <div className="flex justify-between mt-3 text-xs text-slate-500">
+        <span>Meta: {formatBRL(goal)}</span>
+        <span>Falta: {formatBRL(Math.max(goal - current, 0))}</span>
+      </div>
+      </div>
+    );
+   }
+
+function SourceLine({ name, leads, won }) {
+  return (
+    <div className="bg-slate-950/50 rounded-2xl px-3 py-2 border border-white/5">
+      <div className="flex justify-between gap-3">
+        <span className="text-sm font-semibold truncate">
+          {name}
+        </span>
+
+        <span className="text-sm text-blue-300 font-bold">
+          {leads}
+        </span>
+      </div>
+
+      <div className="text-xs text-slate-500">
+        {won} won no período
+      </div>
+    </div>
+  );
+}
+
+function AlertLine({ label, value }) {
+  return (
+    <div className="flex items-center justify-between bg-slate-950/50 rounded-2xl px-3 py-2 border border-white/5">
+      <span className="text-slate-400 text-xs">
+        {label}
+      </span>
+
+      <span className="font-bold text-white text-sm">
+        {value}
+      </span>
+    </div>
+  );
+}
+
+function SectorKpi({ name, goal, actual, formatBRL }) {
+  const percent = goal > 0 ? Math.min((actual / goal) * 100, 999) : 0;
+  const missing = Math.max(goal - actual, 0);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, scale: 0.96 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className="bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-[168px]"
+    >
+      <div className="flex justify-between items-start gap-2">
+        <div>
+          <div className="text-slate-300 text-lg font-bold">
+            {name}
+          </div>
+
+          <div className="text-lg font-black mt-1">
+            {formatBRL(actual)}
+          </div>
+
+          <div className="text-slate-500 text-xs mt-1">
+            Meta: {formatBRL(goal)}
+          </div>
+        </div>
+
+        <div className="text-blue-400 text-xl font-black">
+          {percent.toFixed(1)}%
+        </div>
+      </div>
+
+      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden mt-3">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(percent, 100)}%` }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+          className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+        />
+      </div>
+
+      <div className="text-slate-500 text-xs mt-2">
+        Falta: {formatBRL(missing)}
+      </div>
+    </motion.div>
+  );
+}
+
+function CloserGoalCard({
+  name,
+  goal,
+  actual,
+  estimated,
+  photo,
+  formatBRL
+}) {
+  const percent = goal > 0 ? Math.min((actual / goal) * 100, 999) : 0;
+
+  const initials = name
+    ?.split(' ')
+    ?.filter(Boolean)
+    ?.slice(0, 2)
+    ?.map((part) => part[0])
+    ?.join('')
+    ?.toUpperCase();
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-[168px]"
+    >
+      <div className="flex items-center gap-3 mb-3">
+        {photo ? (
+  <img
+    src={photo}
+    alt={name}
+    className="w-11 h-11 rounded-full object-cover border border-white/20"
+  />
+) : (
+  <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center font-black text-white border border-white/20">
+    {initials}
+  </div>
+)}
+
+        <div className="min-w-0">
+          <div className="font-bold text-sm truncate">
+            {name}
+          </div>
+
+          <div className="text-slate-400 text-xs">
+            Meta individual
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-end mb-2">
+        <div>
+          <div className="text-slate-400 text-xs">
+            Atingido
+          </div>
+
+          <div className="font-black text-lg">
+            {formatBRL(actual)}
+          </div>
+        </div>
+
+        <div className="text-blue-400 font-black text-xl">
+          {percent.toFixed(1)}%
+        </div>
+      </div>
+
+      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(percent, 100)}%` }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+          className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+        />
+      </div>
+
+      <div className="flex justify-between mt-1 text-[11px]">
+        <span className="text-cyan-300">
+          Estimado: {formatBRL(estimated || 0)}
+        </span>
+
+        <span className="text-cyan-400 font-bold">
+          {goal > 0
+            ? `${(((estimated || 0) / goal) * 100).toFixed(1)}%`
+            : '0%'}
+        </span>
+        </div>
+
+      <div className="flex justify-between mt-2 text-xs text-slate-500">
+        <span>Meta: {formatBRL(goal)}</span>
+        <span>Falta: {formatBRL(Math.max(goal - actual, 0))}</span>
+      </div>
+    </motion.div>
+  );
+
+const generalCards = [
+  {
+    name: 'Closers',
+    goal: sumGoalBySector('closer'),
+    actual: sumActualBySector('closer')
+  },
+  {
+    name: 'Accounts',
+    goal: sumGoalBySector('accounts'),
+    actual: sumActualBySector('accounts')
+  },
+  {
+    name: 'Transportes',
+    goal: getGoalBySector('transportes')?.goal?.targetRevenue || 0,
+    actual: getGoalBySector('transportes')?.actual?.revenue || 0
+  },
+  {
+    name: 'Geral',
+    goal: getGoalBySector('geral')?.goal?.targetRevenue || 0,
+    actual: getGoalBySector('geral')?.actual?.revenue || 0
+  }
+];
+
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 18 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-full min-h-[135px]"
+    >
+      <div className="flex items-center gap-3 mb-3">
+        <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center font-black text-white border border-white/20">
+          {initials}
+        </div>
+
+        <div className="min-w-0">
+          <div className="font-bold text-sm truncate">
+            {name}
+          </div>
+
+          <div className="text-slate-400 text-xs">
+            Meta individual
+          </div>
+        </div>
+      </div>
+
+      <div className="flex justify-between items-end mb-2">
+        <div>
+          <div className="text-slate-400 text-xs">
+            Atingido
+          </div>
+
+          <div className="font-black text-lg">
+            {formatBRL(actual)}
+          </div>
+        </div>
+
+        <div className="text-blue-400 font-black text-xl">
+          {percent.toFixed(1)}%
+        </div>
+      </div>
+
+      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+        <motion.div
+          initial={{ width: 0 }}
+          animate={{ width: `${Math.min(percent, 100)}%` }}
+          transition={{ duration: 1.2, ease: 'easeOut' }}
+          className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+        />
+      </div>
+
+      <div className="flex justify-between mt-2 text-xs text-slate-500">
+        <span>Meta: {formatBRL(goal)}</span>
+        <span>Falta: {formatBRL(Math.max(goal - actual, 0))}</span>
+      </div>
+    </motion.div>
+  );
+}
+
+export default TVGeneralPage;
