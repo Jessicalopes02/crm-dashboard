@@ -4894,6 +4894,23 @@ app.post('/api/goals', async (req, res) => {
   }
 });
 
+app.get('/api/goals', async (req, res) => {
+  try {
+    const goals = await Goal.find().sort({ createdAt: -1 });
+
+    res.json({
+      sucesso: true,
+      goals
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 app.post(
   '/api/goals/import-csv',
   upload.single('file'),
