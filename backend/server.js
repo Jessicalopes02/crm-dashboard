@@ -5065,6 +5065,25 @@ app.get('/api/goals', async (req, res) => {
   }
 });
 
+app.get('/api/goals/current', async (req, res) => {
+  try {
+    const { period } = req.query;
+
+    const goal = await Goal.findOne({ period }).sort({ createdAt: -1 });
+
+    res.json({
+      sucesso: true,
+      goal
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 // ========================================
 // ATINGIMENTO DE METAS
 // COM REGRA DE DATA POR CAMPANHA
