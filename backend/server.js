@@ -5362,6 +5362,182 @@ if (goal.sector?.toLowerCase() === 'transportes') {
   }
 });
 
+app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
+  try {
+    const start = new Date('2026-05-25T03:00:00.000Z');
+    const end = new Date('2026-05-30T02:59:59.999Z');
+
+    const normalizeName = (name) =>
+      String(name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+    const teams = {
+      redbull: ['Alba Danielly Rezende Lima', 'Fabiane Carvalho Nascimento', 'Gisele Santos Gama'],
+      mercedes: ['Fábio Souza', 'Edson da Silva Bomfim Júnior', 'Guilherme Velloso', 'Leticia Barbosa'],
+      ferrari: ['Giovanna Fernandes', 'Pedro Scarillo', 'Luma Farias Silva Santos']
+    };
+
+    const teamByUser = {};
+
+    Object.entries(teams).forEach(([team, users]) => {
+      users.forEach((user) => {
+        teamByUser[normalizeName(user)] = team;
+      });
+    });
+
+    const leads = await Lead.find({
+  $and: [
+    {
+      $or: [
+        {
+          tags: {
+            $elemMatch: {
+              $regex: 'road to the glory',
+              $options: 'i'
+            }
+          }
+        },
+        {
+          tags: {
+            $regex: 'road to the glory',
+            $options: 'i'
+          }
+        }
+      ]
+    },
+    {
+      $or: [
+        { createdTime: { $gte: start, $lte: end } },
+        { modifiedTime: { $gte: start, $lte: end } },
+        { closedTime: { $gte: start, $lte: end } }
+      ]
+    }
+  ]
+}).lean();
+
+    const result = {
+      redbull: { team: 'Red Bull', miles: 0 },
+      mercedes: { team: 'Mercedes', miles: 0 },
+      ferrari: { team: 'Ferrari', miles: 0 }
+    };
+
+    for (const lead of leads) {
+      const assigneeName = normalizeName(lead.assignee?.name);
+      const team = teamByUser[assigneeName];
+
+      if (!team) continue;
+
+      const created = lead.createdTime ? new Date(lead.createdTime) : null;
+      const modified = lead.modifiedTime ? new Date(lead.modifiedTime) : null;
+      const closed = lead.closedTime ? new Date(lead.closedTime) : null;
+
+      const createdInPeriod = created && created >= start && created <= end;
+      const modifiedInPeriod = modified && modified >= start && modified <= end;
+      const closedInPeriod = closed && closed >= start && closed <= end;
+
+      const sameCreatedModifiedDay =
+        created &&
+        modified &&
+        created.toISOString().slice(0, 10) === modified.toISOString().slice(0, 10);
+
+      const sameCreatedClosedDay =
+        created &&
+        closed &&
+        created.toISOString().slice(0, 10) === closed.toISOString().slice(0, 10);
+
+      const milestoneName = normalizeName(lead.milestone?.name || '');
+      const stageSetName = normalizeName(lead.stageset?.name || '');
+
+      const isMeeting =
+        stageSetName.includes('novos negocios') &&
+        milestoneName.includes('reuniao agendada');
+
+      if (
+        createdInPeriod &&
+        odifiedInPeriod &&
+        sameCreatedModifiedDay &&
+        isMeeting
+      ) {
+        result[team].miles += 100;
+
+      } else {
+
+      if (createdInPeriod) {
+        result[team].miles += 10;
+      }
+
+      if (modifiedInPeriod && isMeeting) {
+        result[team].miles += 50;
+      }
+    }
+
+      if (
+        createdInPeriod &&
+        closedInPeriod &&
+        sameCreatedClosedDay &&
+        lead.status === 10
+      ) {
+        result[team].miles += 200;
+      }
+
+      if (lead.status === 10 && closedInPeriod) {
+        let canCountWonValue = true;
+
+        if (normalizeName(lead.assignee?.name) === normalizeName('Gabriel Lopes')) {
+          canCountWonValue = (lead.products || []).some((product) =>
+            normalizeName(product.name).includes(normalizeName('Gerenciamento de Importação'))
+          );
+        }
+
+        if (canCountWonValue) {
+          result[team].miles += Math.floor(Number(lead.value?.amount || 0) / 100);
+        }
+      }
+    }
+
+    const ranking = Object.values(result)
+      .sort((a, b) => b.miles - a.miles)
+      .map((item, index) => ({
+        ...item,
+        position: index + 1,
+        percent: Math.min((item.miles / 13000) * 100, 100),
+        milesFormatted: item.miles.toLocaleString('pt-BR')
+      }));
+
+    const podium = {
+      first: ranking[0],
+      second: ranking[1],
+      third: ranking[2]
+    };
+
+    const totalMiles = ranking.reduce(
+      (sum, item) => sum + Number(item.miles || 0),
+      0
+    );
+
+    res.json({
+      sucesso: true,
+      limit: 13000,
+      totalMiles,
+      totalMilesFormatted: totalMiles.toLocaleString('pt-BR'),
+      podium,
+      ranking
+    });
+
+  } catch (error) {
+    console.error('ERRO ROAD TO GLORY:', error);
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 // ========================================
 // CONEXÃO MONGODB
 // ========================================
