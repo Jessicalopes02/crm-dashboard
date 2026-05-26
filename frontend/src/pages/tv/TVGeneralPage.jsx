@@ -376,7 +376,7 @@ const userPhotos = {
   'Marcus Santana': '/photos/marcus.png',
   'Edson da silva bomfim júnior ': '/photos/edson.png',
   'Luiza Carvalho': '/photos/luiza.png',
-  'Beatriz Costa  Costa ': '/photos/beatriz.png'
+  'Accounts Grupo ': '/photos/emely.png'
 };
 const goalResults = achievement?.results || [];
 
