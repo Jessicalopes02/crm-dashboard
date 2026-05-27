@@ -11,12 +11,12 @@ import TVOperationalPage from './pages/tv/TVOperationalPage';
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
+  const pathname = window.location.pathname;
 
-const isTvMode = window.location.pathname === '/fullscreen';
+  if (pathname === '/fullscreen') {
+    return <TVCloserPage tvMode />;
+  }
 
-if (isTvMode) {
-  return <TVCloserPage tvMode />;
-}
 
 return (
   <div className="flex min-h-screen bg-slate-100">
