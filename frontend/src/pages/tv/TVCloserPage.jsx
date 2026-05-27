@@ -292,7 +292,7 @@ function CloserScreenTwo({ generalCards, formatBRL }) {
         backgroundImage: "url('/campaign-tv/screen-2.png')"
       }}
     >
-      <div className="h-full flex items-center">
+      <div className="h-full flex items-center pt-24">
         <section className="grid grid-cols-2 gap-5 w-full">
 
           {generalCards.map((item) => (
@@ -331,7 +331,7 @@ function CloserScreenThree({ closerCards, formatBRL }) {
         backgroundImage: "url('/campaign-tv/screen-3.png')"
       }}
     >
-      <div className="h-full flex items-center">
+      <div className="h-full flex items-start pt-[140px]">
         <section className="grid grid-cols-4 gap-3 w-full">
 
           {closerCards.map((item, index) => (
