@@ -15,6 +15,8 @@ const multer = require('multer');
 const csv = require('csv-parser');
 const fs = require('fs');
 
+const path = require('path');
+
 const upload = multer({ dest: 'uploads/' });
 
 app.use(cors());
@@ -5732,16 +5734,22 @@ app.get('/api/audit/road-to-glory', async (req, res) => {
 
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
-});
 
-const path = require('path');
 
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-app.get(/.*/, (req, res) => {
-  res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
+const frontendPath = path.join(__dirname, '../frontend/dist');
+
+app.use(express.static(frontendPath));
+
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({
+      sucesso: false,
+      erro: 'API não encontrada'
+    });
+  }
+
+  res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
 // ========================================
