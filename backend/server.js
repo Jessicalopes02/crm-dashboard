@@ -1483,6 +1483,33 @@ async function getFunnelDashboard(startDate, endDate) {
   ];
 }
 
+async function getLeadActivities(leadId) {
+  const response = await axios.post(
+    'https://app.nutshell.com/api/v1/json',
+    {
+      method: 'findActivities',
+      params: {
+        query: {
+          relatedTo: {
+            entityType: 'Leads',
+            id: leadId
+          }
+        },
+        limit: 100
+      },
+      id: 1
+    },
+    {
+      auth: {
+        username: NUTSHELL_EMAIL,
+        password: NUTSHELL_API_KEY
+      }
+    }
+  );
+
+  return response.data.result || [];
+}
+
 async function getLeadTimeDashboard(startDate, endDate) {
   const dateConditions = {};
 
@@ -2535,6 +2562,7 @@ async function saveFullLead(fullLead) {
       products: fullLead.products || [],
       sources: fullLead.sources || [],
       tags: fullLead.tags || [],
+      activities: fullLead.activities || [],
       customFields: fullLead.customFields || {},
       processes: fullLead.processes || [],
       createdTime: fullLead.createdTime,
@@ -3554,6 +3582,101 @@ app.get('/api/audit/nutshell-compare', async (req, res) => {
     res.status(500).json({
       sucesso: false,
       erro: error.message
+    });
+  }
+});
+
+
+app.get('/api/sync/nutshell/road-to-glory', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 500;
+    const maxPages = Number(req.query.maxPages) || 100;
+
+    let page = 1;
+    let checked = 0;
+    let matched = 0;
+    let synced = 0;
+
+    while (page <= maxPages) {
+      const nutshellResponse = await axios.post(
+        'https://app.nutshell.com/api/v1/json',
+        {
+          method: 'findLeads',
+          params: {
+            query: {},
+            limit,
+            page
+            },
+          id: 1
+        },
+        {
+          auth: {
+            username: NUTSHELL_EMAIL,
+            password: NUTSHELL_API_KEY
+          }
+        }
+      );
+
+      const leads = nutshellResponse.data.result || [];
+
+      if (leads.length === 0) break;
+
+      for (const lead of leads) {
+        checked++;
+
+        const detailResponse = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: { leadId: lead.id },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const fullLead = detailResponse.data.result;
+
+        if (!fullLead) continue;
+
+        const hasRoadTag = (fullLead.tags || []).some((tag) =>
+  String(tag || '')
+    .toLowerCase()
+    .includes('road to the glory')
+);
+
+if (!hasRoadTag) continue;
+
+        matched++;
+
+const activities = await getLeadActivities(fullLead.id);
+fullLead.activities = activities;
+
+await saveFullLead(fullLead);
+        synced++;
+      }
+
+      page++;
+    }
+
+    res.json({
+      sucesso: true,
+      checked,
+      matched,
+      synced,
+      pagesProcessed: page - 1
+    });
+
+  } catch (error) {
+    console.error('ERRO SYNC ROAD TO GLORY:', error.response?.data || error.message);
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
     });
   }
 });
@@ -5396,14 +5519,14 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
         {
           tags: {
             $elemMatch: {
-              $regex: 'All Hands - road to the glory',
+              $regex: 'Road to the Glory - Maio',
               $options: 'i'
             }
           }
         },
         {
           tags: {
-            $regex: 'All Hands - road to the glory',
+            $regex: 'Road to the Glory - Maio',
             $options: 'i'
           }
         }
@@ -5540,26 +5663,80 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
 
 const path = require('path');
 
+app.get('/api/audit/road-to-glory-period', async (req, res) => {
+  try {
+    const start = new Date('2026-05-25T03:00:00.000Z');
+    const end = new Date('2026-05-30T02:59:59.999Z');
+
+    const leads = await Lead.find({
+      tags: 'Road to the Glory - Maio',
+      $or: [
+        { createdTime: { $gte: start, $lte: end } },
+        { modifiedTime: { $gte: start, $lte: end } },
+        { closedTime: { $gte: start, $lte: end } }
+      ]
+    })
+      .select('name assignee.name tags createdTime modifiedTime closedTime milestone.name stageset.name status value products.name')
+      .lean();
+
+    res.json({
+      sucesso: true,
+      total: leads.length,
+      leads
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
+app.get('/api/audit/road-to-glory', async (req, res) => {
+  try {
+
+    const leads = await Lead.find({
+      tags: 'Road to the Glory - Maio'
+    })
+      .select({
+        name: 1,
+        assignee: 1,
+        tags: 1,
+        createdTime: 1,
+        modifiedTime: 1,
+        closedTime: 1,
+        milestone: 1,
+        stageset: 1,
+        status: 1,
+        value: 1,
+        products: 1
+      })
+      .limit(50)
+      .lean();
+
+    res.json({
+      sucesso: true,
+      total: leads.length,
+      leads
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
-app.get('/api/audit/road-to-glory', async (req, res) => {
-  const leads = await Lead.find({
-    tags: 'All Hands - Road to the Glory'
-  })
-    .select('name assignee.name tags createdTime modifiedTime closedTime milestone.name stageset.name status value products.name')
-    .limit(50)
-    .lean();
 
-  res.json({
-    sucesso: true,
-    total: leads.length,
-    leads
-  });
-});
 
 // ========================================
 // CONEXÃO MONGODB

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import api from '../../services/api';
 
-function TVCloserPage() {
+function TVCloserPage({ tvMode = false }) {
   const [screen, setScreen] = useState(0);
   const [autoRotate, setAutoRotate] = useState(true);
   const [rotationSeconds, setRotationSeconds] = useState(20);
@@ -9,6 +9,7 @@ function TVCloserPage() {
   const [period, setPeriod] = useState('2026-05');
   const [campaignProgress, setCampaignProgress] = useState(null);
 
+  
   useEffect(() => {
     if (!autoRotate) return;
 
@@ -186,46 +187,50 @@ console.log('FOTO CARD:', name, matchedPhotoKey, matchedPhotoKey ? userPhotos[ma
   }}
 >
 
-    <div className="tv-controls flex items-center gap-2 mb-4">
-      {[1, 2, 3, 4, 5, 6].map((item, index) => (
-        <button
-          key={item}
-          onClick={() => setScreen(index)}
-          className={`px-3 py-2 rounded-xl text-xs font-bold ${
-            screen === index
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-800 text-slate-300'
-          }`}
-        >
-          Tela {item}
-        </button>
-      ))}
+    {!tvMode && (
+  <div className="tv-controls flex items-center gap-2 mb-4">
 
+    {[1, 2, 3, 4, 5, 6].map((item, index) => (
       <button
-        onClick={() => setAutoRotate(!autoRotate)}
-        className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-800"
+        key={item}
+        onClick={() => setScreen(index)}
+        className={`px-3 py-2 rounded-xl text-xs font-bold ${
+          screen === index
+            ? 'bg-blue-600 text-white'
+            : 'bg-slate-800 text-slate-300'
+        }`}
       >
-        {autoRotate ? 'Auto ON' : 'Auto OFF'}
+        Tela {item}
       </button>
+    ))}
 
-      <select
-        value={rotationSeconds}
-        onChange={(e) => setRotationSeconds(Number(e.target.value))}
-        className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 text-white"
-      >
-        <option value={10}>10s</option>
-        <option value={20}>20s</option>
-        <option value={30}>30s</option>
-        <option value={60}>60s</option>
-      </select>
+    <button
+      onClick={() => setAutoRotate(!autoRotate)}
+      className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-800"
+    >
+      {autoRotate ? 'Auto ON' : 'Auto OFF'}
+    </button>
 
-      <button
-        onClick={handleFullscreen}
-        className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-800"
-      >
-        Tela cheia
-      </button>
-    </div>
+    <select
+      value={rotationSeconds}
+      onChange={(e) => setRotationSeconds(Number(e.target.value))}
+      className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-800 text-white"
+    >
+      <option value={10}>10s</option>
+      <option value={20}>20s</option>
+      <option value={30}>30s</option>
+      <option value={60}>60s</option>
+    </select>
+
+    <button
+      onClick={handleFullscreen}
+      className="px-3 py-2 rounded-xl text-xs font-bold bg-slate-800"
+    >
+      Tela cheia
+    </button>
+
+  </div>
+)}
 
     <div className="h-screen w-screen overflow-hidden">
       {screen === 0 && <CloserScreenOne />}
