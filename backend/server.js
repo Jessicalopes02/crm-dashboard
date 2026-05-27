@@ -5396,14 +5396,14 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
         {
           tags: {
             $elemMatch: {
-              $regex: 'road to the glory',
+              $regex: 'All Hands - road to the glory',
               $options: 'i'
             }
           }
         },
         {
           tags: {
-            $regex: 'road to the glory',
+            $regex: 'All Hands - road to the glory',
             $options: 'i'
           }
         }
@@ -5453,8 +5453,8 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
       const stageSetName = normalizeName(lead.stageset?.name || '');
 
       const isMeeting =
-        stageSetName.includes('novos negocios') &&
-        milestoneName.includes('reuniao agendada');
+        stageSetName.includes('Processo Comercial - Novos Negócios') &&
+        milestoneName.includes('Reunião Agendada');
 
       if (
         createdInPeriod &&
@@ -5504,7 +5504,7 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
       .map((item, index) => ({
         ...item,
         position: index + 1,
-        percent: Math.min((item.miles / 13000) * 100, 100),
+        percent: Math.min((item.miles / 6000) * 100, 100),
         milesFormatted: item.miles.toLocaleString('pt-BR')
       }));
 
@@ -5521,7 +5521,7 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
 
     res.json({
       sucesso: true,
-      limit: 13000,
+      limit: 6000,
       totalMiles,
       totalMilesFormatted: totalMiles.toLocaleString('pt-BR'),
       podium,
@@ -5542,10 +5542,24 @@ const path = require('path');
 
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
-app.get('*', (req, res) => {
+app.get(/.*/, (req, res) => {
   res.sendFile(path.join(__dirname, '../frontend/dist/index.html'));
 });
 
+app.get('/api/audit/road-to-glory', async (req, res) => {
+  const leads = await Lead.find({
+    tags: 'All Hands - Road to the Glory'
+  })
+    .select('name assignee.name tags createdTime modifiedTime closedTime milestone.name stageset.name status value products.name')
+    .limit(50)
+    .lean();
+
+  res.json({
+    sucesso: true,
+    total: leads.length,
+    leads
+  });
+});
 
 // ========================================
 // CONEXÃO MONGODB
