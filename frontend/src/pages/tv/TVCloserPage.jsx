@@ -171,7 +171,20 @@ console.log('FOTO CARD:', name, matchedPhotoKey, matchedPhotoKey ? userPhotos[ma
 
 
   return (
-  <div className="h-screen text-white p-4 overflow-hidden bg-slate-950">
+  <div
+  className="h-screen w-screen text-white overflow-hidden bg-cover bg-center bg-no-repeat"
+  style={{
+    backgroundImage: `
+      linear-gradient(
+        135deg,
+        rgba(15, 23, 42, 0.25),
+        rgba(30, 41, 59, 0.15),
+        rgba(37, 99, 235, 0.08)
+      ),
+      url('/background-tv.png')
+    `
+  }}
+>
 
     <div className="tv-controls flex items-center gap-2 mb-4">
       {[1, 2, 3, 4, 5, 6].map((item, index) => (
@@ -214,7 +227,7 @@ console.log('FOTO CARD:', name, matchedPhotoKey, matchedPhotoKey ? userPhotos[ma
       </button>
     </div>
 
-    <div className="h-[calc(100vh-80px)] overflow-hidden">
+    <div className="h-screen w-screen overflow-hidden">
       {screen === 0 && <CloserScreenOne />}
       {screen === 1 && (
         <CloserScreenTwo

@@ -32,3 +32,7 @@ body.tv-fullscreen #root {
 body.tv-fullscreen .tv-controls {
   display: none !important;
 }
+body.tv-fullscreen .tv-content {
+  height: 100vh !important;
+  width: 100vw !important;
+}
