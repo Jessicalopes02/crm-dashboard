@@ -5603,52 +5603,94 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
       const assigneeName = normalizeName(lead.assignee?.name);
       const team = teamByUser[assigneeName];
 
+if (!team) continue;
+
+const milestoneName = normalizeName(lead.milestone?.name || '');
+const stageSetName = normalizeName(lead.stageset?.name || '');
+
+const hasMayRoadTag =
+  Array.isArray(lead.tags) &&
+  lead.tags.some((tag) =>
+    normalizeName(tag).includes('road to the glory')
+  );
+
+const isNewLeadPipeline =
+  stageSetName.includes('sdr') ||
+  stageSetName.includes('novos negocios');
+
+const isMeeting =
+  milestoneName.includes('reuniao agendada');
+
+const isProjection =
+  milestoneName.includes('projecao de custos');
+
+const isOffer =
+  milestoneName.includes('oferta gerenciamento') ||
+  milestoneName.includes('consultoria');
+
+const isQualifiedStage =
+  isMeeting || isProjection || isOffer;
+
       if (!team) continue;
+
+      const commercialProcess = Array.isArray(lead.processes)
+  ? lead.processes.find((process) =>
+      normalizeName(process.name).includes('processo comercial') ||
+      normalizeName(process.name).includes('novos negocios')
+    )
+  : null;
+
+const openDate = commercialProcess?.startedTime
+  ? new Date(commercialProcess.startedTime)
+  : lead.createdTime
+    ? new Date(lead.createdTime)
+    : null;
 
       const created = lead.createdTime ? new Date(lead.createdTime) : null;
       const modified = lead.modifiedTime ? new Date(lead.modifiedTime) : null;
       const closed = lead.closedTime ? new Date(lead.closedTime) : null;
+      const processStarted = Array.isArray(lead.processes)
+       ? lead.processes
+      .map((process) => process.startedTime ? new Date(process.startedTime) : null)
+      .filter(Boolean)
+      .sort((a, b) => b - a)[0]
+      : null;
 
-      const createdInPeriod = created && created >= start && created <= end;
+    
+      const createdInPeriod = openDate && openDate >= start && openDate <= end;
       const modifiedInPeriod = modified && modified >= start && modified <= end;
       const closedInPeriod = closed && closed >= start && closed <= end;
 
       const sameCreatedModifiedDay =
         created &&
         modified &&
-        created.toISOString().slice(0, 10) === modified.toISOString().slice(0, 10);
+        openDate.toISOString().slice(0, 10) === modified.toISOString().slice(0, 10);
 
       const sameCreatedClosedDay =
         created &&
         closed &&
-        created.toISOString().slice(0, 10) === closed.toISOString().slice(0, 10);
-
-      const milestoneName = normalizeName(lead.milestone?.name || '');
-      const stageSetName = normalizeName(lead.stageset?.name || '');
-
-      const isMeeting =
-        stageSetName.includes('Processo Comercial - Novos Negócios') &&
-        milestoneName.includes('Reunião Agendada');
+        openDate.toISOString().slice(0, 10) === closed.toISOString().slice(0, 10);
 
       if (
-        createdInPeriod &&
-        modifiedInPeriod &&
-        sameCreatedModifiedDay &&
-        isMeeting
-      ) {
-        result[team].miles += 100;
+  createdInPeriod &&
+  modifiedInPeriod &&
+  sameCreatedModifiedDay &&
+  isMeeting
+) {
+  result[team].miles += 100;
+}
 
-      } else {
+if (hasMayRoadTag && isNewLeadPipeline) {
+  result[team].miles += 10;
+}
 
-      if (createdInPeriod) {
-        result[team].miles += 10;
-      }
-
-      if (modifiedInPeriod && isMeeting) {
-        result[team].miles += 50;
-      }
-    }
-
+if (
+  hasMayRoadTag &&
+  modifiedInPeriod &&
+  isQualifiedStage
+) {
+  result[team].miles += 50;
+}
       if (
         createdInPeriod &&
         closedInPeriod &&
@@ -5833,6 +5875,73 @@ app.get('/api/audit/road-to-glory-period', async (req, res) => {
       sucesso: true,
       total: leads.length,
       leads
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
+app.get('/api/audit/road-to-glory-points', async (req, res) => {
+  try {
+    const start = new Date('2026-05-25T03:00:00.000Z');
+    const end = new Date('2026-05-30T02:59:59.999Z');
+
+    const normalizeName = (name) =>
+      String(name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+    const leads = await Lead.find({
+      tags: {
+        $in: [
+          'All Hands - Road to the Glory',
+          'Road to the Glory - Maio'
+        ]
+      }
+    }).lean();
+
+    const audit = leads.map((lead) => {
+      const commercialProcess = Array.isArray(lead.processes)
+        ? lead.processes.find((process) =>
+            normalizeName(process.name).includes('processo comercial') ||
+            normalizeName(process.name).includes('novos negocios')
+          )
+        : null;
+
+      const openDate = commercialProcess?.startedTime
+        ? new Date(commercialProcess.startedTime)
+        : lead.createdTime
+          ? new Date(lead.createdTime)
+          : null;
+
+      return {
+        nutshell_id: lead.nutshell_id,
+        name: lead.name,
+        assignee: lead.assignee?.name,
+        tags: lead.tags,
+        status: lead.status,
+        milestone: lead.milestone?.name,
+        stageset: lead.stageset?.name,
+        openDate,
+        createdTime: lead.createdTime,
+        modifiedTime: lead.modifiedTime,
+        closedTime: lead.closedTime,
+        value: lead.value?.amount || 0,
+        products: lead.products?.map((p) => p.name) || []
+      };
+    });
+
+    res.json({
+      sucesso: true,
+      total: audit.length,
+      audit
     });
 
   } catch (error) {

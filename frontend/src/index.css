@@ -45,7 +45,7 @@ body.tv-fullscreen .tv-content {
   overflow: hidden !important;
 
   /* Ajuste principal para TV */
-  transform: scale(1.18);
+  transform: scale(1.35);
   transform-origin: top left;
 
   /* Compensa o scale */

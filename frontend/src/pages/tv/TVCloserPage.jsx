@@ -362,15 +362,17 @@ function CloserScreenFive({ campaignProgress }) {
   const ranking = campaignProgress?.ranking || [];
   const podium = campaignProgress?.podium;
 
-  const bars = ranking.map((team, index) => ({
-    ...team,
-    top: ['41%', '55%', '70%'][index],
-    car: [
-      '/campaign-tv/car-1.png',
-      '/campaign-tv/car-2.png',
-      '/campaign-tv/car-3.png'
-    ][index]
-  }));
+  const carMap = {
+  'Red Bull': '/campaign-tv/car-1.png',
+  'Mercedes': '/campaign-tv/car-2.png',
+  'Ferrari': '/campaign-tv/car-3.png'
+};
+
+const bars = ranking.map((team, index) => ({
+  ...team,
+  top: ['41%', '55%', '70%'][index],
+  car: carMap[team.team]
+}));
 
   return (
     <div
