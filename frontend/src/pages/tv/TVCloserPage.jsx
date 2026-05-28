@@ -220,32 +220,35 @@ console.log('FOTO CARD:', name, matchedPhotoKey, matchedPhotoKey ? userPhotos[ma
   </div>
 )}
 
-    <div className="h-screen w-screen overflow-hidden">
+        <div className="h-full w-full overflow-hidden">
       {screen === 0 && <CloserScreenOne />}
+
       {screen === 1 && (
         <CloserScreenTwo
           generalCards={generalCards}
           formatBRL={formatBRL}
         />
       )}
+
       {screen === 2 && (
         <CloserScreenThree
           closerCards={closerCards}
           formatBRL={formatBRL}
         />
       )}
+
       {screen === 3 && <CloserScreenFour />}
+
       {screen === 4 && (
-        <CloserScreenFive
-          campaignProgress={campaignProgress}
-        />
+        <CloserScreenFive campaignProgress={campaignProgress} />
       )}
+
       {screen === 5 && (
-  <CloserScreenSix campaignProgress={campaignProgress} />
-)}
+        <CloserScreenSix campaignProgress={campaignProgress} />
+      )}
     </div>
 
-  </div>
+    </div>
   </div>
 );
 }
