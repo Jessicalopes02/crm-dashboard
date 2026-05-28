@@ -3624,7 +3624,7 @@ app.get('/api/audit/nutshell-compare', async (req, res) => {
 app.get('/api/sync/nutshell/road-to-glory', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 100;
-    const pagesBack = Number(req.query.pagesBack) || 120;
+    const pagesBack = Number(req.query.pagesBack) || 25;
 
     const lastPage = await getNutshellLastPage(limit);
 
@@ -3697,6 +3697,8 @@ app.get('/api/sync/nutshell/road-to-glory', async (req, res) => {
 
           await saveFullLead(fullLead);
 
+          const pagesBack = Number(req.query.pagesBack) || 25;
+          
           synced++;
         } catch (leadError) {
           errors++;
@@ -5599,11 +5601,15 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
       ferrari: { team: 'Ferrari', miles: 0 }
     };
 
+    const details = [];
+
     for (const lead of leads) {
       const assigneeName = normalizeName(lead.assignee?.name);
       const team = teamByUser[assigneeName];
 
 if (!team) continue;
+
+ 
 
 const milestoneName = normalizeName(lead.milestone?.name || '');
 const stageSetName = normalizeName(lead.stageset?.name || '');
@@ -5629,9 +5635,16 @@ const isOffer =
   milestoneName.includes('consultoria');
 
 const isQualifiedStage =
+  milestoneName.includes('reuniao agendada') ||
+  milestoneName.includes('projecao de custos') ||
+  milestoneName.includes('oferta') ||
+  milestoneName.includes('proposta') ||
+  milestoneName.includes('gerenciamento') ||
+  milestoneName.includes('consultoria') ||
   isMeeting || isProjection || isOffer;
 
       if (!team) continue;
+
 
       const commercialProcess = Array.isArray(lead.processes)
   ? lead.processes.find((process) =>
@@ -5678,6 +5691,7 @@ const openDate = commercialProcess?.startedTime
   isMeeting
 ) {
   result[team].miles += 100;
+  
 }
 
 if (hasMayRoadTag && isNewLeadPipeline) {
@@ -5698,6 +5712,7 @@ if (
         lead.status === 10
       ) {
         result[team].miles += 200;
+      
       }
 
       if (lead.status === 10 && closedInPeriod) {
@@ -5741,7 +5756,8 @@ if (
       totalMiles,
       totalMilesFormatted: totalMiles.toLocaleString('pt-BR'),
       podium,
-      ranking
+      ranking,
+      details
     });
 
   } catch (error) {

@@ -172,20 +172,8 @@ console.log('FOTO CARD:', name, matchedPhotoKey, matchedPhotoKey ? userPhotos[ma
 
 
   return (
-  <div
-  className="h-screen w-screen text-white overflow-hidden bg-cover bg-center bg-no-repeat"
-  style={{
-    backgroundImage: `
-      linear-gradient(
-        135deg,
-        rgba(15, 23, 42, 0.25),
-        rgba(30, 41, 59, 0.15),
-        rgba(37, 99, 235, 0.08)
-      ),
-      url('/background-tv.png')
-    `
-  }}
->
+  <div className="fixed inset-0 bg-black overflow-hidden flex items-center justify-center">
+    <div className="tv-slide-canvas text-white overflow-hidden">
 
     {!tvMode && (
   <div className="tv-controls flex items-center gap-2 mb-4">
@@ -257,6 +245,7 @@ console.log('FOTO CARD:', name, matchedPhotoKey, matchedPhotoKey ? userPhotos[ma
 )}
     </div>
 
+  </div>
   </div>
 );
 }
