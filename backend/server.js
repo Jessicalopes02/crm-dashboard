@@ -2858,36 +2858,28 @@ app.get('/api/sync/nutshell/leads/closed-period', async (req, res) => {
 // SYNC COMPLETA POR LOTE
 // ========================================
 
-app.get('/api/sync/nutshell/leads', async (req, res) => {
+app.get('/api/sync/nutshell/leads/full', async (req, res) => {
   try {
-    const limit = Number(req.query.limit) || 500;
-    const page = Number(req.query.page) || 1;
+    const limit = Number(req.query.limit) || 100;
+    const maxPages = Number(req.query.maxPages) || 500;
 
-    const nutshellResponse = await axios.post(
-      'https://app.nutshell.com/api/v1/json',
-      {
-        method: 'findLeads',
-        params: { query: {}, limit, page },
-        id: 1
-      },
-      {
-        auth: {
-          username: NUTSHELL_EMAIL,
-          password: NUTSHELL_API_KEY
-        }
-      }
-    );
-
-    const leads = nutshellResponse.data.result || [];
-
+    let page = 1;
+    let checked = 0;
     let synced = 0;
+    let errors = 0;
 
-    for (const lead of leads) {
-      const detailResponse = await axios.post(
+    while (page <= maxPages) {
+      console.log(`Sync full - página ${page}`);
+
+      const nutshellResponse = await axios.post(
         'https://app.nutshell.com/api/v1/json',
         {
-          method: 'getLead',
-          params: { leadId: lead.id },
+          method: 'findLeads',
+          params: {
+            query: {},
+            limit,
+            page
+          },
           id: 1
         },
         {
@@ -2898,30 +2890,70 @@ app.get('/api/sync/nutshell/leads', async (req, res) => {
         }
       );
 
-      const fullLead = detailResponse.data.result;
+      const leads = nutshellResponse.data.result || [];
 
-      if (!fullLead) continue;
+      if (leads.length === 0) break;
 
-      await saveFullLead(fullLead);
+      for (const lead of leads) {
+        try {
+          checked++;
 
-      synced++;
+          const detailResponse = await axios.post(
+            'https://app.nutshell.com/api/v1/json',
+            {
+              method: 'getLead',
+              params: {
+                leadId: lead.id
+              },
+              id: 1
+            },
+            {
+              auth: {
+                username: NUTSHELL_EMAIL,
+                password: NUTSHELL_API_KEY
+              }
+            }
+          );
+
+          const fullLead = detailResponse.data.result;
+
+          if (!fullLead) continue;
+
+          fullLead.activities = fullLead.activities || [];
+          await saveFullLead(fullLead);
+
+          synced++;
+
+        } catch (leadError) {
+          errors++;
+
+          console.error(
+            `Erro ao sincronizar lead ${lead.id}:`,
+            leadError.response?.data || leadError.message
+          );
+        }
+      }
+
+      page++;
     }
 
     res.json({
       sucesso: true,
-      page,
-      limit,
-      total: synced
+      checked,
+      synced,
+      errors,
+      pagesProcessed: page - 1
     });
 
   } catch (error) {
+    console.error('ERRO SYNC FULL:', error.response?.data || error.message);
+
     res.status(500).json({
       sucesso: false,
       erro: error.response?.data || error.message
     });
   }
 });
-
 // ========================================
 // AUDITORIA - LEADS POR DATA E STATUS
 // ========================================
@@ -3591,15 +3623,20 @@ app.get('/api/audit/nutshell-compare', async (req, res) => {
 
 app.get('/api/sync/nutshell/road-to-glory', async (req, res) => {
   try {
-    const limit = Number(req.query.limit) || 500;
-    const maxPages = Number(req.query.maxPages) || 100;
+    const limit = Number(req.query.limit) || 100;
+    const pagesBack = Number(req.query.pagesBack) || 120;
 
-    let page = 1;
+    const lastPage = await getNutshellLastPage(limit);
+
+    let page = lastPage;
     let checked = 0;
     let matched = 0;
     let synced = 0;
+    let errors = 0;
 
-    while (page <= maxPages) {
+    while (page > lastPage - pagesBack && page > 0) {
+      console.log(`Buscando página recente ${page}...`);
+
       const nutshellResponse = await axios.post(
         'https://app.nutshell.com/api/v1/json',
         {
@@ -3608,7 +3645,7 @@ app.get('/api/sync/nutshell/road-to-glory', async (req, res) => {
             query: {},
             limit,
             page
-            },
+          },
           id: 1
         },
         {
@@ -3624,53 +3661,64 @@ app.get('/api/sync/nutshell/road-to-glory', async (req, res) => {
       if (leads.length === 0) break;
 
       for (const lead of leads) {
-        checked++;
+        try {
+          checked++;
 
-        const detailResponse = await axios.post(
-          'https://app.nutshell.com/api/v1/json',
-          {
-            method: 'getLead',
-            params: { leadId: lead.id },
-            id: 1
-          },
-          {
-            auth: {
-              username: NUTSHELL_EMAIL,
-              password: NUTSHELL_API_KEY
+          const detailResponse = await axios.post(
+            'https://app.nutshell.com/api/v1/json',
+            {
+              method: 'getLead',
+              params: { leadId: lead.id },
+              id: 1
+            },
+            {
+              auth: {
+                username: NUTSHELL_EMAIL,
+                password: NUTSHELL_API_KEY
+              }
             }
-          }
-        );
+          );
 
-        const fullLead = detailResponse.data.result;
+          const fullLead = detailResponse.data.result;
 
-        if (!fullLead) continue;
+          if (!fullLead) continue;
 
-        const hasRoadTag = (fullLead.tags || []).some((tag) =>
-  String(tag || '')
-    .toLowerCase()
-    .includes('road to the glory')
-);
+          const hasRoadTag = (fullLead.tags || []).some((tag) =>
+            String(tag || '')
+              .toLowerCase()
+              .includes('road to the glory')
+          );
 
-if (!hasRoadTag) continue;
+          if (!hasRoadTag) continue;
 
-        matched++;
+          matched++;
 
-const activities = await getLeadActivities(fullLead.id);
-fullLead.activities = activities;
+          fullLead.activities = fullLead.activities || [];
 
-await saveFullLead(fullLead);
-        synced++;
+          await saveFullLead(fullLead);
+
+          synced++;
+        } catch (leadError) {
+          errors++;
+          console.error(
+            `Erro ao sincronizar lead ${lead.id}:`,
+            leadError.response?.data || leadError.message
+          );
+        }
       }
 
-      page++;
+      page--;
     }
 
     res.json({
       sucesso: true,
+      direction: 'recent_to_old',
+      lastPage,
       checked,
       matched,
       synced,
-      pagesProcessed: page - 1
+      errors,
+      pagesProcessed: lastPage - page
     });
 
   } catch (error) {
@@ -3682,6 +3730,7 @@ await saveFullLead(fullLead);
     });
   }
 });
+
 // ========================================
 // SINCRONIZAR LEADS RECENTES DO NUTSHELL
 // Busca das últimas páginas para trás
@@ -5583,7 +5632,7 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
 
       if (
         createdInPeriod &&
-        odifiedInPeriod &&
+        modifiedInPeriod &&
         sameCreatedModifiedDay &&
         isMeeting
       ) {
@@ -5663,7 +5712,101 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
   }
 });
 
+app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 100;
+    const maxPages = Number(req.query.maxPages) || 20;
 
+    let page = 1;
+    let checked = 0;
+    let matched = 0;
+    let synced = 0;
+
+    while (page <= maxPages) {
+      const nutshellResponse = await axios.post(
+        'https://app.nutshell.com/api/v1/json',
+        {
+          method: 'findLeads',
+          params: {
+            query: {
+              createdTime: {
+                from: '2026-05-25',
+                to: '2026-05-29'
+              }
+            },
+            limit,
+            page
+          },
+          id: 1
+        },
+        {
+          auth: {
+            username: NUTSHELL_EMAIL,
+            password: NUTSHELL_API_KEY
+          }
+        }
+      );
+
+      const leads = nutshellResponse.data.result || [];
+      if (leads.length === 0) break;
+
+      for (const lead of leads) {
+        checked++;
+
+        const detailResponse = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: { leadId: lead.id },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+    const fullLead = detailResponse.data.result;
+
+    if (!fullLead) continue;
+
+    const hasRoadTag = (fullLead.tags || []).some((tag) => {
+      const normalizedTag = String(tag || '').toLowerCase();
+
+      return (
+        normalizedTag.includes('road to the glory - maio') ||
+        normalizedTag.includes('all hands - road to the glory')
+       );
+     });
+
+    if (!hasRoadTag) continue;
+
+    matched++;
+
+    await saveFullLead(fullLead);
+
+    synced++;
+    }
+
+      page++;
+    }
+
+    res.json({
+      sucesso: true,
+      checked,
+      matched,
+      synced,
+      pagesProcessed: page - 1
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
+    });
+  }
+});
 
 app.get('/api/audit/road-to-glory-period', async (req, res) => {
   try {
@@ -5671,13 +5814,18 @@ app.get('/api/audit/road-to-glory-period', async (req, res) => {
     const end = new Date('2026-05-30T02:59:59.999Z');
 
     const leads = await Lead.find({
-      tags: 'Road to the Glory - Maio',
-      $or: [
-        { createdTime: { $gte: start, $lte: end } },
-        { modifiedTime: { $gte: start, $lte: end } },
-        { closedTime: { $gte: start, $lte: end } }
-      ]
-    })
+  tags: {
+    $in: [
+      'All Hands - Road to the Glory',
+      'Road to the Glory - Maio'
+    ]
+  },
+  $or: [
+    { createdTime: { $gte: start, $lte: end } },
+    { modifiedTime: { $gte: start, $lte: end } },
+    { closedTime: { $gte: start, $lte: end } }
+  ]
+})
       .select('name assignee.name tags createdTime modifiedTime closedTime milestone.name stageset.name status value products.name')
       .lean();
 
