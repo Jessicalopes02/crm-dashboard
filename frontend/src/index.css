@@ -54,9 +54,9 @@ body.tv-fullscreen .tv-content {
 }
 
 .tv-slide-canvas {
-  width: 1920px;
-  height: 1080px;
-  transform-origin: center center;
+  width: min(100vw, calc(100vh * 16 / 9));
+  height: min(100vh, calc(100vw * 9 / 16));
+  aspect-ratio: 16 / 9;
   overflow: hidden;
   position: relative;
 }

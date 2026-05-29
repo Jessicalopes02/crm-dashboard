@@ -173,7 +173,7 @@ console.log('FOTO CARD:', name, matchedPhotoKey, matchedPhotoKey ? userPhotos[ma
 
   return (
   <div className="fixed inset-0 bg-black overflow-hidden flex items-center justify-center">
-    <div className="tv-slide-canvas text-white overflow-hidden">
+    <div className="tv-slide-canvas text-white">
 
     {!tvMode && (
   <div className="tv-controls flex items-center gap-2 mb-4">
@@ -220,7 +220,7 @@ console.log('FOTO CARD:', name, matchedPhotoKey, matchedPhotoKey ? userPhotos[ma
   </div>
 )}
 
-        <div className="h-full w-full overflow-hidden">
+        <div className="h-screen w-screen overflow-hidden">
       {screen === 0 && <CloserScreenOne />}
 
       {screen === 1 && (
