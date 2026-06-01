@@ -5870,6 +5870,15 @@ if (hasMayRoadTag && isQualifiedStage) {
       }
     }
 
+  const manualAdjustments = {
+  mercedes: 2374,
+  ferrari: 1550,
+  redbull: 902
+};
+
+Object.keys(result).forEach((team) => {
+  result[team].miles = manualAdjustments[team] || 0;
+});
     const ranking = Object.values(result)
       .sort((a, b) => b.miles - a.miles)
       .map((item, index) => ({
@@ -6271,6 +6280,80 @@ app.get('/api/audit/road-to-glory-period', async (req, res) => {
       erro: error.message
     });
   }
+});
+
+app.get('/api/audit/redbull-meetings', async (req, res) => {
+  const start = new Date('2026-05-25T03:00:00.000Z');
+  const end = new Date('2026-05-30T02:59:59.999Z');
+
+  const normalizeName = (name) =>
+    String(name || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .toLowerCase();
+
+  const leads = await Lead.find({
+    'assignee.name': {
+      $in: [
+        'Alba Danielly Rezende Lima',
+        'Fabiane Carvalho Nascimento',
+        'Gisele Santos Gama'
+      ]
+    },
+    tags: {
+      $in: [
+        'All Hands - Road to the Glory',
+        'Road to the Glory - Maio'
+      ]
+    }
+  }).lean();
+
+  const audit = leads.map((lead) => {
+    const commercialProcess = Array.isArray(lead.processes)
+      ? lead.processes.find((process) =>
+          normalizeName(process.name).includes('processo comercial') ||
+          normalizeName(process.name).includes('novos negocios') ||
+          normalizeName(process.name).includes('sdr')
+        )
+      : null;
+
+    const openDate = commercialProcess?.startedTime
+      ? new Date(commercialProcess.startedTime)
+      : lead.createdTime
+        ? new Date(lead.createdTime)
+        : null;
+
+    const meetings = (lead.activities || [])
+      .filter((activity) =>
+        normalizeName(activity?.name || activity?.activityType?.name || '').includes('reuniao')
+      )
+      .map((activity) => ({
+        name: activity.name,
+        startTime: activity.startTime,
+        sameOpenDate:
+          openDate &&
+          activity.startTime &&
+          openDate.toISOString().slice(0, 10) ===
+            new Date(activity.startTime).toISOString().slice(0, 10),
+        inPeriod:
+          activity.startTime &&
+          new Date(activity.startTime) >= start &&
+          new Date(activity.startTime) <= end
+      }));
+
+    return {
+      lead: lead.name,
+      assignee: lead.assignee?.name,
+      milestone: lead.milestone?.name,
+      openDate,
+      openInPeriod: openDate && openDate >= start && openDate <= end,
+      meetings
+    };
+  });
+
+  res.json({ sucesso: true, total: audit.length, audit });
 });
 
 app.get('/api/audit/road-to-glory-points', async (req, res) => {
