@@ -1486,30 +1486,80 @@ async function getFunnelDashboard(startDate, endDate) {
 }
 
 async function getLeadActivities(leadId) {
-  const response = await axios.post(
-    'https://app.nutshell.com/api/v1/json',
-    {
-      method: 'findActivities',
-      params: {
-        query: {
-          relatedTo: {
-            entityType: 'Leads',
-            id: leadId
-          }
+  try {
+    const response = await axios.post(
+      'https://app.nutshell.com/api/v1/json',
+      {
+        method: 'findActivities',
+        params: {
+          query: {},
+          limit: 100
         },
-        limit: 100
+        id: 1
       },
-      id: 1
-    },
-    {
-      auth: {
-        username: NUTSHELL_EMAIL,
-        password: NUTSHELL_API_KEY
+      {
+        auth: {
+          username: NUTSHELL_EMAIL,
+          password: NUTSHELL_API_KEY
+        }
       }
-    }
-  );
+    );
 
-  return response.data.result || [];
+    const activities = response.data.result || [];
+
+    return activities.filter((activity) => {
+      const note = JSON.stringify(activity || {}).toLowerCase();
+      return note.includes(`lead/${leadId}`);
+    });
+
+  } catch (error) {
+    console.error(
+      `Erro ao buscar atividades do lead ${leadId}:`,
+      error.response?.data || error.message
+    );
+
+    return [];
+  }
+}
+
+async function getLeadActivitiesByLeadId(leadId) {
+  try {
+    const response = await axios.post(
+      'https://app.nutshell.com/api/v1/json',
+      {
+        method: 'findActivities',
+        params: {
+          query: String(leadId),
+          limit: 100
+        },
+        id: 1
+      },
+      {
+        auth: {
+          username: NUTSHELL_EMAIL,
+          password: NUTSHELL_API_KEY
+        }
+      }
+    );
+
+    const activities = response.data.result || [];
+
+    return activities.filter((activity) =>
+      normalizeText(
+        activity?.name ||
+        activity?.activityType?.name ||
+        ''
+      ).includes('reunião')
+    );
+
+  } catch (error) {
+    console.error(
+      `Erro ao buscar atividades da lead ${leadId}:`,
+      error.response?.data || error.message
+    );
+
+    return [];
+  }
 }
 
 async function getLeadTimeDashboard(startDate, endDate) {
@@ -2919,7 +2969,8 @@ app.get('/api/sync/nutshell/leads/full', async (req, res) => {
 
           if (!fullLead) continue;
 
-          fullLead.activities = fullLead.activities || [];
+          const activities = await getLeadActivities(fullLead.id);
+          fullLead.activities = activities;
           await saveFullLead(fullLead);
 
           synced++;
@@ -3698,7 +3749,7 @@ app.get('/api/sync/nutshell/road-to-glory', async (req, res) => {
           await saveFullLead(fullLead);
 
           const pagesBack = Number(req.query.pagesBack) || 25;
-          
+
           synced++;
         } catch (leadError) {
           errors++;
@@ -3733,6 +3784,61 @@ app.get('/api/sync/nutshell/road-to-glory', async (req, res) => {
   }
 });
 
+
+app.get('/api/sync/nutshell/road-to-glory-meetings', async (req, res) => {
+  try {
+    const leads = await Lead.find({
+      tags: {
+        $in: [
+          'All Hands - Road to the Glory',
+          'Road to the Glory - Maio'
+        ]
+      }
+    })
+      .select('nutshell_id name')
+      .lean();
+
+    let checked = 0;
+    let updated = 0;
+    let meetingsFound = 0;
+
+    for (const lead of leads) {
+      checked++;
+
+      const meetings = await getLeadActivitiesByLeadId(lead.nutshell_id);
+
+      await Lead.updateOne(
+        { nutshell_id: lead.nutshell_id },
+        {
+          $set: {
+            activities: meetings,
+            activities_synced_at: new Date()
+          }
+        }
+      );
+
+      if (meetings.length > 0) {
+        updated++;
+        meetingsFound += meetings.length;
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 150));
+    }
+
+    res.json({
+      sucesso: true,
+      checked,
+      updated,
+      meetingsFound
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
+    });
+  }
+});
 // ========================================
 // SINCRONIZAR LEADS RECENTES DO NUTSHELL
 // Busca das últimas páginas para trás
@@ -3936,6 +4042,7 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
       'Fábio Souza',
       'Gabriel Lopes',
       'Giovanna Fernandes',
+      'Luiza Carvalho',
       'Pedro Scarillo',
       'Marcus Vinicius Dias Santana',
       'Accounts Grupo'
@@ -5554,7 +5661,7 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
     const teams = {
       redbull: ['Alba Danielly Rezende Lima', 'Fabiane Carvalho Nascimento', 'Gisele Santos Gama'],
       mercedes: ['Fábio Souza', 'Edson da Silva Bomfim Júnior', 'Guilherme Velloso', 'Leticia Barbosa'],
-      ferrari: ['Giovanna Fernandes', 'Pedro Scarillo', 'Luma Farias Silva Santos']
+      ferrari: ['Giovanna Fernandes', 'Pedro Scarillo', 'Luma Farias Silva Santos', 'Luiza Carvalho']
     };
 
     const teamByUser = {};
@@ -5634,16 +5741,53 @@ const isOffer =
   milestoneName.includes('oferta gerenciamento') ||
   milestoneName.includes('consultoria');
 
+if (!team) continue;
+
 const isQualifiedStage =
-  milestoneName.includes('reuniao agendada') ||
-  milestoneName.includes('projecao de custos') ||
+  milestoneName.includes('reuniao') ||
+  milestoneName.includes('projecao') ||
   milestoneName.includes('oferta') ||
   milestoneName.includes('proposta') ||
   milestoneName.includes('gerenciamento') ||
   milestoneName.includes('consultoria') ||
-  isMeeting || isProjection || isOffer;
+  milestoneName.includes('custos') ||
+  milestoneName.includes('aceita') ||
+  milestoneName.includes('won');
+  isMeeting ||
+  isProjection ||
+  isOffer;
 
-      if (!team) continue;
+const validMeetingActivities = [
+  'reuniao efetiva',
+  'reuniao agendada',
+  'reuniao reagendada'
+];
+
+const hasMeetingActivity =
+  Array.isArray(lead.activities) &&
+  lead.activities.some((activity) => {
+    const activityName = normalizeName(
+      activity?.name ||
+      activity?.activityType?.name ||
+      ''
+    );
+
+    const activityDate = activity?.startTime
+      ? new Date(activity.startTime)
+      : null;
+
+    const inPeriod =
+      activityDate &&
+      activityDate >= start &&
+      activityDate <= end;
+
+    return (
+      inPeriod &&
+      validMeetingActivities.some((item) =>
+        activityName.includes(item)
+      )
+    );
+  });
 
 
       const commercialProcess = Array.isArray(lead.processes)
@@ -5698,11 +5842,7 @@ if (hasMayRoadTag && isNewLeadPipeline) {
   result[team].miles += 10;
 }
 
-if (
-  hasMayRoadTag &&
-  modifiedInPeriod &&
-  isQualifiedStage
-) {
+if (hasMayRoadTag && isQualifiedStage) {
   result[team].miles += 50;
 }
       if (
@@ -5768,6 +5908,238 @@ if (
       erro: error.message
     });
   }
+});
+
+app.get('/api/campaigns/road-to-glory/progress-v2', async (req, res) => {
+  try {
+    const start = new Date('2026-05-25T03:00:00.000Z');
+    const end = new Date('2026-05-30T02:59:59.999Z');
+    const limitMiles = 6000;
+
+    const normalizeName = (name) =>
+      String(name || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+    const teams = {
+      redbull: ['Alba Danielly Rezende Lima', 'Fabiane Carvalho Nascimento', 'Gisele Santos Gama'],
+      mercedes: ['Fábio Souza', 'Edson da Silva Bomfim Júnior', 'Guilherme Velloso', 'Leticia Barbosa'],
+      ferrari: ['Giovanna Fernandes', 'Pedro Scarillo', 'Luma Farias Silva Santos', 'Luma Farias']
+    };
+
+    const result = {
+      redbull: { team: 'Red Bull', miles: 0 },
+      mercedes: { team: 'Mercedes', miles: 0 },
+      ferrari: { team: 'Ferrari', miles: 0 }
+    };
+
+    const teamByUser = {};
+    Object.entries(teams).forEach(([team, users]) => {
+      users.forEach((user) => {
+        teamByUser[normalizeName(user)] = team;
+      });
+    });
+
+    const leads = await Lead.find({
+      tags: {
+        $in: [
+          'All Hands - Road to the Glory',
+          'Road to the Glory - Maio'
+        ]
+      }
+    }).lean();
+
+    for (const lead of leads) {
+      const team = teamByUser[normalizeName(lead.assignee?.name)];
+      if (!team) continue;
+
+      const milestoneName = normalizeName(lead.milestone?.name || '');
+      const stageSetName = normalizeName(lead.stageset?.name || '');
+
+      const hasRoadTag = Array.isArray(lead.tags) && lead.tags.some((tag) =>
+        normalizeName(tag).includes('road to the glory')
+      );
+
+      if (!hasRoadTag) continue;
+
+      const isNewLeadPipeline =
+        stageSetName.includes('sdr') ||
+        stageSetName.includes('novos negocios');
+
+      const isQualifiedStage =
+        milestoneName.includes('reuniao') ||
+        milestoneName.includes('projecao') ||
+        milestoneName.includes('custos') ||
+        milestoneName.includes('oferta') ||
+        milestoneName.includes('proposta') ||
+        milestoneName.includes('gerenciamento') ||
+        milestoneName.includes('consultoria') ||
+        milestoneName.includes('aceita') ||
+        milestoneName.includes('won');
+
+      const meetingActivityInPeriod =
+        Array.isArray(lead.activities) &&
+        lead.activities.some((activity) => {
+          const activityName = normalizeName(
+            activity?.name ||
+            activity?.activityType?.name ||
+            ''
+          );
+
+          const activityDate = activity?.startTime
+            ? new Date(activity.startTime)
+            : null;
+
+          return (
+            activityName.includes('reuniao') &&
+            activityDate &&
+            activityDate >= start &&
+            activityDate <= end
+          );
+        });
+
+        const meetingSameOpenDate =
+  Array.isArray(lead.activities) &&
+  lead.activities.some((activity) => {
+    const activityName = normalizeName(
+      activity?.name ||
+      activity?.activityType?.name ||
+      ''
+    );
+
+    const activityDate = activity?.startTime
+      ? new Date(activity.startTime)
+      : null;
+
+    return (
+      activityName.includes('reuniao') &&
+      openDate &&
+      activityDate &&
+      openDate.toISOString().slice(0, 10) ===
+        activityDate.toISOString().slice(0, 10)
+    );
+  });
+      const commercialProcess = Array.isArray(lead.processes)
+        ? lead.processes.find((process) =>
+            normalizeName(process.name).includes('processo comercial') ||
+            normalizeName(process.name).includes('novos negocios') ||
+            normalizeName(process.name).includes('sdr')
+          )
+        : null;
+
+      const openDate = commercialProcess?.startedTime
+        ? new Date(commercialProcess.startedTime)
+        : lead.createdTime
+          ? new Date(lead.createdTime)
+          : null;
+
+      const modified = lead.modifiedTime ? new Date(lead.modifiedTime) : null;
+      const closed = lead.closedTime ? new Date(lead.closedTime) : null;
+
+      const openInPeriod = openDate && openDate >= start && openDate <= end;
+      const modifiedInPeriod = modified && modified >= start && modified <= end;
+      const closedInPeriod = closed && closed >= start && closed <= end;
+
+      const sameOpenModifiedDay =
+        openDate &&
+        modified &&
+        openDate.toISOString().slice(0, 10) === modified.toISOString().slice(0, 10);
+
+      const sameOpenClosedDay =
+        openDate &&
+        closed &&
+        openDate.toISOString().slice(0, 10) === closed.toISOString().slice(0, 10);
+
+      if (isNewLeadPipeline) {
+        result[team].miles += 10;
+      }
+
+      if (isQualifiedStage || meetingActivityInPeriod) {
+        result[team].miles += 50;
+      }
+
+      if (
+  hasMayRoadTag &&
+  openInPeriod &&
+  meetingSameOpenDate
+) {
+  result[team].miles += 100;
+}
+
+      if (openInPeriod && closedInPeriod && sameOpenClosedDay && lead.status === 10) {
+        result[team].miles += 200;
+      }
+
+      if (lead.status === 10 && closedInPeriod) {
+        result[team].miles += Math.floor(Number(lead.value?.amount || 0) / 100);
+      }
+    }
+
+    const ranking = Object.values(result)
+      .sort((a, b) => b.miles - a.miles)
+      .map((item, index) => ({
+        ...item,
+        position: index + 1,
+        percent: Math.min((item.miles / limitMiles) * 100, 100),
+        milesFormatted: item.miles.toLocaleString('pt-BR')
+      }));
+
+    res.json({
+      sucesso: true,
+      limit: limitMiles,
+      totalMiles: ranking.reduce((sum, item) => sum + item.miles, 0),
+      totalMilesFormatted: ranking.reduce((sum, item) => sum + item.miles, 0).toLocaleString('pt-BR'),
+      podium: {
+        first: ranking[0],
+        second: ranking[1],
+        third: ranking[2]
+      },
+      ranking
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
+
+app.get('/api/audit/road-to-glory-summary', async (req, res) => {
+  const leads = await Lead.find({
+    tags: { $in: ['All Hands - Road to the Glory', 'Road to the Glory - Maio'] }
+  }).select('name assignee.name tags milestone.name stageset.name activities value status').lean();
+
+  const normalizeName = (name) =>
+    String(name || '')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLowerCase();
+
+  const summary = leads.map((lead) => ({
+    lead: lead.name,
+    assignee: lead.assignee?.name,
+    milestone: lead.milestone?.name,
+    pipeline: lead.stageset?.name,
+    activitiesCount: lead.activities?.length || 0,
+    meetingActivities: (lead.activities || []).filter((a) =>
+      normalizeName(a?.name || a?.activityType?.name || '').includes('reuniao')
+    ).map((a) => ({
+      name: a.name,
+      startTime: a.startTime
+    })),
+    tags: lead.tags
+  }));
+
+  res.json({
+    sucesso: true,
+    total: summary.length,
+    summary
+  });
 });
 
 app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
@@ -5964,6 +6336,237 @@ app.get('/api/audit/road-to-glory-points', async (req, res) => {
     res.status(500).json({
       sucesso: false,
       erro: error.message
+    });
+  }
+});
+
+app.get('/api/test/nutshell/activity-detail', async (req, res) => {
+  try {
+    const activityId = Number(req.query.activityId);
+
+    const response = await axios.post(
+      'https://app.nutshell.com/api/v1/json',
+      {
+        method: 'getActivity',
+        params: {
+          activityId
+        },
+        id: 1
+      },
+      {
+        auth: {
+          username: NUTSHELL_EMAIL,
+          password: NUTSHELL_API_KEY
+        }
+      }
+    );
+
+    res.json({
+      sucesso: true,
+      result: response.data.result
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
+    });
+  }
+});
+
+function normalizeName(text) {
+  return String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+app.get('/api/sync/nutshell/road-to-glory-activities', async (req, res) => {
+  try {
+    const limit = Number(req.query.limit) || 100;
+    const pages = Number(req.query.pages) || 20;
+
+    const campaignLeads = await Lead.find({
+      tags: {
+        $in: [
+          'All Hands - Road to the Glory',
+          'Road to the Glory - Maio'
+        ]
+      }
+    })
+      .select('nutshell_id name')
+      .lean();
+
+    const leadIds = new Set(
+      campaignLeads.map((lead) => Number(lead.nutshell_id))
+    );
+
+    const activitiesByLead = {};
+    let checkedActivities = 0;
+    let matchedActivities = 0;
+
+    for (let page = 1; page <= pages; page++) {
+  console.log(`Buscando atividades página ${page}...`);
+
+  const response = await axios.post(
+    'https://app.nutshell.com/api/v1/json',
+    {
+      method: 'findActivities',
+      params: {
+        query: {},
+        limit,
+        page
+      },
+      id: 1
+    },
+    {
+      auth: {
+        username: NUTSHELL_EMAIL,
+        password: NUTSHELL_API_KEY
+      }
+    }
+  );
+
+  const activities = response.data.result || [];
+
+  if (activities.length === 0) break;
+
+  for (const activity of activities) {
+    checkedActivities++;
+
+    const detailResponse = await axios.post(
+      'https://app.nutshell.com/api/v1/json',
+      {
+        method: 'getActivity',
+        params: {
+          activityId: activity.id
+        },
+        id: 1
+      },
+      {
+        auth: {
+          username: NUTSHELL_EMAIL,
+          password: NUTSHELL_API_KEY
+        }
+      }
+    );
+
+    const activityDetail = detailResponse.data.result;
+
+const leadId = Number(activityDetail?.lead?.id);
+
+if (!leadIds.has(leadId)) continue;
+
+const activityName = normalizeName(
+  activityDetail?.name ||
+  activityDetail?.activityType?.name ||
+  ''
+);
+
+if (!activityName.includes('reuniao')) continue;
+
+if (!activitiesByLead[leadId]) {
+      activitiesByLead[leadId] = [];
+    }
+
+    activitiesByLead[leadId].push(activityDetail);
+    matchedActivities++;
+
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+
+  await new Promise((resolve) => setTimeout(resolve, 150));
+}
+
+    let updatedLeads = 0;
+
+    for (const [nutshellId, activities] of Object.entries(activitiesByLead)) {
+      await Lead.updateOne(
+        { nutshell_id: Number(nutshellId) },
+        {
+          $set: {
+            activities,
+            activities_synced_at: new Date()
+          }
+        }
+      );
+
+      updatedLeads++;
+    }
+
+    res.json({
+      sucesso: true,
+      campaignLeads: campaignLeads.length,
+      checkedActivities,
+      matchedActivities,
+      updatedLeads
+    });
+
+  } catch (error) {
+    console.error('ERRO SYNC ROAD ACTIVITIES:', error.response?.data || error.message);
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
+    });
+  }
+});
+
+app.get('/api/audit/road-to-glory-activities', async (req, res) => {
+  const leads = await Lead.find({
+    tags: {
+      $in: [
+        'All Hands - Road to the Glory',
+        'Road to the Glory - Maio'
+      ]
+    }
+  })
+    .select('nutshell_id name assignee.name milestone.name activities')
+    .lean();
+
+  res.json({
+    sucesso: true,
+    total: leads.length,
+    withActivities: leads.filter((lead) => Array.isArray(lead.activities) && lead.activities.length > 0).length,
+    sample: leads
+      .filter((lead) => Array.isArray(lead.activities) && lead.activities.length > 0)
+      .slice(0, 10)
+  });
+});
+
+
+app.get('/api/test/nutshell/activities', async (req, res) => {
+  try {
+    const leadId = Number(req.query.leadId);
+
+    const response = await axios.post(
+      'https://app.nutshell.com/api/v1/json',
+      {
+        method: 'findActivities',
+        params: {
+          query: {},
+          limit: 20
+        },
+        id: 1
+      },
+      {
+        auth: {
+          username: NUTSHELL_EMAIL,
+          password: NUTSHELL_API_KEY
+        }
+      }
+    );
+
+    res.json({
+      sucesso: true,
+      leadId,
+      result: response.data.result
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
     });
   }
 });

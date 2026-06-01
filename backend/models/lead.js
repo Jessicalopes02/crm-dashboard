@@ -2,6 +2,13 @@ const mongoose = require('mongoose');
 
 const leadSchema = new mongoose.Schema({
 
+  activities: {
+  type: Array,
+  default: []
+},
+
+activities_synced_at: Date,
+
   // ========================================
   // IDENTIFICAÇÃO
   // ========================================

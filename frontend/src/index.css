@@ -1,18 +1,18 @@
 @import "tailwindcss";
 
+/* Reset base */
 html,
 body,
 #root {
   margin: 0;
   width: 100%;
-  min-width: 100vw;
   height: 100%;
-  min-height: 100vh;
   overflow: hidden;
   font-family: Arial, Helvetica, sans-serif;
-  background: #f5f7fb;
+  background: black; /* melhor pra TV */
 }
 
+/* Oculta elementos na TV */
 body.tv-fullscreen aside,
 body.tv-fullscreen header,
 body.tv-fullscreen .app-header,
@@ -22,45 +22,48 @@ body.tv-fullscreen .tv-controls {
   display: none !important;
 }
 
+/* Layout principal em fullscreen */
 body.tv-fullscreen main {
-  margin-left: 0 !important;
+  margin: 0 !important;
   width: 100vw !important;
   height: 100vh !important;
-  max-width: none !important;
   padding: 0 !important;
   overflow: hidden !important;
 }
 
 body.tv-fullscreen #root {
-  width: 100vw !important;
-  height: 100vh !important;
-  overflow: hidden !important;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
 }
 
+/* Container geral (centraliza conteúdo) */
 body.tv-fullscreen .tv-content {
-  width: 100vw !important;
-  height: 100vh !important;
-  padding: 24px !important;
+  width: 100vw;
+  height: 100vh;
+  padding: 24px;
   box-sizing: border-box;
-  overflow: hidden !important;
+  overflow: hidden;
 
-  /* Ajuste principal para TV */
-  transform: scale(1.35);
-  transform-origin: top left;
-
-  /* Compensa o scale */
-  width: calc(100vw / 1.18) !important;
-  height: calc(100vh / 1.18) !important;
+  display: flex;
+  justify-content: center;
+  align-items: center;
 }
 
+/* Canvas padrão 16:9 (ESSENCIAL pra não distorcer) */
 .tv-slide-canvas {
+  position: relative;
+  overflow: hidden;
+
+  aspect-ratio: 16 / 9;
+
   width: min(100vw, calc(100vh * 16 / 9));
   height: min(100vh, calc(100vw * 9 / 16));
-  aspect-ratio: 16 / 9;
-  overflow: hidden;
-  position: relative;
+
+  transform-origin: center;
 }
 
+/* Escala automática baseada na tela */
 @media (min-aspect-ratio: 16/9) {
   .tv-slide-canvas {
     transform: scale(calc(100vh / 1080));
@@ -71,4 +74,12 @@ body.tv-fullscreen .tv-content {
   .tv-slide-canvas {
     transform: scale(calc(100vw / 1920));
   }
+}
+
+/* Imagens e vídeos não distorcem */
+.tv-slide-canvas img,
+.tv-slide-canvas video {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
