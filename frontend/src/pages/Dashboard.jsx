@@ -112,12 +112,14 @@ function Dashboard() {
     total: item.total
   }));
 
-  const funnelData = funnel.map((item) => ({
-  label: item.label,
-  total: item.total || 0,
-  percent: item.percentOfTotal || 0,
-  revenue: item.revenue || 0
-}));
+  const funnelData = [...funnel]
+  .map((item) => ({
+    label: item.label,
+    total: item.total || 0,
+    percent: item.percentOfTotal || 0,
+    revenue: item.revenue || 0
+  }))
+  .sort((a, b) => b.total - a.total);
 
   const monthlyData =
   dashboard?.charts?.leadsByMonth?.map((item) => ({
@@ -953,49 +955,73 @@ function ChartCard({ title, children }) {
 
 function FunnelChart({ data, formatNumber, formatBRL }) {
   const maxTotal = Math.max(...data.map((item) => item.total || 0), 1);
+  const minTotal = Math.min(...data.map((item) => item.total || 0), maxTotal);
 
   const colors = {
-    Open: 'from-blue-500 to-blue-600',
-    Pending: 'from-amber-400 to-amber-500',
-    Won: 'from-green-500 to-green-600',
     Lost: 'from-red-500 to-red-600',
-    Cancelado: 'from-slate-400 to-slate-500'
+    Won: 'from-green-500 to-green-600',
+    Open: 'from-blue-500 to-blue-600',
+    Cancelado: 'from-slate-500 to-slate-600',
+    Pending: 'from-amber-400 to-orange-500'
   };
 
+  function getWidth(total) {
+    if (maxTotal === minTotal) return 100;
+
+    const normalized = (total - minTotal) / (maxTotal - minTotal);
+
+    // Mantém aparência de funil e evita texto cortado
+    return 45 + normalized * 55;
+  }
+
   return (
-    <div className="w-full flex flex-col items-center gap-4 py-4">
+    <div className="w-full py-4 space-y-4">
       {data.map((item, index) => {
-        const width = Math.max((item.total / maxTotal) * 100, 12);
+        const width = getWidth(item.total);
         const color = colors[item.label] || 'from-blue-500 to-blue-600';
 
         return (
           <div
             key={`${item.label}-${index}`}
-            className="w-full flex flex-col items-center"
+            className="w-full flex justify-center"
           >
             <div
-              className={`relative h-16 rounded-2xl bg-gradient-to-r ${color} shadow-lg flex items-center justify-between px-6 text-white transition-all`}
+              className={`bg-gradient-to-r ${color} rounded-2xl shadow-lg text-white px-6 py-4`}
               style={{
-                width: `${width}%`
+                width: `${width}%`,
+                minWidth: '520px',
+                maxWidth: '1100px'
               }}
             >
-              <div>
-                <div className="font-bold text-lg">
-                  {item.label}
+              <div className="grid grid-cols-[1.2fr_auto_auto] items-center gap-6">
+                <div className="min-w-0">
+                  <div className="text-2xl font-bold leading-tight">
+                    {item.label}
+                  </div>
+
+                  <div className="text-sm text-white/90 mt-1">
+                    {Number(item.percent || 0).toFixed(2)}% do total
+                  </div>
                 </div>
 
-                <div className="text-xs text-white/80">
-                  {Number(item.percent || 0).toFixed(2)}% do total
-                </div>
-              </div>
+                <div className="text-right shrink-0">
+                  <div className="text-xs uppercase tracking-wide text-white/80">
+                    Quantidade
+                  </div>
 
-              <div className="text-right">
-                <div className="font-black text-2xl">
-                  {formatNumber(item.total)}
+                  <div className="text-4xl font-black leading-none">
+                    {formatNumber(item.total)}
+                  </div>
                 </div>
 
-                <div className="text-xs text-white/80">
-                  {formatBRL(item.revenue)}
+                <div className="text-right shrink-0">
+                  <div className="text-xs uppercase tracking-wide text-white/80">
+                    Receita
+                  </div>
+
+                  <div className="text-lg font-bold whitespace-nowrap">
+                    {formatBRL(item.revenue)}
+                  </div>
                 </div>
               </div>
             </div>
