@@ -818,30 +818,30 @@ function CloserGoalCard({
 
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <div>
-            <div className="font-bold text-lg truncate">
-              {firstName}
-            </div>
+  <div className="font-bold text-base truncate">
+    {firstName}
+  </div>
 
-            <div className="text-slate-400 text-xs">
-              Meta individual
-            </div>
-          </div>
+  <div className="text-slate-400 text-[11px]">
+    Meta individual
+  </div>
+</div>
 
-          <div className="flex items-end justify-between gap-2">
-            <div className="min-w-0">
-              <div className="text-slate-400 text-xs">
-                Atingido
-              </div>
+<div className="flex items-end justify-between gap-2">
+  <div className="min-w-0">
+    <div className="text-slate-400 text-[11px]">
+      Atingido
+    </div>
 
-              <div className="font-black text-[28px] leading-none truncate">
-                {formatBRL(actual)}
-              </div>
-            </div>
+    <div className="font-black text-xl leading-none truncate">
+      {formatBRL(actual)}
+    </div>
+  </div>
 
-            <div className="text-blue-400 font-black text-2xl shrink-0">
-              {percent.toFixed(1)}%
-            </div>
-          </div>
+  <div className="text-blue-400 font-black text-xl shrink-0">
+    {percent.toFixed(1)}%
+  </div>
+</div>
 
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             <motion.div
@@ -852,7 +852,7 @@ function CloserGoalCard({
             />
           </div>
 
-          <div className="flex justify-between gap-2 text-[11px]">
+          <div className="flex justify-between gap-2 text-[10px]">
             <span className="text-cyan-300 truncate">
               Estimado: {formatBRL(estimated || 0)}
             </span>
@@ -864,7 +864,7 @@ function CloserGoalCard({
             </span>
           </div>
 
-          <div className="flex justify-between gap-2 text-[11px] text-slate-500">
+          <div className="flex justify-between gap-2 text-[10px] text-slate-500">
             <span className="truncate">
               Meta: {formatBRL(goal)}
             </span>
