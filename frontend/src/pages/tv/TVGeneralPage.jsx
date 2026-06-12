@@ -468,7 +468,7 @@ const generalCards = [
 
   return (
   <div
-    className="h-screen text-white px-4 pt-8 pb-4 overflow-hidden bg-cover bg-center bg-no-repeat"
+    className="min-h-screen h-screen text-white px-6 py-6 overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
     style={{
       backgroundImage: `
         linear-gradient(
@@ -482,7 +482,7 @@ const generalCards = [
   }}
 >
 
-    <header className="flex items-center justify-between mb-2 bg-white/5 border border-white/10 rounded-2xl px-3 py-2 shadow-2xl backdrop-blur">
+    <header className="shrink-0 grid grid-cols-[1fr_auto] items-center gap-4 mb-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 shadow-2xl backdrop-blur">
       <div>
         <h1 className="text-3xl font-black tracking-tight">
           ProcessLog&Comex - Meta Geral
@@ -493,111 +493,112 @@ const generalCards = [
         </p>
       </div>
 
-      <div className="flex items-center gap-3">
-        <button
-          onClick={() => setPeriod('month')}
-          className={`px-5 py-2 rounded-2xl font-bold transition ${
-            period === 'month'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-800 text-slate-300'
-          }`}
-        >
-          Mês Atual
-        </button>
+        <div className="flex items-center justify-end gap-3 flex-wrap">
+    <button
+      onClick={() => setPeriod('month')}
+      className={`px-5 py-2 rounded-2xl font-bold transition ${
+        period === 'month'
+          ? 'bg-blue-600 text-white'
+          : 'bg-slate-800 text-slate-300'
+      }`}
+    >
+      Mês Atual
+    </button>
 
-        <button
-          onClick={() => setPeriod('quarter')}
-          className={`px-5 py-2 rounded-2xl font-bold transition ${
-            period === 'quarter'
-              ? 'bg-blue-600 text-white'
-              : 'bg-slate-800 text-slate-300'
-          }`}
-        >
-          Trimestre
-        </button>
+    <button
+      onClick={() => setPeriod('quarter')}
+      className={`px-5 py-2 rounded-2xl font-bold transition ${
+        period === 'quarter'
+          ? 'bg-blue-600 text-white'
+          : 'bg-slate-800 text-slate-300'
+      }`}
+    >
+      Trimestre
+    </button>
 
-        <div className="text-right ml-4">
-          <div className="text-xs text-slate-400">
-            Atualização automática
-          </div>
-
-          <div className="text-base font-bold text-blue-400">
-            a cada 60s
-          </div>
-
-          <div className="flex items-center justify-end gap-2 mt-1 text-green-400 text-xs font-bold">
-            <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-            AO VIVO
-          </div>
-        </div>
+    <div className="text-right ml-2">
+      <div className="text-xs text-slate-400">
+        Atualização automática
       </div>
-      <button
-  onClick={() => setViewMode('general')}
-  className={`px-4 py-2 rounded-2xl font-bold text-sm ${
-    viewMode === 'general'
-      ? 'bg-blue-600 text-white'
-      : 'bg-slate-800 text-slate-300'
-  }`}
->
-  Meta Geral
-</button>
 
-<button
-  onClick={() => setViewMode('sector')}
-  className={`px-4 py-2 rounded-2xl font-bold text-sm ${
-    viewMode === 'sector'
-      ? 'bg-blue-600 text-white'
-      : 'bg-slate-800 text-slate-300'
-  }`}
->
-  Por Setor
-</button>
+      <div className="text-base font-bold text-blue-400">
+        a cada 60s
+      </div>
 
-<select
-  value={rotationSeconds}
-  onChange={(e) => setRotationSeconds(Number(e.target.value))}
-  className="bg-slate-800 text-white rounded-2xl px-3 py-2 text-sm"
->
-  <option value={10}>10s</option>
-  <option value={20}>20s</option>
-  <option value={30}>30s</option>
-  <option value={60}>60s</option>
-</select>
+      <div className="flex items-center justify-end gap-2 mt-1 text-green-400 text-xs font-bold">
+        <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+        AO VIVO
+      </div>
+    </div>
 
-<button
-  onClick={() => setAutoRotate(!autoRotate)}
-  className="px-4 py-2 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm"
->
-  {autoRotate ? 'Auto ON' : 'Auto OFF'}
-</button>
+    <button
+      onClick={() => setViewMode('general')}
+      className={`px-4 py-2 rounded-2xl font-bold text-sm ${
+        viewMode === 'general'
+          ? 'bg-blue-600 text-white'
+          : 'bg-slate-800 text-slate-300'
+      }`}
+    >
+      Meta Geral
+    </button>
 
-<button
-  onClick={handleFullscreen}
-  className="px-4 py-2 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm"
->
-  Tela cheia
-</button>
-    </header>
+    <button
+      onClick={() => setViewMode('sector')}
+      className={`px-4 py-2 rounded-2xl font-bold text-sm ${
+        viewMode === 'sector'
+          ? 'bg-blue-600 text-white'
+          : 'bg-slate-800 text-slate-300'
+      }`}
+    >
+      Por Setor
+    </button>
+
+    <select
+      value={rotationSeconds}
+      onChange={(e) => setRotationSeconds(Number(e.target.value))}
+      className="bg-slate-800 text-white rounded-2xl px-3 py-2 text-sm"
+    >
+      <option value={10}>10s</option>
+      <option value={20}>20s</option>
+      <option value={30}>30s</option>
+      <option value={60}>60s</option>
+    </select>
+
+    <button
+      onClick={() => setAutoRotate(!autoRotate)}
+      className="px-4 py-2 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm"
+    >
+      {autoRotate ? 'Auto ON' : 'Auto OFF'}
+    </button>
+
+    <button
+      onClick={handleFullscreen}
+      className="px-4 py-2 rounded-2xl bg-slate-800 text-slate-300 font-bold text-sm"
+    >
+      Tela cheia
+    </button>
+  </div>
+</header>
 
     {viewMode === 'general' && (
-  <div className="h-[calc(100vh-170px)] flex items-center">
-    <section className="grid grid-cols-2 gap-5 w-full">
-      {generalCards.map((item) => (
-        <SectorKpi
-          key={item.name}
-          name={item.name}
-          goal={item.goal}
-          actual={item.actual}
-          formatBRL={formatBRL}
+     <main className="flex-1 min-h-0 flex items-center justify-center">
+      <section className="grid grid-cols-2 gap-6 w-full max-w-[1400px]">
+        {generalCards.map((item) => (
+          <SectorKpi
+            key={item.name}
+            name={item.name}
+            goal={item.goal}
+            actual={item.actual}
+            formatBRL={formatBRL}
         />
       ))}
     </section>
-  </div>
+  </main>
 )}
 
 {viewMode === 'sector' && (
-  <div className="space-y-2">
-    <section className="grid grid-cols-4 gap-2">
+  <main className="flex-1 min-h-0 flex items-center justify-center">
+    <section className="grid grid-cols-4 gap-4 w-full max-w-[1500px]">
       {closerCards.map((item, index) => (
         <CloserGoalCard
           key={`${item.name}-${index}`}
@@ -610,7 +611,7 @@ const generalCards = [
         />
       ))}
     </section>
-  </div>
+  </main>
 )}
   </div>
 );
@@ -736,7 +737,7 @@ function SectorKpi({ name, goal, actual, formatBRL }) {
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-[168px]"
+      className="bg-white/10 backdrop-blur rounded-2xl px-5 py-4 border border-white/10 shadow-2xl overflow-hidden min-h-[190px]"
     >
       <div className="flex justify-between items-start gap-2">
         <div>
@@ -796,7 +797,7 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-[168px]"
+      className="bg-white/10 backdrop-blur rounded-2xl px-4 py-3 border border-white/10 shadow-2xl overflow-hidden min-h-[185px]"
     >
       <div className="flex items-center gap-3 mb-3">
         {photo ? (
