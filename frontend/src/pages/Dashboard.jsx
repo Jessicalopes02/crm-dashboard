@@ -112,6 +112,13 @@ function Dashboard() {
     total: item.total
   }));
 
+  const funnelData = funnel.map((item) => ({
+  label: item.label,
+  total: item.total || 0,
+  percent: item.percentOfTotal || 0,
+  revenue: item.revenue || 0
+}));
+
   const monthlyData =
   dashboard?.charts?.leadsByMonth?.map((item) => ({
     month: `${String(item._id.month).padStart(2, '0')}/${item._id.year}`,
@@ -524,45 +531,11 @@ function Dashboard() {
     </div>
   </div>
 
-  <ResponsiveContainer width="100%" height={360}>
-    <BarChart data={funnel}>
-      <CartesianGrid strokeDasharray="3 3" />
-
-      <XAxis dataKey="label" />
-
-      <YAxis />
-
-      <Tooltip
-        formatter={(value, name) => {
-          if (name === 'percentOfTotal') {
-            return [`${Number(value || 0).toFixed(2)}%`, '% do total'];
-          }
-
-          if (name === 'revenue') {
-            return [formatBRL(value), 'Receita'];
-          }
-
-          return [formatNumber(value), name];
-        }}
-      />
-
-      <Legend />
-
-      <Bar
-        dataKey="total"
-        name="Quantidade"
-        fill="#2563eb"
-        radius={[8, 8, 0, 0]}
-      />
-
-      <Bar
-        dataKey="percentOfTotal"
-        name="% do Total"
-        fill="#16a34a"
-        radius={[8, 8, 0, 0]}
-      />
-    </BarChart>
-  </ResponsiveContainer>
+  <FunnelChart
+  data={funnelData}
+  formatNumber={formatNumber}
+  formatBRL={formatBRL}
+/>
 
 </section>
 
@@ -978,4 +951,58 @@ function ChartCard({ title, children }) {
   );
 }
 
+function FunnelChart({ data, formatNumber, formatBRL }) {
+  const maxTotal = Math.max(...data.map((item) => item.total || 0), 1);
+
+  const colors = {
+    Open: 'from-blue-500 to-blue-600',
+    Pending: 'from-amber-400 to-amber-500',
+    Won: 'from-green-500 to-green-600',
+    Lost: 'from-red-500 to-red-600',
+    Cancelado: 'from-slate-400 to-slate-500'
+  };
+
+  return (
+    <div className="w-full flex flex-col items-center gap-4 py-4">
+      {data.map((item, index) => {
+        const width = Math.max((item.total / maxTotal) * 100, 12);
+        const color = colors[item.label] || 'from-blue-500 to-blue-600';
+
+        return (
+          <div
+            key={`${item.label}-${index}`}
+            className="w-full flex flex-col items-center"
+          >
+            <div
+              className={`relative h-16 rounded-2xl bg-gradient-to-r ${color} shadow-lg flex items-center justify-between px-6 text-white transition-all`}
+              style={{
+                width: `${width}%`
+              }}
+            >
+              <div>
+                <div className="font-bold text-lg">
+                  {item.label}
+                </div>
+
+                <div className="text-xs text-white/80">
+                  {Number(item.percent || 0).toFixed(2)}% do total
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="font-black text-2xl">
+                  {formatNumber(item.total)}
+                </div>
+
+                <div className="text-xs text-white/80">
+                  {formatBRL(item.revenue)}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 export default Dashboard;
