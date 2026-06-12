@@ -468,7 +468,8 @@ const generalCards = [
 
   return (
   <div
-    className="min-h-screen h-screen text-white px-6 py-6 overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
+  onDoubleClick={handleFullscreen}
+  className="min-h-screen h-screen text-white px-5 py-3 overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
     style={{
       backgroundImage: `
         linear-gradient(
@@ -597,8 +598,8 @@ const generalCards = [
 )}
 
 {viewMode === 'sector' && (
-  <main className="flex-1 min-h-0 flex items-center justify-center">
-    <section className="grid grid-cols-4 gap-4 w-full max-w-[1500px]">
+  <main className="flex-1 min-h-0 flex items-center justify-center overflow-hidden">
+    <section className="grid grid-cols-5 gap-3 w-full max-w-[1580px]">
       {closerCards.map((item, index) => (
         <CloserGoalCard
           key={`${item.name}-${index}`}
@@ -797,7 +798,7 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/10 backdrop-blur rounded-2xl px-4 py-3 border border-white/10 shadow-2xl overflow-hidden min-h-[185px]"
+      className="bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-[158px]"
     >
       <div className="flex items-center gap-3 mb-3">
         {photo ? (
