@@ -966,16 +966,15 @@ function FunnelChart({ data, formatNumber, formatBRL }) {
   };
 
   function getWidth(total) {
-    if (maxTotal === minTotal) return 100;
+    if (maxTotal === minTotal) return 82;
 
     const normalized = (total - minTotal) / (maxTotal - minTotal);
 
-    // Mantém aparência de funil e evita texto cortado
-    return 45 + normalized * 55;
+    return 42 + normalized * 40;
   }
 
   return (
-    <div className="w-full py-4 space-y-4">
+    <div className="w-full py-3 space-y-3">
       {data.map((item, index) => {
         const width = getWidth(item.total);
         const color = colors[item.label] || 'from-blue-500 to-blue-600';
@@ -986,40 +985,40 @@ function FunnelChart({ data, formatNumber, formatBRL }) {
             className="w-full flex justify-center"
           >
             <div
-              className={`bg-gradient-to-r ${color} rounded-2xl shadow-lg text-white px-6 py-4`}
+              className={`bg-gradient-to-r ${color} rounded-xl shadow-md text-white px-5 py-3`}
               style={{
                 width: `${width}%`,
-                minWidth: '520px',
-                maxWidth: '1100px'
+                minWidth: '360px',
+                maxWidth: '820px'
               }}
             >
-              <div className="grid grid-cols-[1.2fr_auto_auto] items-center gap-6">
+              <div className="grid grid-cols-[1.2fr_auto_auto] items-center gap-4">
                 <div className="min-w-0">
-                  <div className="text-2xl font-bold leading-tight">
+                  <div className="text-lg font-bold leading-tight">
                     {item.label}
                   </div>
 
-                  <div className="text-sm text-white/90 mt-1">
+                  <div className="text-xs text-white/90 mt-1">
                     {Number(item.percent || 0).toFixed(2)}% do total
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <div className="text-xs uppercase tracking-wide text-white/80">
+                  <div className="text-[10px] uppercase tracking-wide text-white/80">
                     Quantidade
                   </div>
 
-                  <div className="text-4xl font-black leading-none">
+                  <div className="text-2xl font-black leading-none">
                     {formatNumber(item.total)}
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <div className="text-xs uppercase tracking-wide text-white/80">
+                  <div className="text-[10px] uppercase tracking-wide text-white/80">
                     Receita
                   </div>
 
-                  <div className="text-lg font-bold whitespace-nowrap">
+                  <div className="text-sm font-bold whitespace-nowrap">
                     {formatBRL(item.revenue)}
                   </div>
                 </div>
