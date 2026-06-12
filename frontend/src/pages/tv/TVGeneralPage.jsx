@@ -107,6 +107,23 @@ function TVGeneralPage() {
     }).format(value || 0);
   };
 
+  const formatCompactBRL = (value) => {
+  const number = Number(value || 0);
+
+  if (number >= 1000000) {
+    return `R$ ${(number / 1000000).toFixed(1).replace('.', ',')} mi`;
+  }
+
+  if (number >= 1000) {
+    return `R$ ${(number / 1000).toFixed(1).replace('.', ',')} mil`;
+  }
+
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(number);
+};
+
   const formatNumber = (value) => {
     return new Intl.NumberFormat('pt-BR').format(value || 0);
   };
@@ -609,6 +626,7 @@ const generalCards = [
           estimated={item.estimated}
           photo={item.photo}
           formatBRL={formatBRL}
+          formatCompactBRL={formatCompactBRL}
         />
       ))}
     </section>
@@ -782,7 +800,8 @@ function CloserGoalCard({
   actual,
   estimated,
   photo,
-  formatBRL
+  formatBRL,
+  formatCompactBRL
 }) {
   const percent = goal > 0 ? Math.min((actual / goal) * 100, 999) : 0;
   const firstName = String(name || '').split(' ')[0];
@@ -799,18 +818,18 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-3 py-3 border border-white/10 shadow-2xl overflow-hidden h-[180px]"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-3 py-3 border border-white/10 shadow-2xl overflow-hidden h-[170px]"
     >
-      <div className="flex gap-3 h-full">
+      <div className="flex gap-3 h-full min-w-0">
         <div className="shrink-0 flex items-center">
           {photo ? (
             <img
               src={photo}
               alt={firstName}
-              className="w-24 h-28 rounded-xl object-cover border border-white/20"
+              className="w-20 h-28 rounded-xl object-cover border border-white/20"
             />
           ) : (
-            <div className="w-20 h-24 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-2xl">
+            <div className="w-20 h-28 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-2xl">
               {initials}
             </div>
           )}
@@ -818,30 +837,30 @@ function CloserGoalCard({
 
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <div>
-  <div className="font-bold text-base truncate">
-    {firstName}
-  </div>
+            <div className="font-bold text-base truncate">
+              {firstName}
+            </div>
 
-  <div className="text-slate-400 text-[11px]">
-    Meta individual
-  </div>
-</div>
+            <div className="text-slate-400 text-[11px]">
+              Meta individual
+            </div>
+          </div>
 
-<div className="flex items-end justify-between gap-2">
-  <div className="min-w-0">
-    <div className="text-slate-400 text-[11px]">
-      Atingido
-    </div>
+          <div className="flex items-end justify-between gap-2 min-w-0">
+            <div className="min-w-0">
+              <div className="text-slate-400 text-[11px]">
+                Atingido
+              </div>
 
-    <div className="font-black text-xl leading-none truncate">
-      {formatBRL(actual)}
-    </div>
-  </div>
+              <div className="font-black text-xl leading-none truncate">
+                {formatCompactBRL(actual)}
+              </div>
+            </div>
 
-  <div className="text-blue-400 font-black text-xl shrink-0">
-    {percent.toFixed(1)}%
-  </div>
-</div>
+            <div className="text-blue-400 font-black text-xl shrink-0">
+              {percent.toFixed(1)}%
+            </div>
+          </div>
 
           <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
             <motion.div
@@ -854,7 +873,7 @@ function CloserGoalCard({
 
           <div className="flex justify-between gap-2 text-[10px]">
             <span className="text-cyan-300 truncate">
-              Estimado: {formatBRL(estimated || 0)}
+              Estimado: {formatCompactBRL(estimated || 0)}
             </span>
 
             <span className="text-cyan-400 font-bold shrink-0">
@@ -866,11 +885,11 @@ function CloserGoalCard({
 
           <div className="flex justify-between gap-2 text-[10px] text-slate-500">
             <span className="truncate">
-              Meta: {formatBRL(goal)}
+              Meta: {formatCompactBRL(goal)}
             </span>
 
             <span className="truncate text-right">
-              Falta: {formatBRL(Math.max(goal - actual, 0))}
+              Falta: {formatCompactBRL(Math.max(goal - actual, 0))}
             </span>
           </div>
         </div>
