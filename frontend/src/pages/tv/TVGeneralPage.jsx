@@ -846,30 +846,30 @@ function CloserGoalCard({
             </div>
           </div>
 
-          <div className="flex items-end justify-between gap-2 min-w-0">
-            <div className="min-w-0">
-              <div className="text-slate-400 text-[11px]">
-                Atingido
-              </div>
+          <div className="min-w-0">
+  <div className="text-slate-400 text-[11px]">
+    Atingido
+  </div>
 
-              <div className="font-black text-xl leading-none truncate">
-                {formatCompactBRL(actual)}
-              </div>
-            </div>
+  <div className="font-black text-xl leading-none whitespace-nowrap">
+    {formatBRL(actual)}
+  </div>
+</div>
 
-            <div className="text-blue-400 font-black text-xl shrink-0">
-              {percent.toFixed(1)}%
-            </div>
-          </div>
+          <div className="flex items-center gap-2">
+  <div className="relative flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
+    <motion.div
+      initial={{ width: 0 }}
+      animate={{ width: `${Math.min(percent, 100)}%` }}
+      transition={{ duration: 1.2, ease: 'easeOut' }}
+      className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+    />
+  </div>
 
-          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-            <motion.div
-              initial={{ width: 0 }}
-              animate={{ width: `${Math.min(percent, 100)}%` }}
-              transition={{ duration: 1.2, ease: 'easeOut' }}
-              className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
-            />
-          </div>
+  <div className="shrink-0 w-10 h-10 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 font-black text-[11px]">
+    {percent.toFixed(1)}%
+  </div>
+</div>
 
           <div className="flex justify-between gap-2 text-[10px]">
             <span className="text-cyan-300 truncate">
