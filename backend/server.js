@@ -137,8 +137,8 @@ app.get('/api/dashboard/leads-list', async (req, res) => {
 app.get('/api/sync/refresh-may', async (req, res) => {
   try {
 
-    const startDate = new Date('2026-05-01T00:00:00');
-    const endDate = new Date('2026-05-31T23:59:59');
+    const startDate = new Date('2026-06-01T00:00:00');
+    const endDate = new Date('2026-06-30T23:59:59');
 
     const leads = await Lead.find({
       closedTime: {
@@ -2016,8 +2016,8 @@ app.get('/api/dashboard/sdr', async (req, res) => {
 
 app.get('/api/audit/won-assignees', async (req, res) => {
   try {
-    const start = new Date('2026-05-01T00:00:00');
-    const end = new Date('2026-05-31T23:59:59');
+    const start = new Date('2026-06-01T00:00:00');
+    const end = new Date('2026-06-30T23:59:59');
 
     const result = await Lead.aggregate([
       {
@@ -3195,8 +3195,8 @@ app.get('/api/audit/leads-by-date-status', async (req, res) => {
 
 app.get('/api/audit/products-won', async (req, res) => {
   try {
-    const start = new Date('2026-05-01T00:00:00');
-    const end = new Date('2026-05-31T23:59:59');
+    const start = new Date('2026-06-01T00:00:00');
+    const end = new Date('2026-06-30T23:59:59');
 
     const result = await Lead.aggregate([
       {
@@ -3554,8 +3554,8 @@ app.get('/api/audit/revenue-check', async (req, res) => {
 
 app.get('/api/audit/nutshell-compare', async (req, res) => {
   try {
-    const start = new Date('2026-05-01T00:00:00');
-    const end = new Date('2026-05-31T23:59:59');
+    const start = new Date('2026-06-01T00:00:00');
+    const end = new Date('2026-06-30T23:59:59');
 
     const filter = {
       status: { $in: [0, 10] },
