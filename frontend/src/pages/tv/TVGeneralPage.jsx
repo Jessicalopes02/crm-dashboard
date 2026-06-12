@@ -85,7 +85,12 @@ function TVGeneralPage() {
         }
       });
 
-      setAchievement(achievementResponse.data);
+      const achievementPayload =
+        achievementResponse.data?.data || achievementResponse.data;
+
+      console.log('ACHIEVEMENT RESPONSE:', achievementPayload);
+
+      setAchievement(achievementPayload);
 
     } catch (error) {
       console.error(error);
@@ -378,7 +383,10 @@ const userPhotos = {
   'Luiza Carvalho': '/photos/luiza.png',
   'Accounts Grupo ': '/photos/emely.png'
 };
-const goalResults = achievement?.results || [];
+const goalResults =
+  achievement?.results ||
+  achievement?.data?.results ||
+  [];
 
 const sumGoalBySector = (sector) =>
   goalResults
@@ -850,84 +858,6 @@ function CloserGoalCard({
             : '0%'}
         </span>
         </div>
-
-      <div className="flex justify-between mt-2 text-xs text-slate-500">
-        <span>Meta: {formatBRL(goal)}</span>
-        <span>Falta: {formatBRL(Math.max(goal - actual, 0))}</span>
-      </div>
-    </motion.div>
-  );
-
-const generalCards = [
-  {
-    name: 'Closers',
-    goal: sumGoalBySector('closer'),
-    actual: sumActualBySector('closer')
-  },
-  {
-    name: 'Accounts',
-    goal: sumGoalBySector('accounts'),
-    actual: sumActualBySector('accounts')
-  },
-  {
-    name: 'Transportes',
-    goal: getGoalBySector('transportes')?.goal?.targetRevenue || 0,
-    actual: getGoalBySector('transportes')?.actual?.revenue || 0
-  },
-  {
-    name: 'Geral',
-    goal: getGoalBySector('geral')?.goal?.targetRevenue || 0,
-    actual: getGoalBySector('geral')?.actual?.revenue || 0
-  }
-];
-
-
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 18 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-full min-h-[135px]"
-    >
-      <div className="flex items-center gap-3 mb-3">
-        <div className="w-12 h-12 rounded-full bg-blue-600 flex items-center justify-center font-black text-white border border-white/20">
-          {initials}
-        </div>
-
-        <div className="min-w-0">
-          <div className="font-bold text-sm truncate">
-            {name}
-          </div>
-
-          <div className="text-slate-400 text-xs">
-            Meta individual
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-between items-end mb-2">
-        <div>
-          <div className="text-slate-400 text-xs">
-            Atingido
-          </div>
-
-          <div className="font-black text-lg">
-            {formatBRL(actual)}
-          </div>
-        </div>
-
-        <div className="text-blue-400 font-black text-xl">
-          {percent.toFixed(1)}%
-        </div>
-      </div>
-
-      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.min(percent, 100)}%` }}
-          transition={{ duration: 1.2, ease: 'easeOut' }}
-          className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
-        />
-      </div>
 
       <div className="flex justify-between mt-2 text-xs text-slate-500">
         <span>Meta: {formatBRL(goal)}</span>
