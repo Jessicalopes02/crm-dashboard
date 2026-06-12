@@ -669,7 +669,7 @@ function ProgressBar({ label, current, goal, formatBRL }) {
             {label}
           </div>
 
-          <div className="text-xl font-black mt-1">
+          <div className="text-lg font-black mt-1">
             {formatBRL(current)}
           </div>
         </div>
