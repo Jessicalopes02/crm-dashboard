@@ -467,9 +467,9 @@ const generalCards = [
 ];
 
   return (
-  <div
+ <div
   onDoubleClick={handleFullscreen}
-  className="w-screen max-w-screen min-h-screen h-screen text-white px-3 py-3 overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
+  className="w-full max-w-full min-h-screen h-screen text-white px-3 py-3 overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
     style={{
       backgroundImage: `
         linear-gradient(
@@ -582,8 +582,8 @@ const generalCards = [
 </header>
 
     {viewMode === 'general' && (
-     <main className="flex-1 min-h-0 flex items-center justify-center">
-      <section className="grid grid-cols-2 gap-6 w-full max-w-[1400px]">
+      <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center">
+        <section className="grid grid-cols-2 gap-4 w-full max-w-full min-w-0">
         {generalCards.map((item) => (
           <SectorKpi
             key={item.name}
@@ -599,7 +599,7 @@ const generalCards = [
 
 {viewMode === 'sector' && (
   <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center">
-    <section className="grid grid-cols-5 gap-3 w-full max-w-none min-w-0">
+    <section className="grid grid-cols-5 gap-2 w-full max-w-full min-w-0 overflow-hidden">
       {closerCards.map((item, index) => (
         <CloserGoalCard
           key={`${item.name}-${index}`}
@@ -738,7 +738,7 @@ function SectorKpi({ name, goal, actual, formatBRL }) {
     <motion.div
       initial={{ opacity: 0, scale: 0.96 }}
       animate={{ opacity: 1, scale: 1 }}
-      className="bg-white/10 backdrop-blur rounded-2xl px-5 py-4 border border-white/10 shadow-2xl overflow-hidden min-h-[190px]"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-4 py-3 border border-white/10 shadow-2xl overflow-hidden h-[165px]"
     >
       <div className="flex justify-between items-start gap-2">
         <div>
@@ -785,6 +785,7 @@ function CloserGoalCard({
   formatBRL
 }) {
   const percent = goal > 0 ? Math.min((actual / goal) * 100, 999) : 0;
+  const firstName = String(name || '').split(' ')[0];
 
   const initials = name
     ?.split(' ')
@@ -798,24 +799,24 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-[150px]"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-2 py-2 border border-white/10 shadow-2xl overflow-hidden h-[185px] flex flex-col items-center text-center"
     >
-      <div className="flex items-center gap-3 mb-3">
+      <div className="flex flex-col items-center gap-1 mb-2 w-full min-w-0">
         {photo ? (
   <img
     src={photo}
-    alt={name}
-    className="w-11 h-11 rounded-full object-cover border border-white/20"
+    alt={firstName}
+    className="w-14 h-14 rounded-full object-cover border border-white/20"
   />
 ) : (
-  <div className="w-11 h-11 rounded-full bg-blue-600 flex items-center justify-center font-black text-white border border-white/20">
+  <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-lg">
     {initials}
   </div>
 )}
 
         <div className="min-w-0 flex-1">
           <div className="font-bold text-sm truncate max-w-full">
-            {name}
+            {firstName}
           </div>
 
           <div className="text-slate-400 text-xs">
