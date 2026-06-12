@@ -469,7 +469,7 @@ const generalCards = [
   return (
   <div
   onDoubleClick={handleFullscreen}
-  className="min-h-screen h-screen text-white px-5 py-3 overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
+  className="w-screen max-w-screen min-h-screen h-screen text-white px-3 py-3 overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
     style={{
       backgroundImage: `
         linear-gradient(
@@ -598,8 +598,8 @@ const generalCards = [
 )}
 
 {viewMode === 'sector' && (
-  <main className="flex-1 min-h-0 flex items-center justify-center overflow-hidden">
-    <section className="grid grid-cols-5 gap-3 w-full max-w-[1580px]">
+  <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center">
+    <section className="grid grid-cols-5 gap-3 w-full max-w-none min-w-0">
       {closerCards.map((item, index) => (
         <CloserGoalCard
           key={`${item.name}-${index}`}
@@ -798,7 +798,7 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-[158px]"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-3 py-2 border border-white/10 shadow-2xl overflow-hidden h-[150px]"
     >
       <div className="flex items-center gap-3 mb-3">
         {photo ? (
@@ -813,8 +813,8 @@ function CloserGoalCard({
   </div>
 )}
 
-        <div className="min-w-0">
-          <div className="font-bold text-sm truncate">
+        <div className="min-w-0 flex-1">
+          <div className="font-bold text-sm truncate max-w-full">
             {name}
           </div>
 
