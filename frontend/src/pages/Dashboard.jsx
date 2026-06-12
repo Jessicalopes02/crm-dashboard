@@ -145,12 +145,15 @@ const monthlyChartData = monthlyData.slice(-12);
 
   const COLORS = ['#0f172a', '#1d4ed8', '#2563eb', '#60a5fa', '#93c5fd'];
  
-  const sourceData = sources.slice(0, 8).map((item) => ({
-    name: item._id,
+  const sourceData = [...sources]
+  .sort((a, b) => Number(b.revenue || 0) - Number(a.revenue || 0))
+  .slice(0, 8)
+  .map((item) => ({
+    name: item._id || 'Sem source',
     receita: item.revenue || 0,
     won: item.wonLeads || 0,
     leads: item.totalLeads || 0
-    }));
+  }));
 
   const productData = products.slice(0, 8).map((item) => ({
     name: item._id,
@@ -647,30 +650,16 @@ const monthlyChartData = monthlyData.slice(-12);
       </h2>
 
       <p className="text-slate-500">
-        Principais origens por receita no período selecionado
+        Ranking das principais origens por receita no período selecionado
       </p>
     </div>
   </div>
 
-  <ResponsiveContainer width="100%" height={380}>
-    <BarChart data={sourceData}>
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-      <YAxis tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`} />
-      <Tooltip
-        formatter={(value, name) => {
-          if (name === 'receita') {
-            return [formatBRL(value), 'Receita'];
-          }
-
-          return [formatNumber(value), name];
-        }}
-      />
-      <Legend />
-      <Bar dataKey="receita" name="Receita" fill="#1d4ed8" radius={[8, 8, 0, 0]} />
-      <Bar dataKey="won" name="Won" fill="#16a34a" radius={[8, 8, 0, 0]} />
-    </BarChart>
-  </ResponsiveContainer>
+  <SourceRanking
+    data={sourceData}
+    formatBRL={formatBRL}
+    formatNumber={formatNumber}
+  />
 </section>
         <section className="bg-white rounded-2xl shadow p-6">
 
@@ -1073,6 +1062,74 @@ function FunnelChart({ data, formatNumber, formatBRL }) {
                   </div>
                 </div>
               </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+
+function SourceRanking({ data, formatBRL, formatNumber }) {
+  const sortedData = [...data]
+    .sort((a, b) => Number(b.receita || 0) - Number(a.receita || 0))
+    .slice(0, 8);
+
+  const maxRevenue = Math.max(
+    ...sortedData.map((item) => Number(item.receita || 0)),
+    1
+  );
+
+  return (
+    <div className="space-y-4">
+      {sortedData.map((item, index) => {
+        const percent = (Number(item.receita || 0) / maxRevenue) * 100;
+        const conversion =
+          item.leads > 0
+            ? ((Number(item.won || 0) / Number(item.leads || 0)) * 100).toFixed(1)
+            : '0.0';
+
+        return (
+          <div
+            key={`${item.name}-${index}`}
+            className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
+          >
+            <div className="flex items-start justify-between gap-4 mb-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-black">
+                    {index + 1}
+                  </span>
+
+                  <h3 className="font-bold text-slate-900 truncate">
+                    {item.name || 'Sem source'}
+                  </h3>
+                </div>
+
+                <p className="text-xs text-slate-500 mt-1 ml-9">
+                  Leads: {formatNumber(item.leads)} | Won: {formatNumber(item.won)} | Conversão: {conversion}%
+                </p>
+              </div>
+
+              <div className="text-right shrink-0">
+                <div className="text-xs text-slate-500">
+                  Receita
+                </div>
+
+                <div className="text-xl font-black text-blue-700">
+                  {formatBRL(item.receita)}
+                </div>
+              </div>
+            </div>
+
+            <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full"
+                style={{
+                  width: `${Math.max(percent, 2)}%`
+                }}
+              />
             </div>
           </div>
         );
