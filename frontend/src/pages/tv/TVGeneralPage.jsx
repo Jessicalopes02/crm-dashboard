@@ -68,7 +68,7 @@ function TVGeneralPage() {
         );
       }
 
-      const response = await api.get('api/dashboard/full', {
+      const response = await api.get('/dashboard/full', {
         params: {
           startDate: startDate.toLocaleString('sv-SE').replace(' ', 'T'),
           endDate: endDate.toLocaleString('sv-SE').replace(' ', 'T')
