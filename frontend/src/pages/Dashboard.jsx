@@ -13,6 +13,7 @@ import {
   Cell,
   LineChart,
   Line,
+  ComposedChart,
   CartesianGrid,
   Legend
 } from 'recharts';
@@ -129,6 +130,7 @@ function Dashboard() {
     leads: item.totalLeads || 0,
     won: item.wonLeads || 0
   })) || [];
+const monthlyChartData = monthlyData.slice(-12);
 
   const assigneeData =
     dashboard.charts.leadsByAssignee
@@ -394,7 +396,7 @@ function Dashboard() {
              </h2>
 
              <p className="text-slate-500">
-               Receita e quantidade de Won
+                Receita mensal comparada com quantidade de vendas ganhas
              </p>
             </div>
            </div>
@@ -554,39 +556,87 @@ function Dashboard() {
     </div>
   </div>
 
-  <ResponsiveContainer width="100%" height={360}>
-    <LineChart data={leadTimeData}>
-      <CartesianGrid strokeDasharray="3 3" />
-      <XAxis dataKey="month" />
-      <YAxis />
-      <Tooltip
-        formatter={(value, name) => {
-          if (name === 'leadTime') {
-            return [`${value} dias`, 'Lead Time'];
-          }
+  <ResponsiveContainer width="100%" height={380}>
+  <ComposedChart
+    data={monthlyChartData}
+    margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
+  >
+    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
 
+    <XAxis
+      dataKey="month"
+      tick={{ fontSize: 12, fill: '#475569' }}
+      axisLine={false}
+      tickLine={false}
+    />
+
+    <YAxis
+      yAxisId="revenue"
+      tick={{ fontSize: 12, fill: '#475569' }}
+      axisLine={false}
+      tickLine={false}
+      tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+    />
+
+    <YAxis
+      yAxisId="won"
+      orientation="right"
+      tick={{ fontSize: 12, fill: '#16a34a' }}
+      axisLine={false}
+      tickLine={false}
+      allowDecimals={false}
+    />
+
+    <Tooltip
+      formatter={(value, name) => {
+        if (name === 'Receita') {
+          return [formatBRL(value), 'Receita'];
+        }
+
+        if (name === 'Won') {
           return [formatNumber(value), 'Won'];
-        }}
-      />
-      <Legend />
+        }
 
-      <Line
-        type="monotone"
-        dataKey="leadTime"
-        name="Lead Time"
-        stroke="#f97316"
-        strokeWidth={3}
-      />
+        return [value, name];
+      }}
+      labelStyle={{
+        color: '#0f172a',
+        fontWeight: 700
+      }}
+      contentStyle={{
+        borderRadius: 12,
+        border: '1px solid #e2e8f0'
+      }}
+    />
 
-      <Line
-        type="monotone"
-        dataKey="won"
-        name="Won"
-        stroke="#16a34a"
-        strokeWidth={3}
-      />
-    </LineChart>
-  </ResponsiveContainer>
+    <Legend />
+
+    <Bar
+      yAxisId="revenue"
+      dataKey="revenue"
+      name="Receita"
+      fill="#2563eb"
+      radius={[8, 8, 0, 0]}
+      barSize={34}
+    />
+
+    <Line
+      yAxisId="won"
+      type="monotone"
+      dataKey="won"
+      name="Won"
+      stroke="#16a34a"
+      strokeWidth={3}
+      dot={{
+        r: 4,
+        strokeWidth: 2
+      }}
+      activeDot={{
+        r: 6
+      }}
+    />
+  </ComposedChart>
+</ResponsiveContainer>
 </section>
 
 <section className="bg-white rounded-2xl shadow p-6">
