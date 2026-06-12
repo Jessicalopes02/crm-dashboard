@@ -385,7 +385,7 @@ function Dashboard() {
             description="Da abertura até a venda"
           />
         </section>
-        <section className="bg-white rounded-2xl shadow p-6">
+        <section className="bg-white rounded-2xl shadow p-5">
 
          <div className="flex items-center justify-between mb-6">
             <div>
@@ -966,15 +966,15 @@ function FunnelChart({ data, formatNumber, formatBRL }) {
   };
 
   function getWidth(total) {
-    if (maxTotal === minTotal) return 82;
+    if (maxTotal === minTotal) return 68;
 
     const normalized = (total - minTotal) / (maxTotal - minTotal);
 
-    return 42 + normalized * 40;
+    return 34 + normalized * 34;
   }
 
   return (
-    <div className="w-full py-3 space-y-3">
+    <div className="w-full py-2 space-y-2">
       {data.map((item, index) => {
         const width = getWidth(item.total);
         const color = colors[item.label] || 'from-blue-500 to-blue-600';
@@ -985,40 +985,40 @@ function FunnelChart({ data, formatNumber, formatBRL }) {
             className="w-full flex justify-center"
           >
             <div
-              className={`bg-gradient-to-r ${color} rounded-xl shadow-md text-white px-5 py-3`}
+              className={`bg-gradient-to-r ${color} rounded-lg shadow-sm text-white px-4 py-2`}
               style={{
                 width: `${width}%`,
-                minWidth: '360px',
-                maxWidth: '820px'
+                minWidth: '260px',
+                maxWidth: '520px'
               }}
             >
-              <div className="grid grid-cols-[1.2fr_auto_auto] items-center gap-4">
+              <div className="grid grid-cols-[1.2fr_auto_auto] items-center gap-3">
                 <div className="min-w-0">
-                  <div className="text-lg font-bold leading-tight">
+                  <div className="text-base font-bold leading-tight">
                     {item.label}
                   </div>
 
-                  <div className="text-xs text-white/90 mt-1">
+                  <div className="text-[11px] text-white/90 mt-0.5">
                     {Number(item.percent || 0).toFixed(2)}% do total
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <div className="text-[10px] uppercase tracking-wide text-white/80">
-                    Quantidade
+                  <div className="text-[9px] uppercase tracking-wide text-white/80">
+                    Qtd.
                   </div>
 
-                  <div className="text-2xl font-black leading-none">
+                  <div className="text-xl font-black leading-none">
                     {formatNumber(item.total)}
                   </div>
                 </div>
 
                 <div className="text-right shrink-0">
-                  <div className="text-[10px] uppercase tracking-wide text-white/80">
+                  <div className="text-[9px] uppercase tracking-wide text-white/80">
                     Receita
                   </div>
 
-                  <div className="text-sm font-bold whitespace-nowrap">
+                  <div className="text-xs font-bold whitespace-nowrap">
                     {formatBRL(item.revenue)}
                   </div>
                 </div>
