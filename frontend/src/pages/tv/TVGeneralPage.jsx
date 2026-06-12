@@ -599,7 +599,7 @@ const generalCards = [
 
 {viewMode === 'sector' && (
   <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center">
-    <section className="grid grid-cols-5 gap-2 w-full max-w-full min-w-0 overflow-hidden">
+    <section className="grid grid-cols-4 gap-3 w-full max-w-full min-w-0 overflow-hidden">
       {closerCards.map((item, index) => (
         <CloserGoalCard
           key={`${item.name}-${index}`}
@@ -799,72 +799,81 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-2 py-2 border border-white/10 shadow-2xl overflow-hidden h-[185px] flex flex-col items-center text-center"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-3 py-3 border border-white/10 shadow-2xl overflow-hidden h-[180px]"
     >
-      <div className="flex flex-col items-center gap-1 mb-2 w-full min-w-0">
-        {photo ? (
-  <img
-    src={photo}
-    alt={firstName}
-    className="w-14 h-14 rounded-full object-cover border border-white/20"
-  />
-) : (
-  <div className="w-14 h-14 rounded-full bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-lg">
-    {initials}
-  </div>
-)}
-
-        <div className="min-w-0 flex-1">
-          <div className="font-bold text-sm truncate max-w-full">
-            {firstName}
-          </div>
-
-          <div className="text-slate-400 text-xs">
-            Meta individual
-          </div>
-        </div>
-      </div>
-
-      <div className="flex justify-between items-end mb-2">
-        <div>
-          <div className="text-slate-400 text-xs">
-            Atingido
-          </div>
-
-          <div className="font-black text-lg">
-            {formatBRL(actual)}
-          </div>
+      <div className="flex gap-3 h-full">
+        <div className="shrink-0 flex items-center">
+          {photo ? (
+            <img
+              src={photo}
+              alt={firstName}
+              className="w-24 h-28 rounded-xl object-cover border border-white/20"
+            />
+          ) : (
+            <div className="w-20 h-24 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-2xl">
+              {initials}
+            </div>
+          )}
         </div>
 
-        <div className="text-blue-400 font-black text-xl">
-          {percent.toFixed(1)}%
+        <div className="flex-1 min-w-0 flex flex-col justify-between">
+          <div>
+            <div className="font-bold text-lg truncate">
+              {firstName}
+            </div>
+
+            <div className="text-slate-400 text-xs">
+              Meta individual
+            </div>
+          </div>
+
+          <div className="flex items-end justify-between gap-2">
+            <div className="min-w-0">
+              <div className="text-slate-400 text-xs">
+                Atingido
+              </div>
+
+              <div className="font-black text-[28px] leading-none truncate">
+                {formatBRL(actual)}
+              </div>
+            </div>
+
+            <div className="text-blue-400 font-black text-2xl shrink-0">
+              {percent.toFixed(1)}%
+            </div>
+          </div>
+
+          <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(percent, 100)}%` }}
+              transition={{ duration: 1.2, ease: 'easeOut' }}
+              className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+            />
+          </div>
+
+          <div className="flex justify-between gap-2 text-[11px]">
+            <span className="text-cyan-300 truncate">
+              Estimado: {formatBRL(estimated || 0)}
+            </span>
+
+            <span className="text-cyan-400 font-bold shrink-0">
+              {goal > 0
+                ? `${(((estimated || 0) / goal) * 100).toFixed(1)}%`
+                : '0%'}
+            </span>
+          </div>
+
+          <div className="flex justify-between gap-2 text-[11px] text-slate-500">
+            <span className="truncate">
+              Meta: {formatBRL(goal)}
+            </span>
+
+            <span className="truncate text-right">
+              Falta: {formatBRL(Math.max(goal - actual, 0))}
+            </span>
+          </div>
         </div>
-      </div>
-
-      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.min(percent, 100)}%` }}
-          transition={{ duration: 1.2, ease: 'easeOut' }}
-          className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
-        />
-      </div>
-
-      <div className="flex justify-between mt-1 text-[11px]">
-        <span className="text-cyan-300">
-          Estimado: {formatBRL(estimated || 0)}
-        </span>
-
-        <span className="text-cyan-400 font-bold">
-          {goal > 0
-            ? `${(((estimated || 0) / goal) * 100).toFixed(1)}%`
-            : '0%'}
-        </span>
-        </div>
-
-      <div className="flex justify-between mt-2 text-xs text-slate-500">
-        <span>Meta: {formatBRL(goal)}</span>
-        <span>Falta: {formatBRL(Math.max(goal - actual, 0))}</span>
       </div>
     </motion.div>
   );
