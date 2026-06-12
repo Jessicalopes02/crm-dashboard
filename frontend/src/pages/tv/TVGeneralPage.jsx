@@ -765,7 +765,7 @@ function SectorKpi({ name, goal, actual, formatBRL }) {
           </div>
 
           <div className="text-lg font-black mt-1">
-            {formatCompactBRL(actual)}
+            {formatBRL(actual)}
           </div>
 
           <div className="text-slate-500 text-xs mt-1">
