@@ -590,11 +590,12 @@ async function handleSyncNow() {
         }}
       />
     </ComposedChart>
-  </ResponsiveContainer>
+ </ResponsiveContainer>
 </div>
 
-        </section>
-        <section className="bg-white rounded-2xl shadow p-6">
+</section>
+
+<section className="bg-white rounded-2xl shadow p-6">
 
   <div className="flex items-center justify-between mb-6">
     <div>
@@ -664,7 +665,9 @@ async function handleSyncNow() {
 
     </table>
   </div>
-  <section className="bg-white rounded-2xl shadow p-6">
+</section>
+
+<section className="bg-white rounded-2xl shadow p-6">
 
   <div className="flex items-center justify-between mb-6">
     <div>
@@ -950,83 +953,86 @@ async function handleSyncNow() {
     </div>
   </div>
 
-  <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6 items-start">
-    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-      <ComposableMap
-        projection="geoMercator"
-        projectionConfig={{
-          scale: 700,
-          center: [-52, -15]
-        }}
-        style={{
-          width: '100%',
-          height: 'auto'
-        }}
-      >
-        <Geographies geography="/maps/brazil-states.geojson">
-          {({ geographies }) =>
-            geographies.map((geo) => {
-              const uf =
-                geo.properties.sigla ||
-                geo.properties.SIGLA ||
-                geo.properties.uf ||
-                geo.properties.UF ||
-                geo.properties.id ||
-                geo.properties.name;
+  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+  <div className="w-full h-[620px] flex items-center justify-center overflow-hidden">
+    <ComposableMap
+      projection="geoMercator"
+      width={700}
+      height={700}
+      projectionConfig={{
+        scale: 760,
+        center: [-54, -15]
+      }}
+      style={{
+        width: '100%',
+        height: '100%'
+      }}
+    >
+      <Geographies geography="/maps/brazil-states.geojson">
+        {({ geographies }) =>
+          geographies.map((geo) => {
+            const uf =
+              geo.properties.sigla ||
+              geo.properties.SIGLA ||
+              geo.properties.uf ||
+              geo.properties.UF ||
+              geo.properties.id ||
+              geo.properties.name;
 
-              const normalizedUf = extractUF(uf);
-              const stateInfo = mapData[normalizedUf];
-              const leads = stateInfo?.leads || 0;
+            const normalizedUf = extractUF(uf);
+            const stateInfo = mapData[normalizedUf];
+            const leads = stateInfo?.leads || 0;
 
-              return (
-                <Geography
-                  key={geo.rsmKey}
-                  geography={geo}
-                  fill={getMapColor(leads)}
-                  stroke="#ffffff"
-                  strokeWidth={0.8}
-                  style={{
-                    default: {
-                      outline: 'none'
-                    },
-                    hover: {
-                      fill: '#0f172a',
-                      outline: 'none',
-                      cursor: 'pointer'
-                    },
-                    pressed: {
-                      outline: 'none'
-                    }
-                  }}
-                >
-                  <title>
-                    {normalizedUf || uf}
-                    {`\nLeads: ${formatNumber(stateInfo?.leads || 0)}`}
-                    {`\nWon: ${formatNumber(stateInfo?.won || 0)}`}
-                    {`\nOpen: ${formatNumber(stateInfo?.open || 0)}`}
-                    {`\nReceita: ${formatBRL(stateInfo?.receita || 0)}`}
-                  </title>
-                </Geography>
-              );
-            })
-          }
-        </Geographies>
-      </ComposableMap>
+            return (
+              <Geography
+                key={geo.rsmKey}
+                geography={geo}
+                fill={getMapColor(leads)}
+                stroke="#ffffff"
+                strokeWidth={0.8}
+                style={{
+                  default: {
+                    outline: 'none'
+                  },
+                  hover: {
+                    fill: '#0f172a',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  },
+                  pressed: {
+                    outline: 'none'
+                  }
+                }}
+              >
+                <title>
+                  {normalizedUf || uf}
+                  {`\nLeads: ${formatNumber(stateInfo?.leads || 0)}`}
+                  {`\nWon: ${formatNumber(stateInfo?.won || 0)}`}
+                  {`\nOpen: ${formatNumber(stateInfo?.open || 0)}`}
+                  {`\nReceita: ${formatBRL(stateInfo?.receita || 0)}`}
+                </title>
+              </Geography>
+            );
+          })
+        }
+      </Geographies>
+    </ComposableMap>
+  </div>
 
-      <div className="flex items-center gap-3 mt-4 text-xs text-slate-600">
-        <span>Menor volume</span>
+  <div className="flex items-center gap-3 mt-4 text-xs text-slate-600">
+    <span>Menor volume</span>
 
-        <div className="flex h-3 w-40 rounded-full overflow-hidden border border-slate-200">
-          <div className="flex-1 bg-[#dbeafe]" />
-          <div className="flex-1 bg-[#93c5fd]" />
-          <div className="flex-1 bg-[#60a5fa]" />
-          <div className="flex-1 bg-[#2563eb]" />
-          <div className="flex-1 bg-[#1d4ed8]" />
-        </div>
-
-        <span>Maior volume</span>
-      </div>
+    <div className="flex h-3 w-40 rounded-full overflow-hidden border border-slate-200">
+      <div className="flex-1 bg-[#dbeafe]" />
+      <div className="flex-1 bg-[#93c5fd]" />
+      <div className="flex-1 bg-[#60a5fa]" />
+      <div className="flex-1 bg-[#2563eb]" />
+      <div className="flex-1 bg-[#1d4ed8]" />
     </div>
+
+    <span>Maior volume</span>
+  </div>
+</div>
 
     <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
       <h3 className="text-lg font-semibold mb-4">
@@ -1065,8 +1071,6 @@ async function handleSyncNow() {
           ))}
       </div>
     </div>
-  </div>
-</section>
 </section>
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
