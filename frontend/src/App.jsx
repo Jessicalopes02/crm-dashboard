@@ -11,12 +11,24 @@ import TVOperationalPage from './pages/tv/TVOperationalPage';
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
- const isTvMode =
-  window.location.hash === '#/fullscreen' ||
-  window.location.search.includes('fullscreen=true');
+const searchParams = new URLSearchParams(window.location.search);
+const tvPage = searchParams.get('tv');
+const isFullscreen = searchParams.get('fullscreen') === 'true';
 
-if (isTvMode) {
-  return <TVCloserPage tvMode />;
+if (tvPage === 'general') {
+  return <TVGeneralPage tvMode={isFullscreen} />;
+}
+
+if (tvPage === 'closer') {
+  return <TVCloserPage tvMode={isFullscreen} />;
+}
+
+if (tvPage === 'sdr') {
+  return <TVSdrPage tvMode={isFullscreen} />;
+}
+
+if (tvPage === 'operacional') {
+  return <TVOperationalPage tvMode={isFullscreen} />;
 }
 
 
