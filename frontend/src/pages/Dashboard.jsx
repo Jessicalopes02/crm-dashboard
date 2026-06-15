@@ -404,54 +404,90 @@ const monthlyChartData = monthlyData.slice(-12);
             </div>
            </div>
 
-           <div style={{ width: '100%', height: 400 }}>
-            <ResponsiveContainer>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
+          <div style={{ width: '100%', height: 400 }}>
+  <ResponsiveContainer width="100%" height="100%">
+    <ComposedChart
+      data={monthlyData.slice(-12)}
+      margin={{ top: 20, right: 30, left: 10, bottom: 10 }}
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
 
-                <XAxis dataKey="month" />
+      <XAxis
+        dataKey="month"
+        tick={{ fontSize: 12, fill: '#475569' }}
+        axisLine={false}
+        tickLine={false}
+      />
 
-                <YAxis />
+      <YAxis
+        yAxisId="revenue"
+        tick={{ fontSize: 12, fill: '#475569' }}
+        axisLine={false}
+        tickLine={false}
+        tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+      />
 
-                <Tooltip
-                  formatter={(value, name) => {
-                    if (name === 'Receita') {
-                     return [
-                      new Intl.NumberFormat('pt-BR', {
-                       style: 'currency',
-                       currency: 'BRL'
-                    }).format(value || 0),
-                    'Receita'
-                  ];
-                }
+      <YAxis
+        yAxisId="won"
+        orientation="right"
+        tick={{ fontSize: 12, fill: '#16a34a' }}
+        axisLine={false}
+        tickLine={false}
+        allowDecimals={false}
+      />
 
-                return [
-                  new Intl.NumberFormat('pt-BR').format(value || 0),
-                  'Won'
-                ];
-              }}
-            />
+      <Tooltip
+        formatter={(value, name) => {
+          if (name === 'Receita') {
+            return [formatBRL(value), 'Receita'];
+          }
 
-                <Legend />
+          if (name === 'Won') {
+            return [formatNumber(value), 'Won'];
+          }
 
-                <Line
-                  type="monotone"
-                  dataKey="revenue"
-                  name="Receita"
-                  stroke="#2563eb"
-                  strokeWidth={3}
-                />
+          return [value, name];
+        }}
+        labelStyle={{
+          color: '#0f172a',
+          fontWeight: 700
+        }}
+        contentStyle={{
+          borderRadius: 12,
+          border: '1px solid #e2e8f0'
+        }}
+      />
 
-                <Line
-                  type="monotone"
-                  dataKey="won"
-                  name="Won"
-                  stroke="#16a34a"
-                  strokeWidth={3}
-                />
-              </LineChart>
-             </ResponsiveContainer>
-           </div>
+      <Legend />
+
+      <Bar
+        yAxisId="revenue"
+        dataKey="revenue"
+        name="Receita"
+        fill="#2563eb"
+        radius={[8, 8, 0, 0]}
+        barSize={38}
+      />
+
+      <Line
+        yAxisId="won"
+        type="monotone"
+        dataKey="won"
+        name="Won"
+        stroke="#16a34a"
+        strokeWidth={3}
+        dot={{
+          r: 4,
+          strokeWidth: 2,
+          fill: '#ffffff'
+        }}
+        activeDot={{
+          r: 6
+        }}
+      />
+    </ComposedChart>
+  </ResponsiveContainer>
+</div>
 
         </section>
         <section className="bg-white rounded-2xl shadow p-6">
