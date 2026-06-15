@@ -673,7 +673,7 @@ const generalCards = [
   <main
     className="absolute inset-0 w-full h-full overflow-hidden px-[70px] pb-[40px]"
     style={{
-      paddingTop: isTvMode ? 155 : 150
+      paddingTop: isTvMode ? 210 : 190
     }}
   >
     <section className="grid grid-cols-4 gap-4 w-full max-w-full min-w-0">
