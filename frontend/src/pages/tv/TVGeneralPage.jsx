@@ -889,40 +889,25 @@ function CloserGoalCard({
           )}
         </div>
 
-        <div className="flex-1 min-w-0 flex flex-col justify-between">
-          <div>
-            <div className="font-black text-2xl truncate leading-tight">
-              {firstName}
-            </div>
-
-            <div className="text-slate-400 text-xs">
-              Meta individual
-            </div>
-          </div>
+        <div className="font-black text-2xl truncate leading-tight">
 
           <div className="min-w-0">
   <div className="text-slate-400 text-[11px]">
     Atingido
   </div>
 
-  <div className="font-black text-3xl leading-none whitespace-nowrap">
-    {formatBRL(actual)}
-  </div>
+  <div className="font-black text-[34px] leading-none whitespace-nowrap">
+  {formatBRL(actual)}
+</div>
 </div>
 
-          <div className="flex items-center gap-2">
-  <div className="relative flex-1 h-2 bg-slate-800 rounded-full overflow-hidden">
-    <motion.div
-      initial={{ width: 0 }}
-      animate={{ width: `${Math.min(percent, 100)}%` }}
-      transition={{ duration: 1.2, ease: 'easeOut' }}
-      className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
-    />
-  </div>
-
-  <div className="shrink-0 w-12 h-12 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 font-black text-xs">
-    {percent.toFixed(1)}%
-  </div>
+          <div className="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden">
+  <motion.div
+    initial={{ width: 0 }}
+    animate={{ width: `${Math.min(percent, 100)}%` }}
+    transition={{ duration: 1.2, ease: 'easeOut' }}
+    className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+  />
 </div>
 
           <div className="flex justify-between gap-2 text-[11px]">
