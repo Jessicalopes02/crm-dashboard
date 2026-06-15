@@ -872,7 +872,7 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-4 py-3 border border-white/10 shadow-2xl overflow-hidden h-[175px]"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-4 py-3 border border-white/10 shadow-2xl overflow-hidden h-[190px]"
     >
       <div className="flex gap-3 h-full min-w-0">
         <div className="shrink-0 flex items-center">
@@ -880,10 +880,10 @@ function CloserGoalCard({
             <img
               src={photo}
               alt={firstName}
-              className="w-[84px] h-[116px] rounded-xl object-cover border border-white/20"
+              className="w-[96px] h-[132px] rounded-2xl object-cover border border-white/20"
             />
           ) : (
-            <div className="w-[84px] h-[116px] rounded-xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-2xl">
+            <div className="w-[96px] h-[132px] rounded-2xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-3xl">
               {initials}
             </div>
           )}
@@ -891,7 +891,7 @@ function CloserGoalCard({
 
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <div>
-            <div className="font-black text-xl truncate">
+            <div className="font-black text-2xl truncate leading-tight">
               {firstName}
             </div>
 
@@ -905,7 +905,7 @@ function CloserGoalCard({
     Atingido
   </div>
 
-  <div className="font-black text-2xl leading-none whitespace-nowrap">
+  <div className="font-black text-3xl leading-none whitespace-nowrap">
     {formatBRL(actual)}
   </div>
 </div>
@@ -920,7 +920,7 @@ function CloserGoalCard({
     />
   </div>
 
-  <div className="shrink-0 w-11 h-11 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 font-black text-xs">
+  <div className="shrink-0 w-12 h-12 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 font-black text-xs">
     {percent.toFixed(1)}%
   </div>
 </div>
