@@ -3,7 +3,7 @@ import { motion } from 'framer-motion';
 import Chart from 'react-apexcharts';
 import api from '../../services/api';
 
-function TVGeneralPage() {
+function TVGeneralPage({ tvMode = false }) {
   const [data, setData] = useState(null);
   const [period, setPeriod] = useState('month');
   const [rotationSeconds, setRotationSeconds] = useState(20);
@@ -11,7 +11,9 @@ function TVGeneralPage() {
   const [achievement, setAchievement] = useState(null);
   const [viewMode, setViewMode] = useState('cover');
 
-  const isTvMode = new URLSearchParams(window.location.search).get('tv') === '1';
+  const isTvMode =
+  tvMode ||
+  new URLSearchParams(window.location.search).get('fullscreen') === 'true';
 
   useEffect(() => {
     loadData();
@@ -510,7 +512,6 @@ const generalCards = [
     
   {!isTvMode && viewMode !== 'cover' && (
   <header className="shrink-0 grid grid-cols-[1fr_auto] items-center gap-4 mb-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 shadow-2xl backdrop-blur">
-  
       <div>
         <h1 className="text-3xl font-black tracking-tight">
           ProcessLog&Comex - Meta Geral
