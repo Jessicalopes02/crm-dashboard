@@ -19,6 +19,12 @@ import {
 } from 'recharts';
 
 import {
+  ComposableMap,
+  Geographies,
+  Geography
+} from 'react-simple-maps';
+
+import {
   TrendingUp,
   Users,
   Trophy,
@@ -176,15 +182,113 @@ const monthlyChartData = monthlyData.slice(-12);
         won: item.totalWon || 0
       })) || [];
 
-    const stateData = states.slice(0, 10).map((item) => ({
-      name: item._id,
-      receita: item.revenue || 0,
-      leads: item.totalLeads || 0,
-      won: item.wonLeads || 0,
-      open: item.openLeads || 0
-    }));
+    const stateData = states.map((item) => ({
+  name: item._id,
+  receita: item.revenue || 0,
+  leads: item.totalLeads || 0,
+  won: item.wonLeads || 0,
+  open: item.openLeads || 0
+}));
 
-    async function handleSyncNow() {
+const UF_MAP = {
+  AC: 'AC', ACRE: 'AC',
+  AL: 'AL', ALAGOAS: 'AL',
+  AP: 'AP', AMAPA: 'AP', AMAPÁ: 'AP',
+  AM: 'AM', AMAZONAS: 'AM',
+  BA: 'BA', BAHIA: 'BA',
+  CE: 'CE', CEARA: 'CE', CEARÁ: 'CE',
+  DF: 'DF', 'DISTRITO FEDERAL': 'DF',
+  ES: 'ES', 'ESPIRITO SANTO': 'ES', 'ESPÍRITO SANTO': 'ES',
+  GO: 'GO', GOIAS: 'GO', GOIÁS: 'GO',
+  MA: 'MA', MARANHAO: 'MA', MARANHÃO: 'MA',
+  MT: 'MT', 'MATO GROSSO': 'MT',
+  MS: 'MS', 'MATO GROSSO DO SUL': 'MS',
+  MG: 'MG', 'MINAS GERAIS': 'MG',
+  PA: 'PA', PARA: 'PA', PARÁ: 'PA',
+  PB: 'PB', PARAIBA: 'PB', PARAÍBA: 'PB',
+  PR: 'PR', PARANA: 'PR', PARANÁ: 'PR',
+  PE: 'PE', PERNAMBUCO: 'PE',
+  PI: 'PI', PIAUI: 'PI', PIAUÍ: 'PI',
+  RJ: 'RJ', 'RIO DE JANEIRO': 'RJ',
+  RN: 'RN', 'RIO GRANDE DO NORTE': 'RN',
+  RS: 'RS', 'RIO GRANDE DO SUL': 'RS',
+  RO: 'RO', RONDONIA: 'RO', RONDÔNIA: 'RO',
+  RR: 'RR', RORAIMA: 'RR',
+  SC: 'SC', 'SANTA CATARINA': 'SC',
+  SP: 'SP', 'SAO PAULO': 'SP', 'SÃO PAULO': 'SP',
+  SE: 'SE', SERGIPE: 'SE',
+  TO: 'TO', TOCANTINS: 'TO'
+};
+
+function normalizeText(text = '') {
+  return String(text)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toUpperCase()
+    .trim();
+}
+
+function extractUF(rawValue) {
+  const value = normalizeText(rawValue);
+
+  if (!value || value === 'SEM ESTADO') return null;
+
+  const directMatch = value.match(/\b(AC|AL|AP|AM|BA|CE|DF|ES|GO|MA|MT|MS|MG|PA|PB|PR|PE|PI|RJ|RN|RS|RO|RR|SC|SP|SE|TO)\b/);
+
+  if (directMatch) {
+    return directMatch[1];
+  }
+
+  for (const key of Object.keys(UF_MAP)) {
+    if (value.includes(key)) {
+      return UF_MAP[key];
+    }
+  }
+
+  return null;
+}
+
+const mapData = stateData.reduce((acc, item) => {
+  const uf = extractUF(item.name);
+
+  if (!uf) return acc;
+
+  if (!acc[uf]) {
+    acc[uf] = {
+      uf,
+      leads: 0,
+      won: 0,
+      open: 0,
+      receita: 0
+    };
+  }
+
+  acc[uf].leads += Number(item.leads || 0);
+  acc[uf].won += Number(item.won || 0);
+  acc[uf].open += Number(item.open || 0);
+  acc[uf].receita += Number(item.receita || 0);
+
+  return acc;
+}, {});
+
+const mapArray = Object.values(mapData);
+
+const maxLeads = Math.max(...mapArray.map((item) => item.leads), 1);
+
+function getMapColor(value) {
+  if (!value) return '#e2e8f0';
+
+  const intensity = value / maxLeads;
+
+  if (intensity > 0.8) return '#1d4ed8';
+  if (intensity > 0.6) return '#2563eb';
+  if (intensity > 0.4) return '#60a5fa';
+  if (intensity > 0.2) return '#93c5fd';
+
+  return '#dbeafe';
+}
+
+async function handleSyncNow() {
   try {
     setSyncing(true);
 
@@ -841,65 +945,127 @@ const monthlyChartData = monthlyData.slice(-12);
       </h2>
 
       <p className="text-slate-500">
-        Distribuição geográfica dos leads e receita
+        Distribuição geográfica dos leads e receita por UF
       </p>
     </div>
   </div>
 
-  <ResponsiveContainer width="100%" height={380}>
-    <BarChart data={stateData}>
-      <CartesianGrid strokeDasharray="3 3" />
-
-      <XAxis
-        dataKey="name"
-        tick={{ fontSize: 11 }}
-      />
-
-      <YAxis />
-
-      <Tooltip
-        formatter={(value, name) => {
-          if (name === 'receita') {
-            return [formatBRL(value), 'Receita'];
-          }
-
-          const labels = {
-            leads: 'Leads',
-            won: 'Won',
-            open: 'Open'
-          };
-
-          return [
-            formatNumber(value),
-            labels[name] || name
-          ];
+  <div className="grid grid-cols-1 xl:grid-cols-[2fr_1fr] gap-6 items-start">
+    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+      <ComposableMap
+        projection="geoMercator"
+        projectionConfig={{
+          scale: 700,
+          center: [-52, -15]
         }}
-      />
+        style={{
+          width: '100%',
+          height: 'auto'
+        }}
+      >
+        <Geographies geography="/maps/brazil-states.geojson">
+          {({ geographies }) =>
+            geographies.map((geo) => {
+              const uf =
+                geo.properties.sigla ||
+                geo.properties.SIGLA ||
+                geo.properties.uf ||
+                geo.properties.UF ||
+                geo.properties.id ||
+                geo.properties.name;
 
-      <Legend />
+              const normalizedUf = extractUF(uf);
+              const stateInfo = mapData[normalizedUf];
+              const leads = stateInfo?.leads || 0;
 
-      <Bar
-        dataKey="leads"
-        name="Leads"
-        fill="#2563eb"
-        radius={[8, 8, 0, 0]}
-      />
+              return (
+                <Geography
+                  key={geo.rsmKey}
+                  geography={geo}
+                  fill={getMapColor(leads)}
+                  stroke="#ffffff"
+                  strokeWidth={0.8}
+                  style={{
+                    default: {
+                      outline: 'none'
+                    },
+                    hover: {
+                      fill: '#0f172a',
+                      outline: 'none',
+                      cursor: 'pointer'
+                    },
+                    pressed: {
+                      outline: 'none'
+                    }
+                  }}
+                >
+                  <title>
+                    {normalizedUf || uf}
+                    {`\nLeads: ${formatNumber(stateInfo?.leads || 0)}`}
+                    {`\nWon: ${formatNumber(stateInfo?.won || 0)}`}
+                    {`\nOpen: ${formatNumber(stateInfo?.open || 0)}`}
+                    {`\nReceita: ${formatBRL(stateInfo?.receita || 0)}`}
+                  </title>
+                </Geography>
+              );
+            })
+          }
+        </Geographies>
+      </ComposableMap>
 
-      <Bar
-        dataKey="won"
-        name="Won"
-        fill="#16a34a"
-        radius={[8, 8, 0, 0]}
-      />
+      <div className="flex items-center gap-3 mt-4 text-xs text-slate-600">
+        <span>Menor volume</span>
 
-      <Bar
-        dataKey="open"
-        name="Open"
-        fill="#f97316"
-        radius={[8, 8, 0, 0]}
-      />
-    </BarChart>
-  </ResponsiveContainer>
+        <div className="flex h-3 w-40 rounded-full overflow-hidden border border-slate-200">
+          <div className="flex-1 bg-[#dbeafe]" />
+          <div className="flex-1 bg-[#93c5fd]" />
+          <div className="flex-1 bg-[#60a5fa]" />
+          <div className="flex-1 bg-[#2563eb]" />
+          <div className="flex-1 bg-[#1d4ed8]" />
+        </div>
+
+        <span>Maior volume</span>
+      </div>
+    </div>
+
+    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+      <h3 className="text-lg font-semibold mb-4">
+        Top estados
+      </h3>
+
+      <div className="space-y-3">
+        {mapArray
+          .sort((a, b) => b.leads - a.leads)
+          .slice(0, 8)
+          .map((item) => (
+            <div
+              key={item.uf}
+              className="flex items-center justify-between border-b border-slate-200 pb-2"
+            >
+              <div>
+                <div className="font-semibold text-slate-800">
+                  {item.uf}
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  Won: {formatNumber(item.won)} | Open: {formatNumber(item.open)}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="font-semibold text-blue-700">
+                  {formatNumber(item.leads)} leads
+                </div>
+
+                <div className="text-xs text-slate-500">
+                  {formatBRL(item.receita)}
+                </div>
+              </div>
+            </div>
+          ))}
+      </div>
+    </div>
+  </div>
 </section>
 </section>
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
