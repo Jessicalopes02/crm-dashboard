@@ -505,7 +505,10 @@ const generalCards = [
       }}
     >
 
-    <header className="shrink-0 grid grid-cols-[1fr_auto] items-center gap-4 mb-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 shadow-2xl backdrop-blur">
+    
+  {viewMode !== 'cover' && (
+  <header className="shrink-0 grid grid-cols-[1fr_auto] items-center gap-4 mb-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 shadow-2xl backdrop-blur">
+  
       <div>
         <h1 className="text-3xl font-black tracking-tight">
           ProcessLog&Comex - Meta Geral
@@ -613,47 +616,9 @@ const generalCards = [
     </button>
   </div>
 </header>
+  )}
     {viewMode === 'cover' && (
-  <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center px-10 py-10">
-    <section className="w-full h-full rounded-[32px] bg-black/20 border border-white/10 backdrop-blur-sm flex flex-col items-center justify-center text-center shadow-2xl">
-      <h1 className="text-7xl font-black tracking-tight">
-        Painel Comercial
-      </h1>
-
-      <p className="text-3xl text-slate-200 mt-5 font-semibold">
-        Metas, performance e acompanhamento em tempo real
-      </p>
-
-      <div className="mt-12 grid grid-cols-3 gap-5">
-        <div className="bg-white/10 border border-white/10 rounded-3xl px-10 py-6">
-          <div className="text-sm text-slate-300 uppercase tracking-widest">
-            Visão
-          </div>
-          <div className="text-3xl font-black mt-2">
-            Geral
-          </div>
-        </div>
-
-        <div className="bg-white/10 border border-white/10 rounded-3xl px-10 py-6">
-          <div className="text-sm text-slate-300 uppercase tracking-widest">
-            Metas
-          </div>
-          <div className="text-3xl font-black mt-2">
-            Setores
-          </div>
-        </div>
-
-        <div className="bg-white/10 border border-white/10 rounded-3xl px-10 py-6">
-          <div className="text-sm text-slate-300 uppercase tracking-widest">
-            Status
-          </div>
-          <div className="text-3xl font-black mt-2">
-            Online
-          </div>
-        </div>
-      </div>
-    </section>
-  </main>
+  <main className="flex-1 min-h-0 w-full overflow-hidden" />
 )}
     {viewMode === 'general' && (
       <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center">
@@ -672,7 +637,7 @@ const generalCards = [
 )}
 
 {viewMode === 'sector' && (
-  <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center">
+  <main className="flex-1 min-h-0 w-full overflow-hidden flex items-start justify-center pt-[145px] px-6">
     <section className="grid grid-cols-4 gap-3 w-full max-w-full min-w-0 overflow-hidden">
       {closerCards.map((item, index) => (
         <CloserGoalCard
