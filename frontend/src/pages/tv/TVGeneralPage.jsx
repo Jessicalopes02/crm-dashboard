@@ -50,15 +50,10 @@ function TVGeneralPage({ tvMode = false }) {
 
   useEffect(() => {
   function updateTvScale() {
-    const scale = isTvMode
-      ? Math.max(
-          window.innerWidth / BASE_WIDTH,
-          window.innerHeight / BASE_HEIGHT
-        )
-      : Math.min(
-          window.innerWidth / BASE_WIDTH,
-          window.innerHeight / BASE_HEIGHT
-        );
+    const scale = Math.min(
+  window.innerWidth / BASE_WIDTH,
+  window.innerHeight / BASE_HEIGHT
+);
 
     setTvScale(scale);
   }
@@ -520,19 +515,16 @@ const generalCards = [
   return (
   <div
     onDoubleClick={handleFullscreen}
-    className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center"
+    className="fixed inset-0 bg-black overflow-hidden flex items-center justify-center"
   >
     <div
-      className={`relative text-white overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col ${
-        isTvMode
-          ? 'shrink-0'
-          : 'aspect-video w-screen max-w-[177.78vh] max-h-screen'
-      }`}
+      className="relative text-white overflow-hidden bg-center bg-no-repeat flex flex-col shrink-0"
       style={{
-        width: isTvMode ? `${BASE_WIDTH}px` : undefined,
-        height: isTvMode ? `${BASE_HEIGHT}px` : undefined,
-        transform: isTvMode ? `scale(${tvScale})` : undefined,
+        width: `${BASE_WIDTH}px`,
+        height: `${BASE_HEIGHT}px`,
+        transform: `scale(${tvScale})`,
         transformOrigin: 'center center',
+        backgroundSize: '100% 100%',
         backgroundImage:
           viewMode === 'cover'
             ? "url('/campaign-tv/screen-1.png')"
@@ -657,15 +649,20 @@ const generalCards = [
   <main className="flex-1 min-h-0 w-full overflow-hidden" />
 )}
     {viewMode === 'general' && (
-      <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center">
-        <section className="grid grid-cols-2 gap-4 w-full max-w-full min-w-0">
-        {generalCards.map((item) => (
-          <SectorKpi
-            key={item.name}
-            name={item.name}
-            goal={item.goal}
-            actual={item.actual}
-            formatBRL={formatBRL}
+  <main
+    className="absolute inset-0 w-full h-full overflow-hidden px-[90px] pb-[60px]"
+    style={{
+      paddingTop: isTvMode ? 260 : 170
+    }}
+  >
+    <section className="grid grid-cols-2 gap-6 w-full max-w-full min-w-0">
+      {generalCards.map((item) => (
+        <SectorKpi
+          key={item.name}
+          name={item.name}
+          goal={item.goal}
+          actual={item.actual}
+          formatBRL={formatBRL}
         />
       ))}
     </section>
@@ -674,13 +671,12 @@ const generalCards = [
 
 {viewMode === 'sector' && (
   <main
-    className={
-      isTvMode
-        ? 'absolute inset-0 w-full h-full overflow-hidden pt-[165px] px-[38px] pb-[30px]'
-        : 'flex-1 min-h-0 w-full overflow-hidden flex items-start justify-center pt-40 px-6'
-    }
+    className="absolute inset-0 w-full h-full overflow-hidden px-[70px] pb-[50px]"
+    style={{
+      paddingTop: isTvMode ? 300 : 190
+    }}
   >
-    <section className="grid grid-cols-4 gap-4 w-full max-w-full min-w-0 overflow-hidden">
+    <section className="grid grid-cols-4 gap-4 w-full max-w-full min-w-0">
       {closerCards.map((item, index) => (
         <CloserGoalCard
           key={`${item.name}-${index}`}
