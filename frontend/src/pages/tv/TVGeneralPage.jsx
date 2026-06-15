@@ -6,12 +6,11 @@ import api from '../../services/api';
 function TVGeneralPage() {
   const [data, setData] = useState(null);
   const [period, setPeriod] = useState('month');
-  const [viewMode, setViewMode] = useState('general');
   const [rotationSeconds, setRotationSeconds] = useState(20);
   const [autoRotate, setAutoRotate] = useState(true);
   const [achievement, setAchievement] = useState(null);
   const [viewMode, setViewMode] = useState('cover');
-  
+
   useEffect(() => {
     loadData();
 
@@ -23,16 +22,21 @@ function TVGeneralPage() {
   }, [period]);
 
   useEffect(() => {
-    if (!autoRotate) return;
+  if (!autoRotate) return;
 
-    const rotation = setInterval(() => {
-      setViewMode((current) =>
-        current === 'general' ? 'sector' : 'general'
-      );
-    }, rotationSeconds * 1000);
+  const views = ['cover', 'general', 'sector'];
 
-    return () => clearInterval(rotation);
-  }, [autoRotate, rotationSeconds]);
+  const rotation = setInterval(() => {
+    setViewMode((current) => {
+      const currentIndex = views.indexOf(current);
+      const nextIndex = (currentIndex + 1) % views.length;
+
+      return views[nextIndex];
+    });
+  }, rotationSeconds * 1000);
+
+  return () => clearInterval(rotation);
+}, [autoRotate, rotationSeconds]);
 
   async function loadData() {
     try {
@@ -633,10 +637,10 @@ const generalCards = [
     </section>
   </main>
 )}
-    </div>
+        </div>
   </div>
 );
-
+}
 
 function BigKpi({ title, value, subtitle }) {
   return (
@@ -895,7 +899,7 @@ function CloserGoalCard({
           </div>
         </div>
       </div>
-    </motion.div>
+      </motion.div>
   );
 }
 
