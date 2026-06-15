@@ -45,6 +45,7 @@ function Dashboard() {
   const [syncing, setSyncing] = useState(false);
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const [selectedRevenueMonth, setSelectedRevenueMonth] = useState('');
 
   useEffect(() => {
     loadDashboard();
@@ -137,6 +138,12 @@ function Dashboard() {
     won: item.wonLeads || 0
   })) || [];
 const monthlyChartData = monthlyData.slice(-12);
+
+const selectedRevenueData = selectedRevenueMonth
+  ? monthlyData.filter((item) => item.month === selectedRevenueMonth)
+  : monthlyData.slice(-12);
+
+const revenueMonthOptions = monthlyData.map((item) => item.month);
 
   const assigneeData =
     dashboard.charts.leadsByAssignee
@@ -1074,74 +1081,148 @@ async function handleSyncNow() {
         </div>
   </div>
 </section>
-        <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
-          <ChartCard title="Receita Mensal">
-            <ResponsiveContainer width="100%" height={320}>
-  <BarChart
-    data={monthlyData.slice(-12)}
-    margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
-  >
-    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+<section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+  <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+    <div>
+      <h2 className="text-lg font-semibold text-slate-800">
+        Receita Mensal
+      </h2>
 
-    <XAxis
-      dataKey="month"
-      tick={{ fontSize: 11, fill: '#475569' }}
-      axisLine={false}
-      tickLine={false}
-    />
+      <p className="text-sm text-slate-500">
+        Evolução da receita por mês
+      </p>
+    </div>
 
-    <YAxis
-      tick={{ fontSize: 11, fill: '#475569' }}
-      axisLine={false}
-      tickLine={false}
-      tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
-    />
+    <select
+      value={selectedRevenueMonth}
+      onChange={(e) => setSelectedRevenueMonth(e.target.value)}
+      className="border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white"
+    >
+      <option value="">Últimos 12 meses</option>
 
-    <Tooltip
-      formatter={(value) => [formatBRL(value), 'Receita']}
-      labelStyle={{
-        color: '#0f172a',
-        fontWeight: 700
-      }}
-      contentStyle={{
-        borderRadius: 12,
-        border: '1px solid #e2e8f0'
-      }}
-    />
+      {revenueMonthOptions.map((month) => (
+        <option key={month} value={month}>
+          {month}
+        </option>
+      ))}
+    </select>
+  </div>
 
-    <Bar
-      dataKey="receita"
-      name="Receita"
-      fill="#2563eb"
-      radius={[8, 8, 0, 0]}
-      barSize={42}
-    />
-  </BarChart>
-</ResponsiveContainer>
-          </ChartCard>
+  <ResponsiveContainer width="100%" height={320}>
+    <BarChart
+      data={selectedRevenueData}
+      margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
+    >
+      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+
+      <XAxis
+        dataKey="month"
+        tick={{ fontSize: 11, fill: '#475569' }}
+        axisLine={false}
+        tickLine={false}
+      />
+
+      <YAxis
+        tick={{ fontSize: 11, fill: '#475569' }}
+        axisLine={false}
+        tickLine={false}
+        tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+      />
+
+      <Tooltip
+        formatter={(value) => [formatBRL(value), 'Receita']}
+        labelStyle={{
+          color: '#0f172a',
+          fontWeight: 700
+        }}
+        contentStyle={{
+          borderRadius: 12,
+          border: '1px solid #e2e8f0'
+        }}
+      />
+
+      <Bar
+        dataKey="receita"
+        name="Receita"
+        fill="#2563eb"
+        radius={[8, 8, 0, 0]}
+        barSize={42}
+      />
+    </BarChart>
+  </ResponsiveContainer>
+</div>
 
           <ChartCard title="Leads por Status">
-            <ResponsiveContainer width="100%" height={320}>
-              <PieChart>
-                <Pie
-                  data={statusData}
-                  dataKey="total"
-                  nameKey="name"
-                  outerRadius={110}
-                  label
-                >
-                  {statusData.map((entry, index) => (
-                    <Cell
-                      key={index}
-                      fill={COLORS[index % COLORS.length]}
-                    />
-                  ))}
-                </Pie>
-                <Tooltip formatter={(value) => formatNumber(value)} />
-              </PieChart>
-            </ResponsiveContainer>
-          </ChartCard>
+  <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4 items-center">
+    <ResponsiveContainer width="100%" height={300}>
+      <PieChart>
+        <Pie
+          data={statusData}
+          dataKey="total"
+          nameKey="name"
+          innerRadius={70}
+          outerRadius={110}
+          paddingAngle={3}
+        >
+          {statusData.map((entry, index) => (
+            <Cell
+              key={index}
+              fill={COLORS[index % COLORS.length]}
+            />
+          ))}
+        </Pie>
+
+        <Tooltip
+          formatter={(value, name) => [
+            formatNumber(value),
+            name
+          ]}
+          contentStyle={{
+            borderRadius: 12,
+            border: '1px solid #e2e8f0'
+          }}
+        />
+      </PieChart>
+    </ResponsiveContainer>
+
+    <div className="space-y-3">
+      {statusData.map((item, index) => {
+        const total = statusData.reduce((acc, current) => acc + Number(current.total || 0), 0);
+        const percent = total > 0 ? ((Number(item.total || 0) / total) * 100).toFixed(1) : '0.0';
+
+        return (
+          <div
+            key={item.name}
+            className="flex items-center justify-between gap-3 border-b border-slate-200 pb-2"
+          >
+            <div className="flex items-center gap-2 min-w-0">
+              <span
+                className="w-3 h-3 rounded-full shrink-0"
+                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+              />
+
+              <span className="text-sm font-semibold text-slate-700 truncate">
+                {item.name}
+              </span>
+            </div>
+
+            <div className="text-right shrink-0">
+              <div className="text-sm font-black text-slate-900">
+                {formatNumber(item.total)}
+              </div>
+
+              <div className="text-[11px] text-slate-500">
+                {percent}%
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  </div>
+</ChartCard>
 
           <ChartCard title="Top Responsáveis por Receita">
             <ResponsiveContainer width="100%" height={320}>
