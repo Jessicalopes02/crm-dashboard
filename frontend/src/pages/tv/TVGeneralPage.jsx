@@ -11,6 +11,11 @@ function TVGeneralPage({ tvMode = false }) {
   const [achievement, setAchievement] = useState(null);
   const [viewMode, setViewMode] = useState('cover');
 
+  const BASE_WIDTH = 1920;
+  const BASE_HEIGHT = 1080;
+
+  const [tvScale, setTvScale] = useState(1);
+
   const isTvMode =
   tvMode ||
   new URLSearchParams(window.location.search).get('fullscreen') === 'true';
@@ -93,6 +98,23 @@ function TVGeneralPage({ tvMode = false }) {
           period: goalPeriod
         }
       });
+
+    useEffect(() => {
+  function updateTvScale() {
+    const scale = Math.min(
+      window.innerWidth / BASE_WIDTH,
+      window.innerHeight / BASE_HEIGHT
+    );
+
+    setTvScale(scale);
+  }
+
+  updateTvScale();
+
+  window.addEventListener('resize', updateTvScale);
+
+  return () => window.removeEventListener('resize', updateTvScale);
+}, []);  
 
       const achievementPayload =
         achievementResponse.data?.data || achievementResponse.data;
@@ -498,8 +520,16 @@ const generalCards = [
     className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center"
   >
     <div
-      className="relative aspect-video w-screen max-w-[177.78vh] max-h-screen text-white overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
+      className={`relative text-white overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col ${
+        isTvMode
+          ? 'shrink-0'
+          : 'aspect-video w-screen max-w-[177.78vh] max-h-screen'
+      }`}
       style={{
+        width: isTvMode ? `${BASE_WIDTH}px` : undefined,
+        height: isTvMode ? `${BASE_HEIGHT}px` : undefined,
+        transform: isTvMode ? `scale(${tvScale})` : undefined,
+        transformOrigin: 'center center',
         backgroundImage:
           viewMode === 'cover'
             ? "url('/campaign-tv/screen-1.png')"
@@ -640,8 +670,14 @@ const generalCards = [
 )}
 
 {viewMode === 'sector' && (
-  <main className="absolute inset-0 w-full h-full overflow-hidden pt-[150px] px-6 pb-6">
-    <section className="grid grid-cols-4 gap-3 w-full max-w-full min-w-0">
+  <main
+    className={
+      isTvMode
+        ? 'absolute inset-0 w-full h-full overflow-hidden pt-[165px] px-[38px] pb-[30px]'
+        : 'flex-1 min-h-0 w-full overflow-hidden flex items-start justify-center pt-40 px-6'
+    }
+  >
+    <section className="grid grid-cols-4 gap-4 w-full max-w-full min-w-0 overflow-hidden">
       {closerCards.map((item, index) => (
         <CloserGoalCard
           key={`${item.name}-${index}`}
