@@ -498,10 +498,10 @@ const generalCards = [
       style={{
         backgroundImage:
           viewMode === 'cover'
-            ? "url('/screen-1.png')"
+            ? "url('/campaign-tv/screen-1.png')"
             : viewMode === 'general'
-              ? "url('/screen-2.png')"
-              : "url('/screen-3.png')"
+              ? "url('/campaign-tv/screen-2.png')"
+              : "url('/campaign-tv/screen-3.png')"
       }}
     >
 
@@ -555,26 +555,37 @@ const generalCards = [
     </div>
 
     <button
-      onClick={() => setViewMode('general')}
-      className={`px-4 py-2 rounded-2xl font-bold text-sm ${
-        viewMode === 'general'
-          ? 'bg-blue-600 text-white'
-          : 'bg-slate-800 text-slate-300'
-      }`}
-    >
-      Meta Geral
-    </button>
+  onClick={() => setViewMode('cover')}
+  className={`px-4 py-2 rounded-2xl font-bold text-sm ${
+    viewMode === 'cover'
+      ? 'bg-blue-600 text-white'
+      : 'bg-slate-800 text-slate-300'
+  }`}
+>
+  Capa
+</button>
 
-    <button
-      onClick={() => setViewMode('sector')}
-      className={`px-4 py-2 rounded-2xl font-bold text-sm ${
-        viewMode === 'sector'
-          ? 'bg-blue-600 text-white'
-          : 'bg-slate-800 text-slate-300'
-      }`}
-    >
-      Por Setor
-    </button>
+<button
+  onClick={() => setViewMode('general')}
+  className={`px-4 py-2 rounded-2xl font-bold text-sm ${
+    viewMode === 'general'
+      ? 'bg-blue-600 text-white'
+      : 'bg-slate-800 text-slate-300'
+  }`}
+>
+  Meta Geral
+</button>
+
+<button
+  onClick={() => setViewMode('sector')}
+  className={`px-4 py-2 rounded-2xl font-bold text-sm ${
+    viewMode === 'sector'
+      ? 'bg-blue-600 text-white'
+      : 'bg-slate-800 text-slate-300'
+  }`}
+>
+  Por Setor
+</button>
 
     <select
       value={rotationSeconds}
@@ -602,7 +613,48 @@ const generalCards = [
     </button>
   </div>
 </header>
+    {viewMode === 'cover' && (
+  <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center px-10 py-10">
+    <section className="w-full h-full rounded-[32px] bg-black/20 border border-white/10 backdrop-blur-sm flex flex-col items-center justify-center text-center shadow-2xl">
+      <h1 className="text-7xl font-black tracking-tight">
+        Painel Comercial
+      </h1>
 
+      <p className="text-3xl text-slate-200 mt-5 font-semibold">
+        Metas, performance e acompanhamento em tempo real
+      </p>
+
+      <div className="mt-12 grid grid-cols-3 gap-5">
+        <div className="bg-white/10 border border-white/10 rounded-3xl px-10 py-6">
+          <div className="text-sm text-slate-300 uppercase tracking-widest">
+            Visão
+          </div>
+          <div className="text-3xl font-black mt-2">
+            Geral
+          </div>
+        </div>
+
+        <div className="bg-white/10 border border-white/10 rounded-3xl px-10 py-6">
+          <div className="text-sm text-slate-300 uppercase tracking-widest">
+            Metas
+          </div>
+          <div className="text-3xl font-black mt-2">
+            Setores
+          </div>
+        </div>
+
+        <div className="bg-white/10 border border-white/10 rounded-3xl px-10 py-6">
+          <div className="text-sm text-slate-300 uppercase tracking-widest">
+            Status
+          </div>
+          <div className="text-3xl font-black mt-2">
+            Online
+          </div>
+        </div>
+      </div>
+    </section>
+  </main>
+)}
     {viewMode === 'general' && (
       <main className="flex-1 min-h-0 w-full overflow-hidden flex items-center justify-center">
         <section className="grid grid-cols-2 gap-4 w-full max-w-full min-w-0">
