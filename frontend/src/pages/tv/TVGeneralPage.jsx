@@ -671,9 +671,9 @@ const generalCards = [
 
 {viewMode === 'sector' && (
   <main
-    className="absolute inset-0 w-full h-full overflow-hidden px-[70px] pb-[50px]"
+    className="absolute inset-0 w-full h-full overflow-hidden px-[70px] pb-[40px]"
     style={{
-      paddingTop: isTvMode ? 300 : 190
+      paddingTop: isTvMode ? 155 : 150
     }}
   >
     <section className="grid grid-cols-4 gap-4 w-full max-w-full min-w-0">
@@ -872,57 +872,72 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-4 py-3 border border-white/10 shadow-2xl overflow-hidden h-[190px]"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-4 py-4 border border-white/10 shadow-2xl overflow-hidden h-[235px]"
     >
-      <div className="flex gap-3 h-full min-w-0">
+      <div className="flex gap-4 h-full min-w-0">
         <div className="shrink-0 flex items-center">
           {photo ? (
             <img
               src={photo}
               alt={firstName}
-              className="w-[96px] h-[132px] rounded-2xl object-cover border border-white/20"
+              className="w-[118px] h-[165px] rounded-2xl object-cover border border-white/20"
             />
           ) : (
-            <div className="w-[96px] h-[132px] rounded-2xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-3xl">
+            <div className="w-[118px] h-[165px] rounded-2xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-4xl">
               {initials}
             </div>
           )}
         </div>
 
-        <div className="font-black text-2xl truncate leading-tight">
+        <div className="flex-1 min-w-0 flex flex-col justify-between">
+          <div className="flex items-start justify-between gap-3">
+            <div className="min-w-0">
+              <div className="font-black text-[38px] truncate leading-none text-white">
+                {firstName}
+              </div>
+
+              <div className="text-slate-300 text-base mt-1 font-semibold">
+                Meta individual
+              </div>
+            </div>
+
+            <div className="shrink-0 text-cyan-300 font-black text-[36px] leading-none">
+              {percent.toFixed(1)}%
+            </div>
+          </div>
 
           <div className="min-w-0">
-  <div className="text-slate-400 text-[11px]">
-    Atingido
-  </div>
+            <div className="text-slate-300 text-base font-semibold">
+              Atingido
+            </div>
 
-  <div className="font-black text-[34px] leading-none whitespace-nowrap">
-  {formatBRL(actual)}
-</div>
-</div>
+            <div className="font-black text-[40px] leading-none whitespace-nowrap text-white">
+              {formatBRL(actual)}
+            </div>
+          </div>
 
-          <div className="relative w-full h-3 bg-slate-800 rounded-full overflow-hidden">
-  <motion.div
-    initial={{ width: 0 }}
-    animate={{ width: `${Math.min(percent, 100)}%` }}
-    transition={{ duration: 1.2, ease: 'easeOut' }}
-    className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
-  />
-</div>
+          <div className="relative w-full h-4 bg-slate-800 rounded-full overflow-hidden">
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{ width: `${Math.min(percent, 100)}%` }}
+              transition={{ duration: 1.2, ease: 'easeOut' }}
+              className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+            />
+          </div>
 
-          <div className="flex justify-between gap-2 text-[11px]">
+          <div className="flex justify-between gap-2 text-base font-bold">
             <span className="text-cyan-300 truncate">
               Estimado: {formatCompactBRL(estimated || 0)}
             </span>
 
-            <span className="text-cyan-400 font-bold shrink-0">
+            <span className="text-cyan-300 shrink-0">
               {goal > 0
                 ? `${(((estimated || 0) / goal) * 100).toFixed(1)}%`
                 : '0%'}
             </span>
           </div>
 
-          <div className="flex justify-between gap-2 text-[11px] text-slate-400">
+          <div className="flex justify-between gap-2 text-sm text-slate-300 font-semibold">
             <span className="truncate">
               Meta: {formatCompactBRL(goal)}
             </span>
@@ -933,7 +948,7 @@ function CloserGoalCard({
           </div>
         </div>
       </div>
-      </motion.div>
+    </motion.div>
   );
 }
 
