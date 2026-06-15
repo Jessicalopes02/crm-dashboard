@@ -870,28 +870,47 @@ const monthlyChartData = monthlyData.slice(-12);
 
           <ChartCard title="Receita Mensal">
             <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`} />
-                <Tooltip
-                  formatter={(value) => [
-                   new Intl.NumberFormat('pt-BR', {
-                    style: 'currency',
-                    currency: 'BRL'
-                 }).format(value || 0),
-                 'Receita'
-               ]}
-             />
-                <Line
-                  type="monotone"
-                  dataKey="receita"
-                  stroke="#1d4ed8"
-                  strokeWidth={3}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+  <BarChart
+    data={monthlyData.slice(-12)}
+    margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
+  >
+    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+
+    <XAxis
+      dataKey="month"
+      tick={{ fontSize: 11, fill: '#475569' }}
+      axisLine={false}
+      tickLine={false}
+    />
+
+    <YAxis
+      tick={{ fontSize: 11, fill: '#475569' }}
+      axisLine={false}
+      tickLine={false}
+      tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+    />
+
+    <Tooltip
+      formatter={(value) => [formatBRL(value), 'Receita']}
+      labelStyle={{
+        color: '#0f172a',
+        fontWeight: 700
+      }}
+      contentStyle={{
+        borderRadius: 12,
+        border: '1px solid #e2e8f0'
+      }}
+    />
+
+    <Bar
+      dataKey="receita"
+      name="Receita"
+      fill="#2563eb"
+      radius={[8, 8, 0, 0]}
+      barSize={42}
+    />
+  </BarChart>
+</ResponsiveContainer>
           </ChartCard>
 
           <ChartCard title="Leads por Status">
@@ -929,28 +948,88 @@ const monthlyChartData = monthlyData.slice(-12);
           </ChartCard>
 
           <ChartCard title="Evolução de Leads Mensais">
-            <ResponsiveContainer width="100%" height={320}>
-              <LineChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
-                <YAxis />
-                <Tooltip formatter={(value) => formatNumber(value)} />
-                <Line
-                  type="monotone"
-                  dataKey="leads"
-                  stroke="#2563eb"
-                  strokeWidth={3}
-                  dot={false}
-                />
-                <Line
-                  type="monotone"
-                  dataKey="won"
-                  stroke="#0f172a"
-                  strokeWidth={3}
-                  dot={false}
-                />
-              </LineChart>
-            </ResponsiveContainer>
+           <ResponsiveContainer width="100%" height={320}>
+  <ComposedChart
+    data={monthlyData.slice(-12)}
+    margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
+  >
+    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+
+    <XAxis
+      dataKey="month"
+      tick={{ fontSize: 11, fill: '#475569' }}
+      axisLine={false}
+      tickLine={false}
+    />
+
+    <YAxis
+      yAxisId="revenue"
+      tick={{ fontSize: 11, fill: '#475569' }}
+      axisLine={false}
+      tickLine={false}
+      tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
+    />
+
+    <YAxis
+      yAxisId="won"
+      orientation="right"
+      tick={{ fontSize: 11, fill: '#16a34a' }}
+      axisLine={false}
+      tickLine={false}
+      allowDecimals={false}
+    />
+
+    <Tooltip
+      formatter={(value, name) => {
+        if (name === 'Receita') {
+          return [formatBRL(value), 'Receita'];
+        }
+
+        if (name === 'Won') {
+          return [formatNumber(value), 'Won'];
+        }
+
+        return [formatNumber(value), name];
+      }}
+      labelStyle={{
+        color: '#0f172a',
+        fontWeight: 700
+      }}
+      contentStyle={{
+        borderRadius: 12,
+        border: '1px solid #e2e8f0'
+      }}
+    />
+
+    <Legend />
+
+    <Bar
+      yAxisId="revenue"
+      dataKey="revenue"
+      name="Receita"
+      fill="#2563eb"
+      radius={[8, 8, 0, 0]}
+      barSize={36}
+    />
+
+    <Line
+      yAxisId="won"
+      type="monotone"
+      dataKey="won"
+      name="Won"
+      stroke="#16a34a"
+      strokeWidth={3}
+      dot={{
+        r: 4,
+        strokeWidth: 2,
+        fill: '#ffffff'
+      }}
+      activeDot={{
+        r: 6
+      }}
+    />
+  </ComposedChart>
+</ResponsiveContainer>
           </ChartCard>
 
         </section>
