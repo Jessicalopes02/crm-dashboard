@@ -953,8 +953,9 @@ async function handleSyncNow() {
     </div>
   </div>
 
-  <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
-  <div className="w-full h-[620px] flex items-center justify-center overflow-hidden">
+    <div className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_360px] gap-6 items-start">
+    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+      <div className="w-full h-[520px] flex items-center justify-center overflow-hidden">
     <ComposableMap
       projection="geoMercator"
       width={700}
@@ -1070,7 +1071,8 @@ async function handleSyncNow() {
             </div>
           ))}
       </div>
-    </div>
+        </div>
+  </div>
 </section>
         <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
 
