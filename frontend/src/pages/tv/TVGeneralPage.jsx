@@ -47,6 +47,29 @@ function TVGeneralPage({ tvMode = false }) {
   return () => clearInterval(rotation);
 }, [autoRotate, rotationSeconds]);
 
+
+  useEffect(() => {
+  function updateTvScale() {
+    const scale = isTvMode
+      ? Math.max(
+          window.innerWidth / BASE_WIDTH,
+          window.innerHeight / BASE_HEIGHT
+        )
+      : Math.min(
+          window.innerWidth / BASE_WIDTH,
+          window.innerHeight / BASE_HEIGHT
+        );
+
+    setTvScale(scale);
+  }
+
+  updateTvScale();
+
+  window.addEventListener('resize', updateTvScale);
+
+  return () => window.removeEventListener('resize', updateTvScale);
+}, [isTvMode]);
+
   async function loadData() {
     try {
       const now = new Date();
@@ -99,23 +122,6 @@ function TVGeneralPage({ tvMode = false }) {
         }
       });
 
-    useEffect(() => {
-  function updateTvScale() {
-    const scale = Math.min(
-      window.innerWidth / BASE_WIDTH,
-      window.innerHeight / BASE_HEIGHT
-    );
-
-    setTvScale(scale);
-  }
-
-  updateTvScale();
-
-  window.addEventListener('resize', updateTvScale);
-
-  return () => window.removeEventListener('resize', updateTvScale);
-}, []);  
-
       const achievementPayload =
         achievementResponse.data?.data || achievementResponse.data;
 
@@ -127,9 +133,6 @@ function TVGeneralPage({ tvMode = false }) {
       console.error(error);
     }
   }
-
-
-
 
   const formatBRL = (value) => {
     return new Intl.NumberFormat('pt-BR', {
