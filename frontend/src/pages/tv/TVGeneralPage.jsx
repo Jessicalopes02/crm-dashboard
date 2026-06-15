@@ -11,6 +11,8 @@ function TVGeneralPage() {
   const [achievement, setAchievement] = useState(null);
   const [viewMode, setViewMode] = useState('cover');
 
+  const isTvMode = new URLSearchParams(window.location.search).get('tv') === '1';
+
   useEffect(() => {
     loadData();
 
@@ -506,7 +508,7 @@ const generalCards = [
     >
 
     
-  {viewMode !== 'cover' && (
+  {!isTvMode && viewMode !== 'cover' && (
   <header className="shrink-0 grid grid-cols-[1fr_auto] items-center gap-4 mb-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 shadow-2xl backdrop-blur">
   
       <div>
@@ -637,8 +639,8 @@ const generalCards = [
 )}
 
 {viewMode === 'sector' && (
-  <main className="flex-1 min-h-0 w-full overflow-hidden flex items-start justify-center pt-[145px] px-6">
-    <section className="grid grid-cols-4 gap-3 w-full max-w-full min-w-0 overflow-hidden">
+  <main className="absolute inset-0 w-full h-full overflow-hidden pt-[150px] px-6 pb-6">
+    <section className="grid grid-cols-4 gap-3 w-full max-w-full min-w-0">
       {closerCards.map((item, index) => (
         <CloserGoalCard
           key={`${item.name}-${index}`}
