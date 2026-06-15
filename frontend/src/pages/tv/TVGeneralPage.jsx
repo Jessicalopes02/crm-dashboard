@@ -676,7 +676,7 @@ const generalCards = [
       paddingTop: isTvMode ? 300 : 190
     }}
   >
-    <section className="grid grid-cols-4 gap-4 w-full max-w-full min-w-0">
+    <section className="grid grid-cols-3 gap-5 w-full max-w-full min-w-0">
       {closerCards.map((item, index) => (
         <CloserGoalCard
           key={`${item.name}-${index}`}
@@ -872,7 +872,7 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-3 py-3 border border-white/10 shadow-2xl overflow-hidden h-[170px]"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-3xl px-5 py-4 border border-white/10 shadow-2xl overflow-hidden h-[190px]"
     >
       <div className="flex gap-3 h-full min-w-0">
         <div className="shrink-0 flex items-center">
@@ -880,10 +880,10 @@ function CloserGoalCard({
             <img
               src={photo}
               alt={firstName}
-              className="w-20 h-28 rounded-xl object-cover border border-white/20"
+              className="w-24 h-32 rounded-2xl object-cover border border-white/20"
             />
           ) : (
-            <div className="w-20 h-28 rounded-xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-2xl">
+            <div className="w-24 h-32 rounded-2xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-3xl">
               {initials}
             </div>
           )}
@@ -891,11 +891,11 @@ function CloserGoalCard({
 
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <div>
-            <div className="font-bold text-base truncate">
+            <div className="font-black text-2xl truncate">
               {firstName}
             </div>
 
-            <div className="text-slate-400 text-[11px]">
+            <div className="text-slate-400 text-sm">
               Meta individual
             </div>
           </div>
@@ -905,7 +905,7 @@ function CloserGoalCard({
     Atingido
   </div>
 
-  <div className="font-black text-xl leading-none whitespace-nowrap">
+  <div className="font-black text-3xl leading-none whitespace-nowrap">
     {formatBRL(actual)}
   </div>
 </div>
@@ -920,12 +920,12 @@ function CloserGoalCard({
     />
   </div>
 
-  <div className="shrink-0 w-10 h-10 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 font-black text-[11px]">
+  <div className="shrink-0 w-14 h-14 rounded-full bg-blue-500/20 border border-blue-400/40 flex items-center justify-center text-blue-300 font-black text-sm">
     {percent.toFixed(1)}%
   </div>
 </div>
 
-          <div className="flex justify-between gap-2 text-[10px]">
+          <div className="flex justify-between gap-2 text-xs">
             <span className="text-cyan-300 truncate">
               Estimado: {formatCompactBRL(estimated || 0)}
             </span>
@@ -937,7 +937,7 @@ function CloserGoalCard({
             </span>
           </div>
 
-          <div className="flex justify-between gap-2 text-[10px] text-slate-500">
+          <div className="flex justify-between gap-2 text-xs text-slate-400">
             <span className="truncate">
               Meta: {formatCompactBRL(goal)}
             </span>
