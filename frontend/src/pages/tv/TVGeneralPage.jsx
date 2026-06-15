@@ -812,45 +812,39 @@ function SectorKpi({ name, goal, actual, formatBRL }) {
   const percent = goal > 0 ? Math.min((actual / goal) * 100, 999) : 0;
   const missing = Math.max(goal - actual, 0);
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
-      animate={{ opacity: 1, scale: 1 }}
-      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-4 py-3 border border-white/10 shadow-2xl overflow-hidden h-[165px]"
-    >
-      <div className="flex justify-between items-start gap-2">
+    return (
+  <div className="w-full min-w-0 bg-white/10 backdrop-blur rounded-3xl px-8 py-7 border border-white/10 shadow-2xl overflow-hidden h-[250px]">
+      <div className="flex justify-between items-start gap-4">
         <div>
-          <div className="text-slate-300 text-lg font-bold">
+          <div className="text-slate-300 text-4xl font-black leading-tight">
             {name}
           </div>
 
-          <div className="text-lg font-black mt-1">
+          <div className="text-5xl font-black mt-5 leading-none">
             {formatBRL(actual)}
           </div>
 
-          <div className="text-slate-500 text-xs mt-1">
+          <div className="text-slate-400 text-2xl mt-4 font-semibold">
             Meta: {formatBRL(goal)}
           </div>
         </div>
 
-        <div className="text-blue-400 text-xl font-black">
+        <div className="text-blue-400 text-5xl font-black leading-none">
           {percent.toFixed(1)}%
         </div>
       </div>
 
-      <div className="w-full h-2 bg-slate-800 rounded-full overflow-hidden mt-3">
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: `${Math.min(percent, 100)}%` }}
-          transition={{ duration: 1.2, ease: 'easeOut' }}
+      <div className="w-full h-5 bg-slate-800 rounded-full overflow-hidden mt-8">
+        <div
           className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+          style={{ width: `${Math.min(percent, 100)}%` }}
         />
       </div>
 
-      <div className="text-slate-500 text-xs mt-2">
+      <div className="text-slate-400 text-xl mt-5 font-semibold">
         Falta: {formatBRL(missing)}
       </div>
-    </motion.div>
+    </div>
   );
 }
 
