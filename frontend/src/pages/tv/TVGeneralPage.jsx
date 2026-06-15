@@ -10,7 +10,8 @@ function TVGeneralPage() {
   const [rotationSeconds, setRotationSeconds] = useState(20);
   const [autoRotate, setAutoRotate] = useState(true);
   const [achievement, setAchievement] = useState(null);
-
+  const [viewMode, setViewMode] = useState('cover');
+  
   useEffect(() => {
     loadData();
 
@@ -484,21 +485,21 @@ const generalCards = [
 ];
 
   return (
- <div
-  onDoubleClick={handleFullscreen}
-  className="w-full max-w-full min-h-screen h-screen text-white px-3 py-3 overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
-    style={{
-      backgroundImage: `
-        linear-gradient(
-          135deg,
-        rgba(15, 23, 42, 0.45),
-        rgba(30, 41, 59, 0.35),
-        rgba(37, 99, 235, 0.18)
-      ),
-      url('/background-tv.png')
-    `
-  }}
->
+  <div
+    onDoubleClick={handleFullscreen}
+    className="w-screen h-screen bg-black overflow-hidden flex items-center justify-center"
+  >
+    <div
+      className="relative aspect-video w-screen max-w-[177.78vh] max-h-screen text-white overflow-hidden bg-cover bg-center bg-no-repeat flex flex-col"
+      style={{
+        backgroundImage:
+          viewMode === 'cover'
+            ? "url('/screen-1.png')"
+            : viewMode === 'general'
+              ? "url('/screen-2.png')"
+              : "url('/screen-3.png')"
+      }}
+    >
 
     <header className="shrink-0 grid grid-cols-[1fr_auto] items-center gap-4 mb-4 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 shadow-2xl backdrop-blur">
       <div>
@@ -632,9 +633,9 @@ const generalCards = [
     </section>
   </main>
 )}
+    </div>
   </div>
 );
-}
 
 
 function BigKpi({ title, value, subtitle }) {
