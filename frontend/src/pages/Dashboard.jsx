@@ -145,6 +145,14 @@ const selectedRevenueData = selectedRevenueMonth
 
 const revenueMonthOptions = monthlyData.map((item) => item.month);
 
+const leadTimeChartData =
+  leadTime?.byMonth?.map((item) => ({
+    month: `${String(item._id.month).padStart(2, '0')}/${item._id.year}`,
+    averageDays: Number(item.averageLeadTimeDays || 0),
+    totalWon: Number(item.totalWon || 0)
+  })) || [];
+
+  
   const assigneeData =
     dashboard.charts.leadsByAssignee
       .filter((item) => item._id)
@@ -675,7 +683,6 @@ async function handleSyncNow() {
 </section>
 
 <section className="bg-white rounded-2xl shadow p-6">
-
   <div className="flex items-center justify-between mb-6">
     <div>
       <h2 className="text-2xl font-bold">
@@ -689,108 +696,95 @@ async function handleSyncNow() {
   </div>
 
   <FunnelChart
-  data={funnelData}
-  formatNumber={formatNumber}
-  formatBRL={formatBRL}
-/>
-
+    data={funnelData}
+    formatNumber={formatNumber}
+    formatBRL={formatBRL}
+  />
 </section>
 
-<section className="bg-white rounded-2xl shadow p-6">
-  <div className="flex items-center justify-between mb-6">
-    <div>
-      <h2 className="text-2xl font-bold">
-        Evolução do Lead Time
-      </h2>
+<ChartCard
+  title="Evolução do Lead Time"
+  subtitle="Tempo médio entre abertura e venda"
+>
+  <div style={{ width: '100%', height: 400 }}>
+    <ResponsiveContainer width="100%" height="100%">
+      <ComposedChart
+        data={leadTimeChartData}
+        margin={{ top: 20, right: 30, left: 10, bottom: 10 }}
+      >
+        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
 
-      <p className="text-slate-500">
-        Tempo médio entre abertura e venda
-      </p>
-    </div>
+        <XAxis
+          dataKey="month"
+          tick={{ fontSize: 12, fill: '#475569' }}
+          axisLine={false}
+          tickLine={false}
+        />
+
+        <YAxis
+          yAxisId="days"
+          tick={{ fontSize: 12, fill: '#475569' }}
+          axisLine={false}
+          tickLine={false}
+          label={{
+            value: 'Dias',
+            angle: -90,
+            position: 'insideLeft',
+            fill: '#475569',
+            fontSize: 12
+          }}
+        />
+
+        <YAxis
+          yAxisId="won"
+          orientation="right"
+          tick={{ fontSize: 12, fill: '#16a34a' }}
+          axisLine={false}
+          tickLine={false}
+          allowDecimals={false}
+        />
+
+        <Tooltip
+          formatter={(value, name) => {
+            if (name === 'Lead Time Médio') {
+              return [`${Number(value).toFixed(1)} dias`, 'Lead Time Médio'];
+            }
+
+            if (name === 'Won') {
+              return [formatNumber(value), 'Won'];
+            }
+
+            return [value, name];
+          }}
+          labelStyle={{ color: '#0f172a', fontWeight: 700 }}
+          contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
+        />
+
+        <Legend />
+
+        <Bar
+          yAxisId="days"
+          dataKey="averageDays"
+          name="Lead Time Médio"
+          fill="#2563eb"
+          radius={[8, 8, 0, 0]}
+          barSize={38}
+        />
+
+        <Line
+          yAxisId="won"
+          type="monotone"
+          dataKey="totalWon"
+          name="Won"
+          stroke="#16a34a"
+          strokeWidth={3}
+          dot={{ r: 4, strokeWidth: 2, fill: '#ffffff' }}
+          activeDot={{ r: 6 }}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
   </div>
-
-  <ResponsiveContainer width="100%" height={380}>
-  <ComposedChart
-    data={monthlyChartData}
-    margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
-  >
-    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
-
-    <XAxis
-      dataKey="month"
-      tick={{ fontSize: 12, fill: '#475569' }}
-      axisLine={false}
-      tickLine={false}
-    />
-
-    <YAxis
-      yAxisId="revenue"
-      tick={{ fontSize: 12, fill: '#475569' }}
-      axisLine={false}
-      tickLine={false}
-      tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
-    />
-
-    <YAxis
-      yAxisId="won"
-      orientation="right"
-      tick={{ fontSize: 12, fill: '#16a34a' }}
-      axisLine={false}
-      tickLine={false}
-      allowDecimals={false}
-    />
-
-    <Tooltip
-      formatter={(value, name) => {
-        if (name === 'Receita') {
-          return [formatBRL(value), 'Receita'];
-        }
-
-        if (name === 'Won') {
-          return [formatNumber(value), 'Won'];
-        }
-
-        return [value, name];
-      }}
-      labelStyle={{
-        color: '#0f172a',
-        fontWeight: 700
-      }}
-      contentStyle={{
-        borderRadius: 12,
-        border: '1px solid #e2e8f0'
-      }}
-    />
-
-    <Legend />
-
-    <Bar
-      yAxisId="revenue"
-      dataKey="revenue"
-      name="Receita"
-      fill="#2563eb"
-      radius={[8, 8, 0, 0]}
-      barSize={34}
-    />
-
-    <Line
-      yAxisId="won"
-      type="monotone"
-      dataKey="won"
-      name="Won"
-      stroke="#16a34a"
-      strokeWidth={3}
-      dot={{
-        r: 4,
-        strokeWidth: 2
-      }}
-      activeDot={{
-        r: 6
-      }}
-    />
-  </ComposedChart>
-</ResponsiveContainer>
-</section>
+</ChartCard>
 
 <section className="bg-white rounded-2xl shadow p-6">
   <div className="flex items-center justify-between mb-6">
@@ -1349,12 +1343,21 @@ function MetricCard({ title, value, icon, description }) {
   );
 }
 
-function ChartCard({ title, children }) {
+function ChartCard({ title, subtitle, children }) {
   return (
     <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-      <h2 className="text-lg font-semibold text-slate-800 mb-4">
-        {title}
-      </h2>
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-slate-800">
+          {title}
+        </h2>
+
+        {subtitle && (
+          <p className="text-sm text-slate-500 mt-1">
+            {subtitle}
+          </p>
+        )}
+      </div>
+
       {children}
     </div>
   );
