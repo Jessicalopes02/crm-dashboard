@@ -957,27 +957,18 @@ async function getPerformanceDashboard(startDate, endDate, role = 'closer') {
   {
     $match: {
       ...baseFilter,
-      status: { $nin: [10, 11, 12] }
-    }
-  },
-  {
-    $addFields: {
-      estimateDate: {
-        $ifNull: ['$dueTime', '$closedTime']
-      }
-    }
-  },
-  {
-    $match: hasDateFilter
-      ? {
-          estimateDate: {
+      status: {
+        $nin: [10, 11, 12]
+      },
+      closedTime: hasDateFilter
+        ? {
             ...dateConditions,
             $ne: null
           }
-        }
-      : {
-          estimateDate: { $ne: null }
-        }
+        : {
+            $ne: null
+          }
+    }
   },
   {
     $group: {
@@ -1085,14 +1076,8 @@ async function getPerformanceDashboard(startDate, endDate, role = 'closer') {
           : 0
     }))
     .sort((a, b) => {
-      const aTotal =
-        Number(a.estimatedRevenue || 0) + Number(a.totalRevenue || 0);
-
-      const bTotal =
-        Number(b.estimatedRevenue || 0) + Number(b.totalRevenue || 0);
-
-      return bTotal - aTotal;
-    });
+  return Number(b.totalRevenue || 0) - Number(a.totalRevenue || 0);
+});
 
   return performance;
 }
@@ -2221,6 +2206,100 @@ app.get('/api/audit/won-assignees', async (req, res) => {
       sucesso: true,
       result
     });
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
+app.get('/api/audit/estimated-by-assignee', async (req, res) => {
+  try {
+    const { startDate, endDate, assignee } = req.query;
+
+    const dateConditions = {};
+
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      dateConditions.$gte = start;
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateConditions.$lte = end;
+    }
+
+    const filter = {
+      status: {
+        $nin: [10, 11, 12]
+      },
+      closedTime: {
+        ...dateConditions,
+        $ne: null
+      },
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      }
+    };
+
+    if (assignee) {
+      filter['assignee.name'] = {
+        $regex: assignee,
+        $options: 'i'
+      };
+    }
+
+    const leads = await Lead.find(filter)
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        value: 1,
+        closedTime: 1,
+        modifiedTime: 1,
+        assignee: 1,
+        rawData: 1,
+        htmlUrl: 1,
+        synced_at: 1
+      })
+      .sort({
+        closedTime: 1
+      })
+      .lean();
+
+    const totalRevenue = leads.reduce(
+      (sum, lead) => sum + Number(lead.value?.amount || 0),
+      0
+    );
+
+    res.json({
+      sucesso: true,
+      filters: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+        assignee: assignee || null
+      },
+      summary: {
+        totalLeads: leads.length,
+        totalRevenue
+      },
+      leads: leads.map((lead) => ({
+        nutshell_id: lead.nutshell_id,
+        name: lead.name,
+        status: lead.status,
+        value: lead.value?.amount || 0,
+        closedTime: lead.closedTime,
+        modifiedTime: lead.modifiedTime,
+        assignee: lead.assignee?.name,
+        rawAssignee: lead.rawData?.assignee?.name,
+        htmlUrl: lead.htmlUrl || lead.rawData?.htmlUrl,
+        synced_at: lead.synced_at
+      }))
+    });
+
   } catch (error) {
     res.status(500).json({
       sucesso: false,
