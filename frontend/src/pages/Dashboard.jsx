@@ -594,57 +594,39 @@ async function handleSyncNow() {
 <section className="bg-white rounded-2xl shadow p-6">
 
   <div className="flex items-center justify-between mb-4">
-  <div>
-    <h2 className="text-lg font-bold text-slate-900">
-      Ranking Comercial
-    </h2>
+    <div>
+      <h2 className="text-lg font-bold text-slate-900">
+        Ranking Comercial
+      </h2>
 
-    <p className="text-sm text-slate-500">
-      Performance por responsável
-    </p>
+      <p className="text-sm text-slate-500">
+        Performance por responsável
+      </p>
+    </div>
   </div>
-</div>
 
   <div className="overflow-x-auto">
     <table className="w-full">
 
+      {/* HEADER CERTO */}
       <thead>
-        <tr className="border-b">
-
-  <td>{item.name}</td>
-
-  <td className="font-bold text-blue-700">
-    {formatBRL(item.receita)}
-  </td>
-
-  <td className="text-green-600">
-    {item.won}
-  </td>
-
-  <td>
-    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
-      {item.conversionRate}%
-    </span>
-    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-2">
-      <div
-        className="h-full bg-blue-600"
-        style={{ width: `${Math.min(item.percent, 100)}%` }}
-      />
-    </div>
-  </td>
-
-  <td className="text-slate-700">
-    {formatBRL(item.ticket)}
-  </td>
-
-</tr>
+        <tr className="border-b text-left text-sm text-slate-500">
+          <th className="py-3">Responsável</th>
+          <th>Leads</th>
+          <th>Won</th>
+          <th>Lost</th>
+          <th>Conversão</th>
+          <th>Receita</th>
+          <th>Ticket Médio</th>
+        </tr>
       </thead>
 
+      {/* BODY CERTO */}
       <tbody>
         {performance.map((item, index) => (
           <tr
             key={index}
-            className="border-b hover:bg-slate-50"
+            className="border-b hover:bg-slate-50 transition"
           >
             <td className="py-4 font-semibold">
               {item._id || 'Sem responsável'}
@@ -666,6 +648,16 @@ async function handleSyncNow() {
               <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">
                 {Number(item.conversionRate || 0).toFixed(1)}%
               </span>
+
+              {/* BARRA (AQUI É O LUGAR CERTO) */}
+              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-2">
+                <div
+                  className="h-full bg-blue-600"
+                  style={{
+                    width: `${Math.min(item.conversionRate || 0, 100)}%`
+                  }}
+                />
+              </div>
             </td>
 
             <td className="py-4 font-semibold text-blue-700">
