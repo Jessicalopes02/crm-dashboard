@@ -2088,6 +2088,139 @@ app.get('/api/audit/person-search', async (req, res) => {
   }
 });
 
+
+app.get('/api/audit/won-current-nutshell-compare', async (req, res) => {
+  try {
+    const { period = '2026-06' } = req.query;
+
+    const [year, month] = period.split('-').map(Number);
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    const leads = await Lead.find({
+      status: 10,
+      closedTime: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    })
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        value: 1,
+        closedTime: 1,
+        modifiedTime: 1,
+        assignee: 1,
+        stageset: 1,
+        milestone: 1,
+        htmlUrl: 1,
+        synced_at: 1
+      })
+      .sort({ closedTime: -1 })
+      .lean();
+
+    const audit = [];
+    let changedAssignee = 0;
+    let changedStatus = 0;
+    let changedValue = 0;
+    let errors = 0;
+
+    for (const lead of leads) {
+      try {
+        const detailResponse = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: {
+              leadId: lead.nutshell_id
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const nutshellLead = detailResponse.data.result;
+
+        const mongoAssignee = lead.assignee?.name || null;
+        const nutshellAssignee = nutshellLead?.assignee?.name || null;
+
+        const mongoValue = Number(lead.value?.amount || 0);
+        const nutshellValue = Number(nutshellLead?.value?.amount || 0);
+
+        const assigneeDifferent = mongoAssignee !== nutshellAssignee;
+        const statusDifferent = Number(lead.status) !== Number(nutshellLead?.status);
+        const valueDifferent = mongoValue !== nutshellValue;
+
+        if (assigneeDifferent) changedAssignee++;
+        if (statusDifferent) changedStatus++;
+        if (valueDifferent) changedValue++;
+
+        audit.push({
+          nutshell_id: lead.nutshell_id,
+          name: lead.name,
+          mongo: {
+            status: lead.status,
+            value: mongoValue,
+            assignee: mongoAssignee,
+            closedTime: lead.closedTime,
+            synced_at: lead.synced_at
+          },
+          nutshell: {
+            status: nutshellLead?.status,
+            value: nutshellValue,
+            assignee: nutshellAssignee,
+            closedTime: nutshellLead?.closedTime,
+            modifiedTime: nutshellLead?.modifiedTime
+          },
+          differences: {
+            assigneeDifferent,
+            statusDifferent,
+            valueDifferent
+          },
+          htmlUrl: lead.htmlUrl || nutshellLead?.htmlUrl
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+      } catch (leadError) {
+        errors++;
+
+        audit.push({
+          nutshell_id: lead.nutshell_id,
+          name: lead.name,
+          erro: leadError.response?.data || leadError.message
+        });
+      }
+    }
+
+    res.json({
+      sucesso: true,
+      period,
+      totalWonLeads: leads.length,
+      summary: {
+        changedAssignee,
+        changedStatus,
+        changedValue,
+        errors
+      },
+      audit
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
+    });
+  }
+});
+
 // ========================================
 // TESTE API NUTSHELL - LISTA RESUMIDA
 // ========================================
