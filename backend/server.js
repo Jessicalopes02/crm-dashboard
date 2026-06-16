@@ -954,38 +954,47 @@ async function getPerformanceDashboard(startDate, endDate, role = 'closer') {
   ]);
 
   const estimatedRaw = await Lead.aggregate([
-    {
-      $match: {
-        ...baseFilter,
-        status: {
-          $nin: [11, 12]
-        },
-        closedTime: hasDateFilter
-          ? {
-              ...dateConditions,
-              $ne: null
-            }
-          : {
-              $ne: null
-            }
-      }
-    },
-    {
-      $group: {
-        _id: '$assignee.name',
-
-        estimatedRevenue: {
-          $sum: {
-            $ifNull: ['$value.amount', 0]
-          }
-        },
-
-        estimatedLeads: {
-          $sum: 1
-        }
+  {
+    $match: {
+      ...baseFilter,
+      status: { $nin: [10, 11, 12] }
+    }
+  },
+  {
+    $addFields: {
+      estimateDate: {
+        $ifNull: ['$dueTime', '$closedTime']
       }
     }
-  ]);
+  },
+  {
+    $match: hasDateFilter
+      ? {
+          estimateDate: {
+            ...dateConditions,
+            $ne: null
+          }
+        }
+      : {
+          estimateDate: { $ne: null }
+        }
+  },
+  {
+    $group: {
+      _id: '$assignee.name',
+
+      estimatedRevenue: {
+        $sum: {
+          $ifNull: ['$value.amount', 0]
+        }
+      },
+
+      estimatedLeads: {
+        $sum: 1
+      }
+    }
+  }
+]);
 
   const performanceMap = new Map();
 
