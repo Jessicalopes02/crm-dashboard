@@ -593,31 +593,51 @@ async function handleSyncNow() {
 
 <section className="bg-white rounded-2xl shadow p-6">
 
-  <div className="flex items-center justify-between mb-6">
-    <div>
-      <h2 className="text-2xl font-bold">
-        Ranking Comercial
-      </h2>
+  <div className="flex items-center justify-between mb-4">
+  <div>
+    <h2 className="text-lg font-bold text-slate-900">
+      Ranking Comercial
+    </h2>
 
-      <p className="text-slate-500">
-        Performance por responsável no período selecionado
-      </p>
-    </div>
+    <p className="text-sm text-slate-500">
+      Performance por responsável
+    </p>
   </div>
+</div>
 
   <div className="overflow-x-auto">
     <table className="w-full">
 
       <thead>
-        <tr className="border-b text-left text-slate-500">
-          <th className="pb-3">Responsável</th>
-          <th className="pb-3">Leads</th>
-          <th className="pb-3">Won</th>
-          <th className="pb-3">Lost</th>
-          <th className="pb-3">Conversão</th>
-          <th className="pb-3">Receita</th>
-          <th className="pb-3">Ticket Médio</th>
-        </tr>
+        <tr className="border-b">
+
+  <td>{item.name}</td>
+
+  <td className="font-bold text-blue-700">
+    {formatBRL(item.receita)}
+  </td>
+
+  <td className="text-green-600">
+    {item.won}
+  </td>
+
+  <td>
+    <span className="px-2 py-1 bg-blue-50 text-blue-700 rounded-full text-xs">
+      {item.conversionRate}%
+    </span>
+    <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-2">
+      <div
+        className="h-full bg-blue-600"
+        style={{ width: `${Math.min(item.percent, 100)}%` }}
+      />
+    </div>
+  </td>
+
+  <td className="text-slate-700">
+    {formatBRL(item.ticket)}
+  </td>
+
+</tr>
       </thead>
 
       <tbody>
