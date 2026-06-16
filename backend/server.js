@@ -1097,115 +1097,124 @@ async function getProductsDashboard(startDate, endDate) {
   };
 
   const products = await Lead.aggregate([
-    {
-      $match: {
-        ...ignoredPipelineFilter
+  {
+    $match: {
+      ...ignoredPipelineFilter
+    }
+  },
+  {
+    $addFields: {
+      productDate: {
+        $cond: [
+          {
+            $in: ['$status', [10, 11, 12]]
+          },
+          '$closedTime',
+          '$createdTime'
+        ]
       }
-    },
-    {
-      $addFields: {
-        productDate: {
-          $cond: [
-            {
-              $in: ['$status', [10, 11, 12]]
-            },
-            '$closedTime',
-            '$createdTime'
-          ]
-        }
-      }
-    },
-    {
-      $match: hasDateFilter
-        ? {
-            productDate: {
-              ...dateConditions,
-              $ne: null
-            }
-          }
-        : {
-            productDate: {
-              $ne: null
-            }
-          }
-    },
-    {
-      $unwind: {
-        path: '$products',
-        preserveNullAndEmptyArrays: true
-      }
-    },
-    {
-      $group: {
-        _id: {
-          $ifNull: ['$products.name', 'Sem produto']
-        },
-        totalLeads: {
-          $sum: 1
-        },
-        wonLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 10] }, 1, 0]
-          }
-        },
-        openLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 0] }, 1, 0]
-          }
-        },
-        lostLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 11] }, 1, 0]
-          }
-        },
-        canceledLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 12] }, 1, 0]
-          }
-        },
-        revenue: {
-          $sum: {
-            $cond: [
-              {
-                $and: [
-                  { $eq: ['$status', 10] },
-                  { $ne: ['$value.amount', null] }
-                ]
-              },
-              '$value.amount',
-              0
-            ]
+    }
+  },
+  {
+    $match: hasDateFilter
+      ? {
+          productDate: {
+            ...dateConditions,
+            $ne: null
           }
         }
+      : {
+          productDate: {
+            $ne: null
+          }
+        }
+  },
+  {
+    $unwind: {
+      path: '$products',
+      preserveNullAndEmptyArrays: true
+    }
+  },
+  {
+    $addFields: {
+      productName: {
+        $ifNull: ['$products.name', 'Sem produto']
+      },
+      productAmount: {
+        $ifNull: ['$products.price.amount', 0]
       }
-    },
-    {
-      $addFields: {
-        conversionRate: {
+    }
+  },
+  {
+    $group: {
+      _id: '$productName',
+
+      totalLeads: {
+        $sum: 1
+      },
+
+      wonLeads: {
+        $sum: {
+          $cond: [{ $eq: ['$status', 10] }, 1, 0]
+        }
+      },
+
+      openLeads: {
+        $sum: {
+          $cond: [{ $eq: ['$status', 0] }, 1, 0]
+        }
+      },
+
+      lostLeads: {
+        $sum: {
+          $cond: [{ $eq: ['$status', 11] }, 1, 0]
+        }
+      },
+
+      canceledLeads: {
+        $sum: {
+          $cond: [{ $eq: ['$status', 12] }, 1, 0]
+        }
+      },
+
+      revenue: {
+        $sum: {
           $cond: [
-            { $gt: ['$totalLeads', 0] },
-            {
-              $multiply: [
-                {
-                  $divide: ['$wonLeads', '$totalLeads']
-                },
-                100
-              ]
-            },
+            { $eq: ['$status', 10] },
+            '$productAmount',
             0
           ]
         }
       }
-    },
-    {
-      $sort: {
-        revenue: -1
-      }
-    },
-    {
-      $limit: 15
     }
-  ]);
+  },
+  {
+    $addFields: {
+      conversionRate: {
+        $cond: [
+          { $gt: ['$totalLeads', 0] },
+          {
+            $multiply: [
+              {
+                $divide: ['$wonLeads', '$totalLeads']
+              },
+              100
+            ]
+          },
+          0
+        ]
+      }
+    }
+  },
+  {
+    $sort: {
+      revenue: -1
+    }
+  },
+  {
+    $limit: 15
+  }
+]);
 
   return products;
 }
