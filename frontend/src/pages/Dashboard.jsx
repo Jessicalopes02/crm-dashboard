@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import api from '../services/api';
 
 import {
@@ -145,38 +145,7 @@ const selectedRevenueData = selectedRevenueMonth
 
 const revenueMonthOptions = monthlyData.map((item) => item.month);
 
-const kpi = useMemo(() => {
-  const wonLeads = filteredLeads.filter(
-    (l) => l?.status === 10
-  );
 
-  const lostLeads = filteredLeads.filter(
-    (l) => l?.status === 11
-  );
-
-  const openLeads = filteredLeads.filter(
-    (l) => l?.status === 0
-  );
-
-  const revenue = wonLeads.reduce(
-    (acc, l) =>
-      acc + (l?.value?.amount || 0),
-    0
-  );
-
-  const ticket =
-    wonLeads.length > 0
-      ? revenue / wonLeads.length
-      : 0;
-
-  return {
-    revenue,
-    won: wonLeads.length,
-    lost: lostLeads.length,
-    open: openLeads.length,
-    ticket
-  };
-}, [filteredLeads]);
 
 const leadTimeChartData =
   leadTime?.byMonth?.map((item) => ({
