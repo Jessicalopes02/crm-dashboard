@@ -3490,6 +3490,97 @@ app.get('/api/audit/products-won', async (req, res) => {
   }
 });
 
+app.get('/api/audit/product-detail', async (req, res) => {
+  try {
+    const {
+      product = 'Desembaraço Aduaneiro',
+      startDate,
+      endDate
+    } = req.query;
+
+    const dateConditions = {};
+
+    if (startDate) {
+      const start = new Date(startDate);
+      start.setHours(0, 0, 0, 0);
+      dateConditions.$gte = start;
+    }
+
+    if (endDate) {
+      const end = new Date(endDate);
+      end.setHours(23, 59, 59, 999);
+      dateConditions.$lte = end;
+    }
+
+    const hasDateFilter = Object.keys(dateConditions).length > 0;
+
+    const filter = {
+      status: 10,
+      'products.name': {
+        $regex: product,
+        $options: 'i'
+      }
+    };
+
+    if (hasDateFilter) {
+      filter.closedTime = dateConditions;
+    }
+
+    const leads = await Lead.find(filter)
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        value: 1,
+        closedTime: 1,
+        modifiedTime: 1,
+        assignee: 1,
+        primaryAccount: 1,
+        products: 1,
+        htmlUrl: 1,
+        rawData: 1,
+        synced_at: 1
+      })
+      .sort({ closedTime: -1 })
+      .lean();
+
+    const totalRevenue = leads.reduce(
+      (sum, lead) => sum + Number(lead.value?.amount || 0),
+      0
+    );
+
+    res.json({
+      sucesso: true,
+      product,
+      filters: {
+        startDate: startDate || null,
+        endDate: endDate || null
+      },
+      summary: {
+        totalWonLeads: leads.length,
+        totalRevenue
+      },
+      leads: leads.map((lead) => ({
+        nutshell_id: lead.nutshell_id,
+        name: lead.name,
+        value: lead.value?.amount || 0,
+        closedTime: lead.closedTime,
+        assignee: lead.assignee?.name,
+        account: lead.primaryAccount?.name,
+        products: lead.products?.map((item) => item.name) || [],
+        htmlUrl: lead.htmlUrl || lead.rawData?.htmlUrl,
+        synced_at: lead.synced_at
+      }))
+    });
+
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 // ========================================
 // AUDITORIA - QUALIDADE DOS DADOS
 // ========================================
