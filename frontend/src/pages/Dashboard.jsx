@@ -592,7 +592,7 @@ async function handleSyncNow() {
 </section>
 
 <section className="bg-white rounded-2xl shadow p-5">
-  <div className="flex items-center justify-between mb-5">
+  <div className="flex items-center justify-between mb-4">
     <div>
       <h2 className="text-lg font-black text-slate-900">
         Ranking Comercial
@@ -604,8 +604,8 @@ async function handleSyncNow() {
     </div>
   </div>
 
-  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-    {performance.map((item, index) => {
+  <div className="space-y-2">
+    {performance.slice(0, 8).map((item, index) => {
       const revenue = Number(item.totalRevenue || 0);
       const won = Number(item.wonLeads || 0);
       const lost = Number(item.lostLeads || 0);
@@ -616,81 +616,72 @@ async function handleSyncNow() {
       return (
         <div
           key={`${item._id}-${index}`}
-          className="rounded-2xl border border-slate-200 bg-slate-50 p-4 hover:bg-white hover:shadow-sm transition"
+          className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white transition"
         >
-          <div className="flex items-start justify-between gap-4">
-            <div className="flex items-start gap-3 min-w-0">
-              <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-black shrink-0">
-                {index + 1}
+          <div className="grid grid-cols-[42px_minmax(0,1.5fr)_140px_90px_110px_120px] gap-4 items-center">
+            <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black">
+              {index + 1}
+            </div>
+
+            <div className="min-w-0">
+              <div className="font-black text-slate-900 truncate">
+                {item._id || 'Sem responsável'}
               </div>
 
-              <div className="min-w-0">
-                <h3 className="font-black text-slate-900 truncate">
-                  {item._id || 'Sem responsável'}
-                </h3>
-
-                <p className="text-xs text-slate-500 mt-1">
-                  {formatNumber(leads)} leads • {formatNumber(won)} won • {formatNumber(lost)} lost
-                </p>
+              <div className="text-xs text-slate-500">
+                {formatNumber(leads)} leads • {formatNumber(lost)} lost
               </div>
             </div>
 
-            <div className="text-right shrink-0">
-              <div className="text-xs text-slate-500">
+            <div>
+              <div className="text-[11px] text-slate-500">
                 Receita
               </div>
 
-              <div className="text-lg font-black text-blue-700">
+              <div className="text-sm font-black text-blue-700">
                 {formatBRL(revenue)}
               </div>
             </div>
-          </div>
 
-          <div className="grid grid-cols-3 gap-3 mt-4">
-            <div className="rounded-xl bg-white border border-slate-200 p-3">
-              <div className="text-[11px] text-slate-500 font-semibold uppercase">
-                Conversão
-              </div>
-
-              <div className="text-base font-black text-blue-700 mt-1">
-                {conversion.toFixed(1)}%
-              </div>
-            </div>
-
-            <div className="rounded-xl bg-white border border-slate-200 p-3">
-              <div className="text-[11px] text-slate-500 font-semibold uppercase">
+            <div>
+              <div className="text-[11px] text-slate-500">
                 Won
               </div>
 
-              <div className="text-base font-black text-green-600 mt-1">
+              <div className="text-sm font-black text-green-600">
                 {formatNumber(won)}
               </div>
             </div>
 
-            <div className="rounded-xl bg-white border border-slate-200 p-3">
-              <div className="text-[11px] text-slate-500 font-semibold uppercase">
+            <div>
+              <div className="text-[11px] text-slate-500">
+                Conversão
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-black text-blue-700">
+                  {conversion.toFixed(1)}%
+                </span>
+              </div>
+
+              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
+                <div
+                  className="h-full bg-blue-600 rounded-full"
+                  style={{
+                    width: `${Math.min(conversion, 100)}%`
+                  }}
+                />
+              </div>
+            </div>
+
+            <div>
+              <div className="text-[11px] text-slate-500">
                 Ticket
               </div>
 
-              <div className="text-base font-black text-slate-900 mt-1 truncate">
+              <div className="text-sm font-black text-slate-900 truncate">
                 {formatBRL(ticket)}
               </div>
-            </div>
-          </div>
-
-          <div className="mt-4">
-            <div className="flex justify-between text-xs text-slate-500 mb-1">
-              <span>Performance de conversão</span>
-              <span>{conversion.toFixed(1)}%</span>
-            </div>
-
-            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
-              <div
-                className="h-full bg-blue-600 rounded-full"
-                style={{
-                  width: `${Math.min(conversion, 100)}%`
-                }}
-              />
             </div>
           </div>
         </div>
