@@ -673,8 +673,8 @@ const generalCards = [
   <main
     className="absolute inset-0 w-full h-full overflow-hidden px-[70px] pb-[40px]"
     style={{
-      paddingTop: isTvMode ? 210 : 190
-    }}
+  paddingTop: isTvMode ? 250 : 230
+}}
   >
     <section className="grid grid-cols-4 gap-4 w-full max-w-full min-w-0">
       {closerCards.map((item, index) => (
@@ -872,7 +872,7 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-4 py-4 border border-white/10 shadow-2xl overflow-hidden h-[235px]"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-6 py-6 border border-white/10 shadow-2xl overflow-hidden h-[270px]"
     >
       <div className="flex gap-4 h-full min-w-0">
         <div className="shrink-0 flex items-center">
@@ -892,7 +892,7 @@ function CloserGoalCard({
         <div className="flex-1 min-w-0 flex flex-col justify-between">
           <div className="flex items-start justify-between gap-3">
             <div className="min-w-0">
-              <div className="font-black text-[38px] truncate leading-none text-white">
+              <div className="font-black text-[44px] truncate leading-none text-white">
                 {firstName}
               </div>
 
@@ -901,7 +901,7 @@ function CloserGoalCard({
               </div>
             </div>
 
-            <div className="shrink-0 text-cyan-300 font-black text-[36px] leading-none">
+            <div className="shrink-0 text-cyan-300 font-black text-[42px] leading-none">
               {percent.toFixed(1)}%
             </div>
           </div>
@@ -911,7 +911,7 @@ function CloserGoalCard({
               Atingido
             </div>
 
-            <div className="font-black text-[40px] leading-none whitespace-nowrap text-white">
+            <div className="font-black text-[48px] leading-none whitespace-nowrap text-white">
               {formatBRL(actual)}
             </div>
           </div>
