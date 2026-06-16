@@ -878,7 +878,7 @@ function CloserGoalCard({
     <motion.div
       initial={{ opacity: 0, y: 18 }}
       animate={{ opacity: 1, y: 0 }}
-      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-6 py-6 border border-white/10 shadow-2xl overflow-hidden h-[270px]"
+      className="w-full min-w-0 bg-white/10 backdrop-blur rounded-2xl px-6 py-6 border border-white/10 shadow-2xl overflow-hidden h-[245px]"
     >
       <div className="flex gap-4 h-full min-w-0">
         <div className="shrink-0 flex items-center">
