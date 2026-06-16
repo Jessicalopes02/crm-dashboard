@@ -971,13 +971,23 @@ async function getPerformanceDashboard(startDate, endDate, role = 'closer') {
     }
   },
   {
+    $addFields: {
+      estimatedAmount: {
+        $ifNull: [
+          '$value.amount',
+          {
+            $ifNull: ['$rawData.value.amount', 0]
+          }
+        ]
+      }
+    }
+  },
+  {
     $group: {
       _id: '$assignee.name',
 
       estimatedRevenue: {
-        $sum: {
-          $ifNull: ['$value.amount', 0]
-        }
+        $sum: '$estimatedAmount'
       },
 
       estimatedLeads: {
@@ -7464,9 +7474,8 @@ app.get('/api/audit/road-to-glory', async (req, res) => {
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 
-
-
 const frontendPath = path.join(__dirname, '../frontend/dist');
+
 
 app.use(express.static(frontendPath));
 
