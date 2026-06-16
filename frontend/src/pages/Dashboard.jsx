@@ -468,25 +468,25 @@ async function handleSyncNow() {
     </button>
   </div>
 </section>
-       <section className="grid grid-cols-1 md:grid-cols-3 gap-5">
+       <section className="grid grid-cols-1 md:grid-cols-3 gap-4">
   <MetricCard
     title="Receita"
     value={formatBRL(metrics.totalRevenue)}
-    icon={<DollarSign size={24} />}
+    icon={<DollarSign size={20} />}
     description="Receita total das leads Won"
   />
 
   <MetricCard
     title="Conversão"
     value={`${conversionRate}%`}
-    icon={<TrendingUp size={24} />}
+    icon={<TrendingUp size={20} />}
     description="Percentual de leads convertidas"
   />
 
   <MetricCard
     title="Lead Time Médio"
     value={`${Number(leadTime?.summary?.averageLeadTimeDays || 0).toFixed(1)} dias`}
-    icon={<TrendingUp size={24} />}
+    icon={<TrendingUp size={20} />}
     description="Tempo médio da abertura até a venda"
   />
 </section>
@@ -1283,25 +1283,25 @@ async function handleSyncNow() {
 
 function MetricCard({ title, value, icon, description }) {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
       <div className="flex items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-bold text-slate-500 uppercase tracking-wide">
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
             {title}
           </p>
 
-          <h3 className="text-3xl font-black text-slate-900 mt-2">
+          <h3 className="text-2xl font-black text-slate-900 mt-1">
             {value}
           </h3>
 
           {description && (
-            <p className="text-sm text-slate-500 mt-2">
+            <p className="text-xs text-slate-500 mt-1">
               {description}
             </p>
           )}
         </div>
 
-        <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
           {icon}
         </div>
       </div>
