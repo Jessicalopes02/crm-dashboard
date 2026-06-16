@@ -5645,6 +5645,175 @@ if (goal.sector?.toLowerCase() === 'transportes') {
   }
 });
 
+app.get('/api/audit/goals-achievement-detail', async (req, res) => {
+  try {
+    const { period, userName, sector = 'closer' } = req.query;
+
+    if (!period) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Informe o period. Exemplo: ?period=2026-06'
+      });
+    }
+
+    const [year, month] = period.split('-').map(Number);
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    const normalize = (text) =>
+      String(text || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+
+    const expectedClosers = [
+      'Gabriel Lopes',
+      'Edson da Silva Bomfim Júnior',
+      'Alba Danielly Rezende Lima',
+      'Fábio Souza',
+      'Giovanna Fernandes',
+      'Pedro Scarillo',
+      'Luiza Carvalho',
+      'Fabiane Carvalho Nascimento',
+      'Beatriz Costa',
+      'Marcus Vinicius Dias Santana'
+    ];
+
+    const goalFilter = {
+      period
+    };
+
+    if (sector) {
+      goalFilter.sector = sector;
+    }
+
+    if (userName) {
+      goalFilter.userName = {
+        $regex: userName,
+        $options: 'i'
+      };
+    }
+
+    const goals = await Goal.find(goalFilter).lean();
+
+    const goalsByName = new Set(
+      goals.map((goal) => normalize(goal.userName))
+    );
+
+    const missingGoals = expectedClosers.filter(
+      (name) => !goalsByName.has(normalize(name))
+    );
+
+    const details = [];
+
+    for (const goal of goals) {
+      const cleanName = String(goal.userName || '')
+        .replace(/\s+/g, ' ')
+        .trim();
+
+      const assigneeRegex = new RegExp(
+        `^\\s*${cleanName
+          .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+          .replace(/\s+/g, '\\s+')}\\s*$`,
+        'i'
+      );
+
+      const filter = {
+        status: 10,
+        closedTime: {
+          $gte: startDate,
+          $lte: endDate
+        },
+        'assignee.name': assigneeRegex
+      };
+
+      const leads = await Lead.find(filter)
+        .select({
+          nutshell_id: 1,
+          name: 1,
+          status: 1,
+          value: 1,
+          closedTime: 1,
+          modifiedTime: 1,
+          assignee: 1,
+          owner: 1,
+          primaryAccount: 1,
+          stageset: 1,
+          milestone: 1,
+          products: 1,
+          sources: 1,
+          htmlUrl: 1,
+          rawData: 1,
+          synced_at: 1
+        })
+        .sort({ closedTime: -1 })
+        .lean();
+
+      const totalRevenue = leads.reduce(
+        (sum, lead) => sum + Number(lead.value?.amount || 0),
+        0
+      );
+
+      details.push({
+        goal: {
+          userName: goal.userName,
+          sector: goal.sector,
+          targetRevenue: goal.targetRevenue,
+          period: goal.period
+        },
+        summary: {
+          totalLeadsWon: leads.length,
+          totalRevenue
+        },
+        leads: leads.map((lead) => ({
+          nutshell_id: lead.nutshell_id,
+          name: lead.name,
+          status: lead.status,
+          value: lead.value?.amount || 0,
+          closedTime: lead.closedTime,
+          modifiedTime: lead.modifiedTime,
+          assignee: lead.assignee?.name,
+          owner: lead.owner?.name,
+          account: lead.primaryAccount?.name,
+          pipeline: lead.stageset?.name || lead.rawData?.stageset?.name,
+          milestone: lead.milestone?.name || lead.rawData?.milestone?.name,
+          products: lead.products?.map((product) => product.name) || [],
+          sources: lead.sources?.map((source) => source.name) || [],
+          htmlUrl: lead.htmlUrl || lead.rawData?.htmlUrl,
+          synced_at: lead.synced_at
+        }))
+      });
+    }
+
+    res.json({
+      sucesso: true,
+      period,
+      range: {
+        startDate,
+        endDate
+      },
+      filters: {
+        sector,
+        userName: userName || null
+      },
+      totalGoalsFound: goals.length,
+      missingGoals,
+      details
+    });
+
+  } catch (error) {
+    console.error('ERRO AUDIT GOALS ACHIEVEMENT:', error);
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
   try {
     const start = new Date('2026-05-25T03:00:00.000Z');
