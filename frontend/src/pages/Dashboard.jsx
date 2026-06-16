@@ -591,87 +591,111 @@ async function handleSyncNow() {
 
 </section>
 
-<section className="bg-white rounded-2xl shadow p-6">
-
-  <div className="flex items-center justify-between mb-4">
+<section className="bg-white rounded-2xl shadow p-5">
+  <div className="flex items-center justify-between mb-5">
     <div>
-      <h2 className="text-lg font-bold text-slate-900">
+      <h2 className="text-lg font-black text-slate-900">
         Ranking Comercial
       </h2>
 
       <p className="text-sm text-slate-500">
-        Performance por responsável
+        Performance por responsável no período
       </p>
     </div>
   </div>
 
-  <div className="overflow-x-auto">
-    <table className="w-full">
+  <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+    {performance.map((item, index) => {
+      const revenue = Number(item.totalRevenue || 0);
+      const won = Number(item.wonLeads || 0);
+      const lost = Number(item.lostLeads || 0);
+      const leads = Number(item.totalLeads || 0);
+      const conversion = Number(item.conversionRate || 0);
+      const ticket = Number(item.averageTicket || 0);
 
-      {/* HEADER CERTO */}
-      <thead>
-        <tr className="border-b text-left text-sm text-slate-500">
-          <th className="py-3">Responsável</th>
-          <th>Leads</th>
-          <th>Won</th>
-          <th>Lost</th>
-          <th>Conversão</th>
-          <th>Receita</th>
-          <th>Ticket Médio</th>
-        </tr>
-      </thead>
-
-      {/* BODY CERTO */}
-      <tbody>
-        {performance.map((item, index) => (
-          <tr
-            key={index}
-            className="border-b hover:bg-slate-50 transition"
-          >
-            <td className="py-4 font-semibold">
-              {item._id || 'Sem responsável'}
-            </td>
-
-            <td className="py-4">
-              {formatNumber(item.totalLeads)}
-            </td>
-
-            <td className="py-4 text-green-600 font-semibold">
-              {formatNumber(item.wonLeads)}
-            </td>
-
-            <td className="py-4 text-red-600 font-semibold">
-              {formatNumber(item.lostLeads)}
-            </td>
-
-            <td className="py-4">
-              <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">
-                {Number(item.conversionRate || 0).toFixed(1)}%
-              </span>
-
-              {/* BARRA (AQUI É O LUGAR CERTO) */}
-              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-2">
-                <div
-                  className="h-full bg-blue-600"
-                  style={{
-                    width: `${Math.min(item.conversionRate || 0, 100)}%`
-                  }}
-                />
+      return (
+        <div
+          key={`${item._id}-${index}`}
+          className="rounded-2xl border border-slate-200 bg-slate-50 p-4 hover:bg-white hover:shadow-sm transition"
+        >
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex items-start gap-3 min-w-0">
+              <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-black shrink-0">
+                {index + 1}
               </div>
-            </td>
 
-            <td className="py-4 font-semibold text-blue-700">
-              {formatBRL(item.totalRevenue)}
-            </td>
+              <div className="min-w-0">
+                <h3 className="font-black text-slate-900 truncate">
+                  {item._id || 'Sem responsável'}
+                </h3>
 
-            <td className="py-4">
-              {formatBRL(item.averageTicket)}
-            </td>
-          </tr>
-        ))}
-      </tbody>
+                <p className="text-xs text-slate-500 mt-1">
+                  {formatNumber(leads)} leads • {formatNumber(won)} won • {formatNumber(lost)} lost
+                </p>
+              </div>
+            </div>
 
-    </table>
+            <div className="text-right shrink-0">
+              <div className="text-xs text-slate-500">
+                Receita
+              </div>
+
+              <div className="text-lg font-black text-blue-700">
+                {formatBRL(revenue)}
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3 mt-4">
+            <div className="rounded-xl bg-white border border-slate-200 p-3">
+              <div className="text-[11px] text-slate-500 font-semibold uppercase">
+                Conversão
+              </div>
+
+              <div className="text-base font-black text-blue-700 mt-1">
+                {conversion.toFixed(1)}%
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-white border border-slate-200 p-3">
+              <div className="text-[11px] text-slate-500 font-semibold uppercase">
+                Won
+              </div>
+
+              <div className="text-base font-black text-green-600 mt-1">
+                {formatNumber(won)}
+              </div>
+            </div>
+
+            <div className="rounded-xl bg-white border border-slate-200 p-3">
+              <div className="text-[11px] text-slate-500 font-semibold uppercase">
+                Ticket
+              </div>
+
+              <div className="text-base font-black text-slate-900 mt-1 truncate">
+                {formatBRL(ticket)}
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-4">
+            <div className="flex justify-between text-xs text-slate-500 mb-1">
+              <span>Performance de conversão</span>
+              <span>{conversion.toFixed(1)}%</span>
+            </div>
+
+            <div className="w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-blue-600 rounded-full"
+                style={{
+                  width: `${Math.min(conversion, 100)}%`
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      );
+    })}
   </div>
 </section>
 
