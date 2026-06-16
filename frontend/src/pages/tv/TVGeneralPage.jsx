@@ -460,27 +460,33 @@ const closerGoals = goalResults.filter(
   (item) => item.goal.sector === 'closer'
 );
 
-const closerCards = closerGoals.map((goalItem) => {
-  const displayName = goalItem.goal.userName || 'Sem responsável';
+const closerCards = closerGoals
+  .filter((goalItem) => Number(goalItem.goal.targetRevenue || 0) > 0)
+  .map((goalItem) => {
+    const displayName = goalItem.goal.userName || 'Sem responsável';
 
-  const matchedActual = goalResults.find(
-    (item) =>
-      normalizeName(item.goal.userName) === normalizeName(displayName) &&
-      item.goal.sector === 'closer'
-  );
+    const matchedActual = goalResults.find(
+      (item) =>
+        normalizeName(item.goal.userName) === normalizeName(displayName) &&
+        item.goal.sector === 'closer'
+    );
 
-  const matchedPhotoKey = Object.keys(userPhotos).find(
-    (key) => normalizeName(key) === normalizeName(displayName)
-  );
+    const matchedPerformance = data.performance?.find(
+      (item) => normalizeName(item._id) === normalizeName(displayName)
+    );
 
-  return {
-    name: displayName,
-    goal: Number(goalItem.goal.targetRevenue || 0),
-    actual: Number(matchedActual?.actual?.revenue || 0),
-    estimated: Number(matchedActual?.actual?.estimatedRevenue || 0),
-    photo: matchedPhotoKey ? userPhotos[matchedPhotoKey] : null
-  };
-});
+    const matchedPhotoKey = Object.keys(userPhotos).find(
+      (key) => normalizeName(key) === normalizeName(displayName)
+    );
+
+    return {
+      name: displayName,
+      goal: Number(goalItem.goal.targetRevenue || 0),
+      actual: Number(matchedActual?.actual?.revenue || 0),
+      estimated: Number(matchedPerformance?.estimatedRevenue || 0),
+      photo: matchedPhotoKey ? userPhotos[matchedPhotoKey] : null
+    };
+  });
  
 
 const getGoalBySector = (sector) => {
