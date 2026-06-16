@@ -682,22 +682,20 @@ const closerColumns = [
   paddingTop: isTvMode ? 250 : 230
 }}
   >
-    <section className="flex gap-6 w-full max-w-full min-w-0">
-      {closerCards.map((item, index) => (
-        <div className="flex-1 min-w-0">
-          <CloserGoalCard
-            key={`${item.name}-${index}`}
-            name={item.name}
-            goal={item.goal}
-            actual={item.actual}
-            estimated={item.estimated}
-            photo={item.photo}
-            formatBRL={formatBRL}
-            formatCompactBRL={formatCompactBRL}
-          />
-        </div>
-      ))}
-    </section>
+    <section className="grid grid-cols-3 gap-6 w-full max-w-full">
+  {closerCards.map((item, index) => (
+    <CloserGoalCard
+      key={`${item.name}-${index}`}
+      name={item.name}
+      goal={item.goal}
+      actual={item.actual}
+      estimated={item.estimated}
+      photo={item.photo}
+      formatBRL={formatBRL}
+      formatCompactBRL={formatCompactBRL}
+    />
+  ))}
+</section>
   </main>
 )}
         </div>
