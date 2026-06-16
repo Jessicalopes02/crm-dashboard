@@ -176,12 +176,20 @@ const leadTimeChartData =
     leads: item.totalLeads || 0
   }));
 
-  const productData = products.slice(0, 8).map((item) => ({
-    name: item._id,
+  const productData = [...products]
+  .sort((a, b) => Number(b.revenue || 0) - Number(a.revenue || 0))
+  .slice(0, 10)
+  .map((item) => ({
+    name: item._id || 'Sem produto',
     receita: item.revenue || 0,
     won: item.wonLeads || 0,
     leads: item.totalLeads || 0
-    }));
+  }));
+
+const totalProductRevenue = productData.reduce(
+  (sum, item) => sum + Number(item.receita || 0),
+  0
+);
 
     const comparisonData = yearComparison.map((item) => ({
       month: item.monthName,
@@ -806,7 +814,6 @@ async function handleSyncNow() {
   />
 </section>
         <section className="bg-white rounded-2xl shadow p-6">
-
   <div className="flex items-center justify-between mb-6">
     <div>
       <h2 className="text-2xl font-bold">
@@ -814,56 +821,27 @@ async function handleSyncNow() {
       </h2>
 
       <p className="text-slate-500">
-        Produtos com maior receita no período
+        Ranking dos produtos por receita individual lançada no Nutshell
       </p>
+    </div>
+
+    <div className="text-right">
+      <div className="text-xs text-slate-500">
+        Receita dos produtos listados
+      </div>
+
+      <div className="text-2xl font-black text-blue-700">
+        {formatBRL(totalProductRevenue)}
+      </div>
     </div>
   </div>
 
-  <ResponsiveContainer width="100%" height={380}>
-    <BarChart data={productData}>
-      <CartesianGrid strokeDasharray="3 3" />
-
-      <XAxis
-        dataKey="name"
-        tick={{ fontSize: 11 }}
-      />
-
-      <YAxis
-        tickFormatter={(value) =>
-          `R$ ${(value / 1000).toFixed(0)}k`
-        }
-      />
-
-      <Tooltip
-        formatter={(value, name) => {
-
-          if (name === 'receita') {
-            return [formatBRL(value), 'Receita'];
-          }
-
-          return [formatNumber(value), name];
-        }}
-      />
-
-      <Legend />
-
-      <Bar
-        dataKey="receita"
-        name="Receita"
-        fill="#0f172a"
-        radius={[8, 8, 0, 0]}
-      />
-
-      <Bar
-        dataKey="won"
-        name="Won"
-        fill="#2563eb"
-        radius={[8, 8, 0, 0]}
-      />
-
-    </BarChart>
-  </ResponsiveContainer>
-
+  <ProductRanking
+    data={productData}
+    totalRevenue={totalProductRevenue}
+    formatBRL={formatBRL}
+    formatNumber={formatNumber}
+  />
 </section>
 <section className="bg-white rounded-2xl shadow p-6">
 
@@ -1508,4 +1486,78 @@ function SourceRanking({ data, formatBRL, formatNumber }) {
     </div>
   );
 }
+
+function ProductRanking({ data, totalRevenue, formatBRL, formatNumber }) {
+  const maxRevenue = Math.max(
+    ...data.map((item) => Number(item.receita || 0)),
+    1
+  );
+
+  return (
+    <div className="space-y-4">
+      {data.map((item, index) => {
+        const receita = Number(item.receita || 0);
+        const width = (receita / maxRevenue) * 100;
+
+        const participation =
+          totalRevenue > 0
+            ? ((receita / totalRevenue) * 100).toFixed(1)
+            : '0.0';
+
+        return (
+          <div
+            key={`${item.name}-${index}`}
+            className="rounded-2xl border border-slate-200 bg-slate-50 p-4 hover:bg-slate-100 transition"
+          >
+            <div className="grid grid-cols-[40px_minmax(0,1fr)_180px_120px] gap-4 items-center">
+              <div className="w-9 h-9 rounded-full bg-slate-900 text-white flex items-center justify-center text-sm font-black">
+                {index + 1}
+              </div>
+
+              <div className="min-w-0">
+                <div className="font-black text-slate-900 truncate">
+                  {item.name || 'Sem produto'}
+                </div>
+
+                <div className="text-xs text-slate-500 mt-1">
+                  Leads: {formatNumber(item.leads)} | Won: {formatNumber(item.won)}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-xs text-slate-500">
+                  Receita
+                </div>
+
+                <div className="text-xl font-black text-blue-700">
+                  {formatBRL(receita)}
+                </div>
+              </div>
+
+              <div className="text-right">
+                <div className="text-xs text-slate-500">
+                  Participação
+                </div>
+
+                <div className="text-lg font-black text-slate-800">
+                  {participation}%
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-3 w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-700 to-cyan-400 rounded-full"
+                style={{
+                  width: `${Math.max(width, 2)}%`
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 export default Dashboard;
