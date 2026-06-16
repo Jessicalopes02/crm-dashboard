@@ -2221,6 +2221,132 @@ app.get('/api/audit/won-current-nutshell-compare', async (req, res) => {
   }
 });
 
+
+app.get('/api/sync/nutshell/won-period-current', async (req, res) => {
+  try {
+    const { period = '2026-06' } = req.query;
+
+    const [year, month] = period.split('-').map(Number);
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(year, month, 0, 23, 59, 59);
+
+    const leads = await Lead.find({
+      status: 10,
+      closedTime: {
+        $gte: startDate,
+        $lte: endDate
+      }
+    })
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        assignee: 1,
+        value: 1,
+        status: 1,
+        closedTime: 1
+      })
+      .sort({ closedTime: -1 })
+      .lean();
+
+    let checked = 0;
+    let updated = 0;
+    let errors = 0;
+
+    const details = [];
+
+    for (const lead of leads) {
+      try {
+        checked++;
+
+        const before = {
+          assignee: lead.assignee?.name || null,
+          status: lead.status,
+          value: lead.value?.amount || 0,
+          closedTime: lead.closedTime
+        };
+
+        const detailResponse = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: {
+              leadId: lead.nutshell_id
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const fullLead = detailResponse.data.result;
+
+        if (!fullLead) {
+          details.push({
+            nutshell_id: lead.nutshell_id,
+            name: lead.name,
+            updated: false,
+            reason: 'Lead não encontrada no Nutshell'
+          });
+
+          continue;
+        }
+
+        await saveFullLead(fullLead);
+
+        updated++;
+
+        details.push({
+          nutshell_id: lead.nutshell_id,
+          name: lead.name,
+          updated: true,
+          before,
+          after: {
+            assignee: fullLead.assignee?.name || null,
+            status: fullLead.status,
+            value: fullLead.value?.amount || 0,
+            closedTime: fullLead.closedTime,
+            modifiedTime: fullLead.modifiedTime
+          }
+        });
+
+        await new Promise((resolve) => setTimeout(resolve, 150));
+
+      } catch (leadError) {
+        errors++;
+
+        details.push({
+          nutshell_id: lead.nutshell_id,
+          name: lead.name,
+          updated: false,
+          error: leadError.response?.data || leadError.message
+        });
+      }
+    }
+
+    res.json({
+      sucesso: true,
+      period,
+      checked,
+      updated,
+      errors,
+      details
+    });
+
+  } catch (error) {
+    console.error('ERRO SYNC WON PERIOD CURRENT:', error.response?.data || error.message);
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
+    });
+  }
+});
+
 // ========================================
 // TESTE API NUTSHELL - LISTA RESUMIDA
 // ========================================
