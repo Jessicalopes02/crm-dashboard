@@ -794,54 +794,62 @@ async function handleSyncNow() {
   </div>
 </ChartCard>
 
-<section className="bg-white rounded-2xl shadow p-6">
-  <div className="flex items-center justify-between mb-6">
-    <div>
-      <h2 className="text-2xl font-bold">
-        Receita por Source
-      </h2>
+<section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+  <div className="bg-white rounded-2xl shadow p-5">
+    <div className="flex items-start justify-between gap-4 mb-4">
+      <div>
+        <h2 className="text-xl font-black text-slate-900">
+          Receita por Source
+        </h2>
 
-      <p className="text-slate-500">
-        Ranking das principais origens por receita no período selecionado
-      </p>
-    </div>
-  </div>
-
-  <SourceRanking
-    data={sourceData}
-    formatBRL={formatBRL}
-    formatNumber={formatNumber}
-  />
-</section>
-        <section className="bg-white rounded-2xl shadow p-6">
-  <div className="flex items-center justify-between mb-6">
-    <div>
-      <h2 className="text-2xl font-bold">
-        Receita por Produto
-      </h2>
-
-      <p className="text-slate-500">
-        Ranking dos produtos por receita individual lançada no Nutshell
-      </p>
-    </div>
-
-    <div className="text-right">
-      <div className="text-xs text-slate-500">
-        Receita dos produtos listados
-      </div>
-
-      <div className="text-2xl font-black text-blue-700">
-        {formatBRL(totalProductRevenue)}
+        <p className="text-sm text-slate-500">
+          Principais origens por receita
+        </p>
       </div>
     </div>
+
+    <CompactRanking
+      data={sourceData}
+      valueKey="receita"
+      totalLabel="Leads"
+      formatBRL={formatBRL}
+      formatNumber={formatNumber}
+      maxItems={6}
+    />
   </div>
 
-  <ProductRanking
-    data={productData}
-    totalRevenue={totalProductRevenue}
-    formatBRL={formatBRL}
-    formatNumber={formatNumber}
-  />
+  <div className="bg-white rounded-2xl shadow p-5">
+    <div className="flex items-start justify-between gap-4 mb-4">
+      <div>
+        <h2 className="text-xl font-black text-slate-900">
+          Receita por Produto
+        </h2>
+
+        <p className="text-sm text-slate-500">
+          Produtos por receita individual
+        </p>
+      </div>
+
+      <div className="text-right shrink-0">
+        <div className="text-xs text-slate-500">
+          Total listado
+        </div>
+
+        <div className="text-lg font-black text-blue-700">
+          {formatBRL(totalProductRevenue)}
+        </div>
+      </div>
+    </div>
+
+    <CompactRanking
+      data={productData}
+      valueKey="receita"
+      totalLabel="Leads"
+      formatBRL={formatBRL}
+      formatNumber={formatNumber}
+      maxItems={6}
+    />
+  </div>
 </section>
 <section className="bg-white rounded-2xl shadow p-6">
 
@@ -1546,6 +1554,73 @@ function ProductRanking({ data, totalRevenue, formatBRL, formatNumber }) {
             </div>
 
             <div className="mt-3 w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-blue-700 to-cyan-400 rounded-full"
+                style={{
+                  width: `${Math.max(width, 2)}%`
+                }}
+              />
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function CompactRanking({
+  data,
+  valueKey = 'receita',
+  totalLabel = 'Leads',
+  formatBRL,
+  formatNumber,
+  maxItems = 6
+}) {
+  const items = [...data]
+    .sort((a, b) => Number(b[valueKey] || 0) - Number(a[valueKey] || 0))
+    .slice(0, maxItems);
+
+  const maxValue = Math.max(
+    ...items.map((item) => Number(item[valueKey] || 0)),
+    1
+  );
+
+  return (
+    <div className="space-y-3">
+      {items.map((item, index) => {
+        const value = Number(item[valueKey] || 0);
+        const width = (value / maxValue) * 100;
+
+        return (
+          <div
+            key={`${item.name}-${index}`}
+            className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <span className="w-7 h-7 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black shrink-0">
+                  {index + 1}
+                </span>
+
+                <div className="min-w-0">
+                  <div className="text-sm font-black text-slate-900 truncate">
+                    {item.name || 'Sem informação'}
+                  </div>
+
+                  <div className="text-[11px] text-slate-500">
+                    {totalLabel}: {formatNumber(item.leads || 0)} | Won: {formatNumber(item.won || 0)}
+                  </div>
+                </div>
+              </div>
+
+              <div className="text-right shrink-0">
+                <div className="text-sm font-black text-blue-700">
+                  {formatBRL(value)}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-2 w-full h-2 bg-slate-200 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-blue-700 to-cyan-400 rounded-full"
                 style={{
