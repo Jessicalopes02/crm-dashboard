@@ -618,35 +618,45 @@ async function handleSyncNow() {
           key={`${item._id}-${index}`}
           className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white transition"
         >
-          <div className="grid grid-cols-[42px_minmax(0,1.5fr)_140px_90px_110px_120px] gap-4 items-center">
+          <div className="grid grid-cols-[38px_minmax(0,1.4fr)_130px_130px_70px_100px_110px] gap-3 items-center">
             <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black">
               {index + 1}
             </div>
 
-            <div className="min-w-0">
-              <div className="font-black text-slate-900 truncate">
-                {item._id || 'Sem responsável'}
-              </div>
+           <div className="min-w-0">
+  <div className="font-black text-slate-900 truncate">
+    {item._id || 'Sem responsável'}
+  </div>
 
-              <div className="text-xs text-slate-500">
-                {formatNumber(leads)} leads • {formatNumber(lost)} lost
-              </div>
-            </div>
+  <div className="text-xs text-slate-500">
+    {formatNumber(leads)} leads • {formatNumber(lost)} lost
+  </div>
+</div>
 
-            <div>
-              <div className="text-[11px] text-slate-500">
-                Receita
-              </div>
+<div>
+  <div className="text-[11px] text-slate-500">
+    Estimativa
+  </div>
 
-              <div className="text-sm font-black text-blue-700">
-                {formatBRL(revenue)}
-              </div>
-            </div>
+  <div className="text-sm font-black text-cyan-700">
+    {formatBRL(item.estimatedRevenue || 0)}
+  </div>
+</div>
 
-            <div>
-              <div className="text-[11px] text-slate-500">
-                Won
-              </div>
+<div>
+  <div className="text-[11px] text-slate-500">
+    Receita
+  </div>
+
+  <div className="text-sm font-black text-blue-700">
+    {formatBRL(revenue)}
+  </div>
+</div>
+
+<div>
+  <div className="text-[11px] text-slate-500">
+    Won
+  </div>
 
               <div className="text-sm font-black text-green-600">
                 {formatNumber(won)}
