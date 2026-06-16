@@ -512,6 +512,12 @@ const generalCards = [
   }
 ];
 
+const closerColumns = [
+  closerCards.slice(0, 3),
+  closerCards.slice(3, 6),
+  closerCards.slice(6, 9)
+];
+
   return (
   <div
     onDoubleClick={handleFullscreen}
@@ -676,18 +682,20 @@ const generalCards = [
   paddingTop: isTvMode ? 250 : 230
 }}
   >
-    <section className="grid grid-cols-4 gap-4 w-full max-w-full min-w-0">
+    <section className="flex gap-6 w-full max-w-full min-w-0">
       {closerCards.map((item, index) => (
-        <CloserGoalCard
-          key={`${item.name}-${index}`}
-          name={item.name}
-          goal={item.goal}
-          actual={item.actual}
-          estimated={item.estimated}
-          photo={item.photo}
-          formatBRL={formatBRL}
-          formatCompactBRL={formatCompactBRL}
-        />
+        <div className="flex-1 min-w-0">
+          <CloserGoalCard
+            key={`${item.name}-${index}`}
+            name={item.name}
+            goal={item.goal}
+            actual={item.actual}
+            estimated={item.estimated}
+            photo={item.photo}
+            formatBRL={formatBRL}
+            formatCompactBRL={formatCompactBRL}
+          />
+        </div>
       ))}
     </section>
   </main>
