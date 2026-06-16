@@ -145,6 +145,39 @@ const selectedRevenueData = selectedRevenueMonth
 
 const revenueMonthOptions = monthlyData.map((item) => item.month);
 
+const kpi = useMemo(() => {
+  const wonLeads = filteredLeads.filter(
+    (l) => l?.status === 10
+  );
+
+  const lostLeads = filteredLeads.filter(
+    (l) => l?.status === 11
+  );
+
+  const openLeads = filteredLeads.filter(
+    (l) => l?.status === 0
+  );
+
+  const revenue = wonLeads.reduce(
+    (acc, l) =>
+      acc + (l?.value?.amount || 0),
+    0
+  );
+
+  const ticket =
+    wonLeads.length > 0
+      ? revenue / wonLeads.length
+      : 0;
+
+  return {
+    revenue,
+    won: wonLeads.length,
+    lost: lostLeads.length,
+    open: openLeads.length,
+    ticket
+  };
+}, [filteredLeads]);
+
 const leadTimeChartData =
   leadTime?.byMonth?.map((item) => ({
     month: `${String(item._id.month).padStart(2, '0')}/${item._id.year}`,
@@ -466,57 +499,56 @@ async function handleSyncNow() {
     </button>
   </div>
 </section>
-        <section className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-7 gap-5">
+       <section className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-7 gap-3">
+  <MetricCard
+    title="Total de Leads"
+    value={formatNumber(metrics.totalLeads)}
+    icon={<Users size={18} />}
+    description="Base total"
+  />
 
-          <MetricCard
-            title="Total de Leads"
-            value={formatNumber(metrics.totalLeads)}
-            icon={<Users size={22} />}
-            description="Base total sincronizada"
-          />
+  <MetricCard
+    title="Won"
+    value={formatNumber(metrics.wonLeads)}
+    icon={<Trophy size={18} />}
+    description="Ganhos"
+  />
 
-          <MetricCard
-            title="Won"
-            value={formatNumber(metrics.wonLeads)}
-            icon={<Trophy size={22} />}
-            description="Leads ganhos"
-          />
+  <MetricCard
+    title="Lost"
+    value={formatNumber(metrics.lostLeads)}
+    icon={<XCircle size={18} />}
+    description="Perdidos"
+  />
 
-          <MetricCard
-            title="Lost"
-            value={formatNumber(metrics.lostLeads)}
-            icon={<XCircle size={22} />}
-            description="Leads perdidos"
-          />
-          
-          <MetricCard
-            title="Open"
-            value={formatNumber(metrics.openLeads)}
-            icon={<Users size={22} />}
-            description="Leads abertas"
-          />
+  <MetricCard
+    title="Open"
+    value={formatNumber(metrics.openLeads)}
+    icon={<Users size={18} />}
+    description="Abertos"
+  />
 
-          <MetricCard
-            title="Receita"
-            value={formatBRL(metrics.totalRevenue)}
-            icon={<DollarSign size={22} />}
-            description="Receita total Won"
-          />
+  <MetricCard
+    title="Receita"
+    value={formatBRL(metrics.totalRevenue)}
+    icon={<DollarSign size={18} />}
+    description="Total Won"
+  />
 
-          <MetricCard
-            title="Conversão"
-            value={`${conversionRate}%`}
-            icon={<TrendingUp size={22} />}
-            description="Won / Total Leads"
-          />
+  <MetricCard
+    title="Conversão"
+    value={`${conversionRate}%`}
+    icon={<TrendingUp size={18} />}
+    description="Won / Leads"
+  />
 
-          <MetricCard
-            title="Lead Time Médio"
-            value={`${Number(leadTime?.summary?.averageLeadTimeDays || 0).toFixed(1)} dias`}
-            icon={<TrendingUp size={22} />}
-            description="Da abertura até a venda"
-          />
-        </section>
+  <MetricCard
+    title="Lead Time"
+    value={`${Number(leadTime?.summary?.averageLeadTimeDays || 0).toFixed(1)} dias`}
+    icon={<TrendingUp size={18} />}
+    description="Abertura à venda"
+  />
+</section>
         <section className="bg-white rounded-2xl shadow p-5">
 
          <div className="flex items-center justify-between mb-6">
@@ -1310,21 +1342,28 @@ async function handleSyncNow() {
 
 function MetricCard({ title, value, icon, description }) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
-      <div className="flex items-center justify-between mb-4">
-        <span className="text-sm text-slate-500">{title}</span>
-        <div className="bg-slate-100 text-slate-800 p-2 rounded-xl">
+    <div className="bg-white rounded-2xl p-4 shadow-sm border border-slate-200">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide truncate">
+            {title}
+          </p>
+
+          <h3 className="text-xl font-black text-slate-900 mt-1 truncate">
+            {value}
+          </h3>
+
+          {description && (
+            <p className="text-[11px] text-slate-400 mt-1 truncate">
+              {description}
+            </p>
+          )}
+        </div>
+
+        <div className="w-8 h-8 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
           {icon}
         </div>
       </div>
-
-      <div className="text-2xl font-bold text-slate-950">
-        {value}
-      </div>
-
-      <p className="text-xs text-slate-500 mt-2">
-        {description}
-      </p>
     </div>
   );
 }
