@@ -536,26 +536,62 @@ const getGoalBySector = (sector) => {
   );
 };
 
+const totalEstimatedRevenue =
+data.performance?.reduce(
+(sum, item) =>
+sum + Number(item.estimatedRevenue || 0),
+0
+) || 0;
+
+const closerEstimatedRevenue =
+closerCards.reduce(
+(sum, item) =>
+sum + Number(item.estimated || 0),
+0
+);
+
+const accountsEstimatedRevenue =
+Number(
+data.performance?.find(
+(item) =>
+canonicalName(item._id) ===
+canonicalName('Accounts Grupo')
+)?.estimatedRevenue || 0
+);
+
+
 const generalCards = [
   {
     name: 'Closers',
     goal: sumGoalBySector('closer'),
-    actual: sumActualBySector('closer')
+    actual: sumActualBySector('closer'),
+    estimated: closerEstimatedRevenue
   },
   {
     name: 'Accounts',
     goal: sumGoalBySector('accounts'),
-    actual: sumActualBySector('accounts')
+    actual: sumActualBySector('accounts'),
+    estimated: Number(accountsEstimatedRevenue || 0)
   },
   {
     name: 'Transportes',
-    goal: getGoalBySector('transportes')?.goal?.targetRevenue || 0,
-    actual: getGoalBySector('transportes')?.actual?.revenue || 0
+    goal:
+      getGoalBySector('transportes')
+        ?.goal?.targetRevenue || 0,
+    actual:
+      getGoalBySector('transportes')
+        ?.actual?.revenue || 0,
+    estimated: 0
   },
   {
     name: 'Geral',
-    goal: getGoalBySector('geral')?.goal?.targetRevenue || 0,
-    actual: getGoalBySector('geral')?.actual?.revenue || 0
+    goal:
+      getGoalBySector('geral')
+        ?.goal?.targetRevenue || 0,
+    actual:
+      getGoalBySector('geral')
+        ?.actual?.revenue || 0,
+    estimated: totalEstimatedRevenue
   }
 ];
 
@@ -715,6 +751,7 @@ const closerColumns = [
           name={item.name}
           goal={item.goal}
           actual={item.actual}
+          estimated={item.estimated}
           formatBRL={formatBRL}
         />
       ))}
@@ -861,45 +898,68 @@ function AlertLine({ label, value }) {
   );
 }
 
-function SectorKpi({ name, goal, actual, formatBRL }) {
-  const percent = goal > 0 ? Math.min((actual / goal) * 100, 999) : 0;
-  const missing = Math.max(goal - actual, 0);
+function SectorKpi({
+name,
+goal,
+actual,
+estimated,
+formatBRL
+}) {
+const percent =
+goal > 0
+? Math.min((actual / goal) * 100, 999)
+: 0;
 
-    return (
-  <div className="w-full min-w-0 bg-white/10 backdrop-blur rounded-3xl px-8 py-7 border border-white/10 shadow-2xl overflow-hidden h-[250px]">
-      <div className="flex justify-between items-start gap-4">
-        <div>
-          <div className="text-slate-300 text-4xl font-black leading-tight">
-            {name}
-          </div>
+const estimatedPercent =
+goal > 0
+? (Number(estimated || 0) / goal) * 100
+: 0;
 
-          <div className="text-5xl font-black mt-5 leading-none">
-            {formatBRL(actual)}
-          </div>
+const missing = Math.max(goal - actual, 0);
 
-          <div className="text-slate-400 text-2xl mt-4 font-semibold">
-            Meta: {formatBRL(goal)}
-          </div>
-        </div>
+return ( <div className="w-full min-w-0 bg-white/10 backdrop-blur rounded-3xl px-8 py-7 border border-white/10 shadow-2xl overflow-hidden h-[290px]"> <div className="flex justify-between items-start gap-4"> <div> <div className="text-slate-300 text-4xl font-black leading-tight">
+{name} </div>
 
-        <div className="text-blue-400 text-5xl font-black leading-none">
-          {percent.toFixed(1)}%
-        </div>
+      <div className="text-5xl font-black mt-5 leading-none">
+        {formatBRL(actual)}
       </div>
 
-      <div className="w-full h-5 bg-slate-800 rounded-full overflow-hidden mt-8">
-        <div
-          className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
-          style={{ width: `${Math.min(percent, 100)}%` }}
-        />
-      </div>
-
-      <div className="text-slate-400 text-xl mt-5 font-semibold">
-        Falta: {formatBRL(missing)}
+      <div className="text-slate-400 text-2xl mt-4 font-semibold">
+        Meta: {formatBRL(goal)}
       </div>
     </div>
-  );
+
+    <div className="text-blue-400 text-5xl font-black leading-none">
+      {percent.toFixed(1)}%
+    </div>
+  </div>
+
+  <div className="w-full h-5 bg-slate-800 rounded-full overflow-hidden mt-8">
+    <div
+      className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+      style={{
+        width: `${Math.min(percent, 100)}%`
+      }}
+    />
+  </div>
+
+  <div className="flex items-center justify-between gap-4 mt-4">
+    <div className="text-cyan-300 text-xl font-bold truncate">
+      Estimado: {formatBRL(estimated || 0)}
+    </div>
+
+    <div className="text-cyan-300 text-xl font-black shrink-0">
+      {estimatedPercent.toFixed(1)}%
+    </div>
+  </div>
+
+  <div className="text-slate-400 text-xl mt-3 font-semibold">
+    Falta: {formatBRL(missing)}
+  </div>
+</div>
+);
 }
+
 
 function CloserGoalCard({
   name,
@@ -980,7 +1040,7 @@ function CloserGoalCard({
 
           <div className="flex justify-between gap-2 text-base font-bold">
             <span className="text-cyan-300 truncate">
-              Estimado: {formatCompactBRL(estimated || 0)}
+              Estimado: {formatBRL(estimated || 0)}
             </span>
 
             <span className="text-cyan-300 shrink-0">
