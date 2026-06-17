@@ -11,6 +11,8 @@ function TVGeneralPage({ tvMode = false }) {
   const [achievement, setAchievement] = useState(null);
   const [viewMode, setViewMode] = useState('cover');
 
+  const [transportEstimate, setTransportEstimate] = useState(0);
+
   const BASE_WIDTH = 1920;
   const BASE_HEIGHT = 1080;
 
@@ -118,6 +120,27 @@ function TVGeneralPage({ tvMode = false }) {
           endDate: endDate.toLocaleString('sv-SE').replace(' ', 'T')
         }
       });
+
+      const transportEstimateResponse = await api.get(
+  '/dashboard/transport-estimate',
+  {
+    params: {
+      startDate: startDate
+        .toLocaleString('sv-SE')
+        .replace(' ', 'T'),
+
+      endDate: endDate
+        .toLocaleString('sv-SE')
+        .replace(' ', 'T')
+    }
+  }
+);
+
+setTransportEstimate(
+  Number(
+    transportEstimateResponse.data?.estimatedRevenue || 0
+  )
+);
 
       setData(response.data);
 
@@ -574,15 +597,17 @@ const generalCards = [
     estimated: Number(accountsEstimatedRevenue || 0)
   },
   {
-    name: 'Transportes',
-    goal:
-      getGoalBySector('transportes')
-        ?.goal?.targetRevenue || 0,
-    actual:
-      getGoalBySector('transportes')
-        ?.actual?.revenue || 0,
-    estimated: 0
-  },
+  name: 'Transportes',
+  goal:
+    getGoalBySector('transportes')
+      ?.goal?.targetRevenue || 0,
+
+  actual:
+    getGoalBySector('transportes')
+      ?.actual?.revenue || 0,
+
+  estimated: Number(transportEstimate || 0)
+},
   {
     name: 'Geral',
     goal:
