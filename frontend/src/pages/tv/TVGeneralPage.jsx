@@ -464,6 +464,15 @@ const userPhotos = {
   'Luiza Carvalho': '/photos/luiza.png',
   'Accounts Grupo ': '/photos/emely.png'
 };
+
+const generalPhotos = {
+Closers: '/photos/closers.png',
+Accounts: '/photos/accounts.png',
+Transportes: '/photos/transportes.png',
+Geral: '/photos/geral.png'
+};
+
+
 const goalResults =
   achievement?.results ||
   achievement?.data?.results ||
@@ -584,41 +593,44 @@ canonicalName('Accounts Grupo')
 
 
 const generalCards = [
-  {
-    name: 'Closers',
-    goal: sumGoalBySector('closer'),
-    actual: sumActualBySector('closer'),
-    estimated: closerEstimatedRevenue
-  },
-  {
-    name: 'Accounts',
-    goal: sumGoalBySector('accounts'),
-    actual: sumActualBySector('accounts'),
-    estimated: Number(accountsEstimatedRevenue || 0)
-  },
-  {
-  name: 'Transportes',
-  goal:
-    getGoalBySector('transportes')
-      ?.goal?.targetRevenue || 0,
-
-  actual:
-    getGoalBySector('transportes')
-      ?.actual?.revenue || 0,
-
-  estimated: Number(transportEstimate || 0)
+{
+name: 'Closers',
+goal: sumGoalBySector('closer'),
+actual: sumActualBySector('closer'),
+estimated: closerEstimatedRevenue,
+photo: generalPhotos.Closers
 },
-  {
-    name: 'Geral',
-    goal:
-      getGoalBySector('geral')
-        ?.goal?.targetRevenue || 0,
-    actual:
-      getGoalBySector('geral')
-        ?.actual?.revenue || 0,
-    estimated: totalEstimatedRevenue
-  }
+{
+name: 'Accounts',
+goal: sumGoalBySector('accounts'),
+actual: sumActualBySector('accounts'),
+estimated: Number(accountsEstimatedRevenue || 0),
+photo: generalPhotos.Accounts
+},
+{
+name: 'Transportes',
+goal:
+getGoalBySector('transportes')
+?.goal?.targetRevenue || 0,
+actual:
+getGoalBySector('transportes')
+?.actual?.revenue || 0,
+estimated: Number(transportEstimate || 0),
+photo: generalPhotos.Transportes
+},
+{
+name: 'Geral',
+goal:
+getGoalBySector('geral')
+?.goal?.targetRevenue || 0,
+actual:
+getGoalBySector('geral')
+?.actual?.revenue || 0,
+estimated: totalEstimatedRevenue,
+photo: generalPhotos.Geral
+}
 ];
+
 
 const closerColumns = [
   closerCards.slice(0, 3),
@@ -777,6 +789,7 @@ const closerColumns = [
           goal={item.goal}
           actual={item.actual}
           estimated={item.estimated}
+          photo={item.photo}
           formatBRL={formatBRL}
         />
       ))}
@@ -928,6 +941,7 @@ name,
 goal,
 actual,
 estimated,
+photo,
 formatBRL
 }) {
 const percent =
@@ -942,48 +956,73 @@ goal > 0
 
 const missing = Math.max(goal - actual, 0);
 
-return ( <div className="w-full min-w-0 bg-white/10 backdrop-blur rounded-3xl px-8 py-7 border border-white/10 shadow-2xl overflow-hidden h-[290px]"> <div className="flex justify-between items-start gap-4"> <div> <div className="text-slate-300 text-4xl font-black leading-tight">
-{name} </div>
+const initials = String(name || '')
+.split(' ')
+.filter(Boolean)
+.slice(0, 2)
+.map((part) => part[0])
+.join('')
+.toUpperCase();
 
-      <div className="text-5xl font-black mt-5 leading-none">
-        {formatBRL(actual)}
+return ( <div className="w-full min-w-0 bg-white/10 backdrop-blur rounded-3xl px-7 py-6 border border-white/10 shadow-2xl overflow-hidden h-[290px]"> <div className="flex gap-6 h-full min-w-0"> <div className="shrink-0 flex items-center">
+{photo ? ( <img
+           src={photo}
+           alt={name}
+           className="w-[150px] h-[215px] rounded-2xl object-cover border border-white/20"
+         />
+) : ( <div className="w-[150px] h-[215px] rounded-2xl bg-blue-600 flex items-center justify-center font-black text-white border border-white/20 text-4xl">
+{initials} </div>
+)} </div>
+    <div className="flex-1 min-w-0 flex flex-col justify-between">
+      <div className="flex justify-between items-start gap-4">
+        <div className="min-w-0">
+          <div className="text-slate-300 text-4xl font-black leading-tight truncate">
+            {name}
+          </div>
+
+          <div className="text-5xl font-black mt-4 leading-none whitespace-nowrap">
+            {formatBRL(actual)}
+          </div>
+
+          <div className="text-slate-400 text-xl mt-3 font-semibold">
+            Meta: {formatBRL(goal)}
+          </div>
+        </div>
+
+        <div className="text-blue-400 text-5xl font-black leading-none shrink-0">
+          {percent.toFixed(1)}%
+        </div>
       </div>
 
-      <div className="text-slate-400 text-2xl mt-4 font-semibold">
-        Meta: {formatBRL(goal)}
+      <div className="w-full h-5 bg-slate-800 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
+          style={{
+            width: `${Math.min(percent, 100)}%`
+          }}
+        />
+      </div>
+
+      <div className="flex items-center justify-between gap-4">
+        <div className="text-cyan-300 text-xl font-bold truncate">
+          Estimado: {formatBRL(estimated || 0)}
+        </div>
+
+        <div className="text-cyan-300 text-xl font-black shrink-0">
+          {estimatedPercent.toFixed(1)}%
+        </div>
+      </div>
+
+      <div className="text-slate-400 text-lg font-semibold">
+        Falta: {formatBRL(missing)}
       </div>
     </div>
-
-    <div className="text-blue-400 text-5xl font-black leading-none">
-      {percent.toFixed(1)}%
-    </div>
-  </div>
-
-  <div className="w-full h-5 bg-slate-800 rounded-full overflow-hidden mt-8">
-    <div
-      className="h-full bg-gradient-to-r from-blue-500 via-cyan-400 to-green-400"
-      style={{
-        width: `${Math.min(percent, 100)}%`
-      }}
-    />
-  </div>
-
-  <div className="flex items-center justify-between gap-4 mt-4">
-    <div className="text-cyan-300 text-xl font-bold truncate">
-      Estimado: {formatBRL(estimated || 0)}
-    </div>
-
-    <div className="text-cyan-300 text-xl font-black shrink-0">
-      {estimatedPercent.toFixed(1)}%
-    </div>
-  </div>
-
-  <div className="text-slate-400 text-xl mt-3 font-semibold">
-    Falta: {formatBRL(missing)}
   </div>
 </div>
+
 );
 }
+
 
 
 function CloserGoalCard({
