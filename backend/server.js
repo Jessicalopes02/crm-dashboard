@@ -7565,6 +7565,207 @@ app.get('/api/audit/road-to-glory', async (req, res) => {
   }
 });
 
+async function syncForecastPeriod(
+  startDateParam,
+  endDateParam,
+  maxPagesParam = 60
+) {
+  const start = new Date(`${startDateParam}T00:00:00.000`);
+  const end = new Date(`${endDateParam}T23:59:59.999`);
+
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime())
+  ) {
+    throw new Error('Datas inválidas. Utilize o formato YYYY-MM-DD.');
+  }
+
+  const limit = 500;
+  const maxPages = Math.max(Number(maxPagesParam) || 60, 1);
+
+  let page = 1;
+  let totalChecked = 0;
+  let totalMatched = 0;
+  let totalSynced = 0;
+  let totalErrors = 0;
+
+  const details = [];
+
+  while (page <= maxPages) {
+    console.log(`Sync previsão mensal - página ${page}`);
+
+    const nutshellResponse = await axios.post(
+      'https://app.nutshell.com/api/v1/json',
+      {
+        method: 'findLeads',
+        params: {
+          query: {},
+          limit,
+          page
+        },
+        id: 1
+      },
+      {
+        auth: {
+          username: NUTSHELL_EMAIL,
+          password: NUTSHELL_API_KEY
+        }
+      }
+    );
+
+    const leads = nutshellResponse.data.result || [];
+
+    if (leads.length === 0) {
+      break;
+    }
+
+    for (const lead of leads) {
+      totalChecked++;
+
+      const status = Number(lead.status);
+
+      const dueDate = lead.dueTime
+        ? new Date(lead.dueTime)
+        : null;
+
+      const isActiveStatus = [0, 1].includes(status);
+
+      const dueTimeInPeriod =
+        dueDate &&
+        !Number.isNaN(dueDate.getTime()) &&
+        dueDate >= start &&
+        dueDate <= end;
+
+      if (!isActiveStatus || !dueTimeInPeriod) {
+        continue;
+      }
+
+      totalMatched++;
+
+      try {
+        const detailResponse = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: {
+              leadId: lead.id
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const fullLead = detailResponse.data.result;
+
+        if (!fullLead) {
+          details.push({
+            nutshell_id: lead.id,
+            name: lead.name,
+            synced: false,
+            reason: 'Lead não encontrada no getLead'
+          });
+
+          continue;
+        }
+
+        await saveFullLead(fullLead);
+
+        totalSynced++;
+
+        details.push({
+          nutshell_id: fullLead.id,
+          name: fullLead.name,
+          status: fullLead.status,
+          assignee: fullLead.assignee?.name || null,
+          value: Number(fullLead.value?.amount || 0),
+          estimatedValue: Number(
+            fullLead.estimatedValue?.amount || 0
+          ),
+          dueTime: fullLead.dueTime || null,
+          closedTime: fullLead.closedTime || null,
+          synced: true
+        });
+
+        await sleep(120);
+      } catch (leadError) {
+        totalErrors++;
+
+        details.push({
+          nutshell_id: lead.id,
+          name: lead.name,
+          synced: false,
+          error:
+            leadError.response?.data ||
+            leadError.message
+        });
+      }
+    }
+
+    page++;
+  }
+
+  return {
+    startDate: startDateParam,
+    endDate: endDateParam,
+    statuses: [0, 1],
+    dateField: 'dueTime',
+    pagesProcessed: page - 1,
+    totalChecked,
+    totalMatched,
+    totalSynced,
+    totalErrors,
+    details
+  };
+}
+
+app.get(
+  '/api/sync/nutshell/leads/forecast-period',
+  async (req, res) => {
+    try {
+      const {
+        startDate,
+        endDate,
+        maxPages = 60
+      } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          sucesso: false,
+          erro: 'Informe startDate e endDate no formato YYYY-MM-DD.'
+        });
+      }
+
+      const result = await syncForecastPeriod(
+        startDate,
+        endDate,
+        maxPages
+      );
+
+      res.json({
+        sucesso: true,
+        ...result
+      });
+    } catch (error) {
+      console.error(
+        'ERRO SYNC FORECAST PERIOD:',
+        error.response?.data || error.message
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro:
+          error.response?.data ||
+          error.message
+      });
+    }
+  }
+);
+
 app.use(express.static(path.join(__dirname, '../frontend/dist')));
 
 
