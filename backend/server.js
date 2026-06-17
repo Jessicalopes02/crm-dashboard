@@ -29,8 +29,8 @@ app.use(express.json());
 const NUTSHELL_API_KEY = '327640e18841297b60cb6e2f4c5f19995a4bc4ef';
 const NUTSHELL_EMAIL = 'edormundo@processlogcomex.com.br';
 
-const PRIORITY_STATUS = [0, 10]; // Open e Won
-const DAILY_STATUS = [1, 11, 12]; // Pending, Lost e Cancelado
+const PRIORITY_STATUS = [0, 1, 10]; // Open, Won e Peding
+const DAILY_STATUS = [11, 12]; // Lost e Cancelado
 
 const DEFAULT_LAST_PAGE = 1183;
 
@@ -958,9 +958,9 @@ async function getPerformanceDashboard(startDate, endDate, role = 'closer') {
     $match: {
       ...baseFilter,
       status: {
-        $nin: [10, 11, 12]
+        $in: [0, 1]
       },
-      closedTime: hasDateFilter
+      dueTime: hasDateFilter
         ? {
             ...dateConditions,
             $ne: null
@@ -976,7 +976,20 @@ async function getPerformanceDashboard(startDate, endDate, role = 'closer') {
         $ifNull: [
           '$value.amount',
           {
-            $ifNull: ['$rawData.value.amount', 0]
+            $ifNull: [
+              '$normalizedValue.amount',
+              {
+                $ifNull: [
+                  '$estimatedValue.amount',
+                  {
+                    $ifNull: [
+                      '$rawData.value.amount',
+                      0
+                    ]
+                  }
+                ]
+              }
+            ]
           }
         ]
       }
@@ -985,13 +998,33 @@ async function getPerformanceDashboard(startDate, endDate, role = 'closer') {
   {
     $group: {
       _id: '$assignee.name',
-
       estimatedRevenue: {
         $sum: '$estimatedAmount'
       },
-
       estimatedLeads: {
         $sum: 1
+      },
+      openEstimatedLeads: {
+        $sum: {
+          $cond: [
+            {
+              $eq: ['$status', 0]
+            },
+            1,
+            0
+          ]
+        }
+      },
+      pendingEstimatedLeads: {
+        $sum: {
+          $cond: [
+            {
+              $eq: ['$status', 1]
+            },
+            1,
+            0
+          ]
+        }
       }
     }
   }
