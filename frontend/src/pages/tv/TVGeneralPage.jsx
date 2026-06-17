@@ -80,25 +80,37 @@ function TVGeneralPage({ tvMode = false }) {
 
       let endDate = new Date(
         now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
+        now.getMonth() + 1,
+        0,
         23,
         59,
-        59
+        59,
+        999
       );
 
       if (period === 'quarter') {
-        const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+  const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
 
-        startDate = new Date(
-          now.getFullYear(),
-          quarterStartMonth,
-          1,
-          0,
-          0,
-          0
-        );
-      }
+  startDate = new Date(
+    now.getFullYear(),
+    quarterStartMonth,
+    1,
+    0,
+    0,
+    0,
+    0
+  );
+
+  endDate = new Date(
+    now.getFullYear(),
+    quarterStartMonth + 3,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
+}
 
       const response = await api.get('/dashboard/full', {
         params: {
@@ -455,6 +467,23 @@ function normalizeName(name) {
     .toLowerCase();
 }
 
+function canonicalName(name) {
+  const normalized = normalizeName(name);
+
+  const aliases = {
+    'marcus santana': 'marcus vinicius dias santana',
+    'marcus vinicius dias santana': 'marcus vinicius dias santana',
+
+    'beatriz costa costa': 'beatriz costa',
+    'beatriz costa': 'beatriz costa',
+
+    'edson da silva bomfim junior': 'edson da silva bomfim junior',
+
+    'accounts grupo': 'accounts grupo'
+  };
+
+  return aliases[normalized] || normalized;
+}
 
 const closerGoals = goalResults.filter(
   (item) => item.goal.sector === 'closer'
@@ -463,28 +492,40 @@ const closerGoals = goalResults.filter(
 const closerCards = closerGoals
   .filter((goalItem) => Number(goalItem.goal.targetRevenue || 0) > 0)
   .map((goalItem) => {
-    const displayName = goalItem.goal.userName || 'Sem responsável';
+    const displayName =
+      goalItem.goal.userName || 'Sem responsável';
 
     const matchedActual = goalResults.find(
       (item) =>
-        normalizeName(item.goal.userName) === normalizeName(displayName) &&
+        canonicalName(item.goal.userName) ===
+          canonicalName(displayName) &&
         item.goal.sector === 'closer'
     );
 
     const matchedPerformance = data.performance?.find(
-      (item) => normalizeName(item._id) === normalizeName(displayName)
+      (item) =>
+        canonicalName(item._id) ===
+        canonicalName(displayName)
     );
 
     const matchedPhotoKey = Object.keys(userPhotos).find(
-      (key) => normalizeName(key) === normalizeName(displayName)
+      (key) =>
+        canonicalName(key) ===
+        canonicalName(displayName)
     );
 
     return {
       name: displayName,
       goal: Number(goalItem.goal.targetRevenue || 0),
-      actual: Number(matchedActual?.actual?.revenue || 0),
-      estimated: Number(matchedPerformance?.estimatedRevenue || 0),
-      photo: matchedPhotoKey ? userPhotos[matchedPhotoKey] : null
+      actual: Number(
+        matchedActual?.actual?.revenue || 0
+      ),
+      estimated: Number(
+        matchedPerformance?.estimatedRevenue || 0
+      ),
+      photo: matchedPhotoKey
+        ? userPhotos[matchedPhotoKey]
+        : null
     };
   });
  
