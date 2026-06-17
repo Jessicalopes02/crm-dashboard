@@ -5246,6 +5246,111 @@ app.get('/api/dashboard/by-product', async (req, res) => {
   }
 });
 
+
+app.get('/api/dashboard/transport-estimate', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Informe startDate e endDate.'
+      });
+    }
+
+    const start = new Date(startDate);
+    start.setHours(0, 0, 0, 0);
+
+    const end = new Date(endDate);
+    end.setHours(23, 59, 59, 999);
+
+
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime())
+    ) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Datas inválidas.'
+      });
+    }
+
+    const result = await Lead.aggregate([
+      {
+        $match: {
+          status: {
+            $in: [0, 1]
+          },
+          dueTime: {
+            $gte: start,
+            $lte: end,
+            $ne: null
+          },
+          'products.name': 'Transporte Rodoviário',
+          'stageset.name': {
+            $ne: 'Processo de Vendas - Global Alliance'
+          }
+        }
+      },
+      {
+        $addFields: {
+          transportEstimatedAmount: {
+            $ifNull: [
+              '$value.amount',
+              {
+                $ifNull: [
+                  '$normalizedValue.amount',
+                  {
+                    $ifNull: [
+                      '$estimatedValue.amount',
+                      {
+                        $ifNull: [
+                          '$rawData.value.amount',
+                          0
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      },
+      {
+        $group: {
+          _id: null,
+          estimatedRevenue: {
+            $sum: '$transportEstimatedAmount'
+          },
+          estimatedLeads: {
+            $sum: 1
+          }
+        }
+      }
+    ]);
+
+    res.json({
+      sucesso: true,
+      estimatedRevenue:
+        Number(result[0]?.estimatedRevenue || 0),
+      estimatedLeads:
+        Number(result[0]?.estimatedLeads || 0)
+    });
+  } catch (error) {
+    console.error(
+      'ERRO TRANSPORT ESTIMATE:',
+      error.message
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
+
 // ========================================
 // DASHBOARD - COMPARATIVO ANUAL
 // ========================================
