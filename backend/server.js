@@ -2318,6 +2318,67 @@ app.get('/api/audit/estimated-by-assignee', async (req, res) => {
   }
 });
 
+app.get('/api/audit/test-estimates', async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+
+    const start = new Date(startDate || '2026-06-01');
+    const end = new Date(endDate || '2026-06-30');
+
+    const leads = await Lead.find({
+      closedTime: {
+        $gte: start,
+        $lte: end
+      }
+    })
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        value: 1,
+        closedTime: 1,
+        assignee: 1
+      })
+      .limit(50)
+      .lean();
+
+    const summary = {
+      total: leads.length,
+      withValue: 0,
+      withoutValue: 0,
+      status0: 0,
+      status10: 0,
+      status11: 0,
+      status12: 0
+    };
+
+    leads.forEach((l) => {
+      const value = l.value?.amount || 0;
+
+      if (value > 0) summary.withValue++;
+      else summary.withoutValue++;
+
+      if (l.status === 0) summary.status0++;
+      if (l.status === 10) summary.status10++;
+      if (l.status === 11) summary.status11++;
+      if (l.status === 12) summary.status12++;
+    });
+
+    res.json({
+      sucesso: true,
+      range: { start, end },
+      summary,
+      sample: leads.slice(0, 10)
+    });
+  } catch (err) {
+    res.status(500).json({
+      sucesso: false,
+      erro: err.message
+    });
+  }
+});
+
+
 app.get('/api/audit/person-search', async (req, res) => {
   try {
     const { name } = req.query;
