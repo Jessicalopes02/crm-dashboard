@@ -2087,6 +2087,338 @@ async function getDataQualityDashboard() {
     statusDistribution
   };
 }
+
+async function getCommercialFlowDashboard(startDate, endDate) {
+const now = new Date();
+
+const rangeStart = startDate
+? new Date(startDate)
+: new Date(
+now.getFullYear(),
+now.getMonth() - 11,
+1,
+0,
+0,
+0,
+0
+);
+
+rangeStart.setHours(0, 0, 0, 0);
+
+const rangeEnd = endDate
+? new Date(endDate)
+: new Date(
+now.getFullYear(),
+now.getMonth() + 1,
+0,
+23,
+59,
+59,
+999
+);
+
+rangeEnd.setHours(23, 59, 59, 999);
+
+if (
+Number.isNaN(rangeStart.getTime()) ||
+Number.isNaN(rangeEnd.getTime())
+) {
+throw new Error(
+'Datas inválidas no fluxo comercial mensal.'
+);
+}
+
+const ignoredPipelineFilter = {
+'stageset.name': {
+$ne: 'Processo de Vendas - Global Alliance'
+}
+};
+
+const [
+entriesRaw,
+closuresRaw,
+startingBacklog
+] = await Promise.all([
+Lead.aggregate([
+{
+$match: {
+...ignoredPipelineFilter,
+createdTime: {
+$gte: rangeStart,
+$lte: rangeEnd,
+$ne: null
+}
+}
+},
+{
+$group: {
+_id: {
+year: {
+$year: '$createdTime'
+},
+month: {
+$month: '$createdTime'
+}
+},
+entries: {
+$sum: 1
+}
+}
+},
+{
+$sort: {
+'_id.year': 1,
+'_id.month': 1
+}
+}
+]),
+
+```
+Lead.aggregate([
+  {
+    $match: {
+      ...ignoredPipelineFilter,
+      status: {
+        $in: [10, 11, 12]
+      },
+      closedTime: {
+        $gte: rangeStart,
+        $lte: rangeEnd,
+        $ne: null
+      }
+    }
+  },
+  {
+    $group: {
+      _id: {
+        year: {
+          $year: '$closedTime'
+        },
+        month: {
+          $month: '$closedTime'
+        }
+      },
+
+      closures: {
+        $sum: 1
+      },
+
+      won: {
+        $sum: {
+          $cond: [
+            {
+              $eq: ['$status', 10]
+            },
+            1,
+            0
+          ]
+        }
+      },
+
+      lost: {
+        $sum: {
+          $cond: [
+            {
+              $eq: ['$status', 11]
+            },
+            1,
+            0
+          ]
+        }
+      },
+
+      cancelled: {
+        $sum: {
+          $cond: [
+            {
+              $eq: ['$status', 12]
+            },
+            1,
+            0
+          ]
+        }
+      }
+    }
+  },
+  {
+    $sort: {
+      '_id.year': 1,
+      '_id.month': 1
+    }
+  }
+]),
+
+Lead.countDocuments({
+  ...ignoredPipelineFilter,
+
+  createdTime: {
+    $lt: rangeStart,
+    $ne: null
+  },
+
+  $or: [
+    {
+      closedTime: null
+    },
+    {
+      closedTime: {
+        $exists: false
+      }
+    },
+    {
+      closedTime: {
+        $gte: rangeStart
+      }
+    }
+  ]
+})
+```
+
+]);
+
+const entriesMap = new Map(
+entriesRaw.map((item) => [
+`${item._id.year}-${item._id.month}`,
+Number(item.entries || 0)
+])
+);
+
+const closuresMap = new Map(
+closuresRaw.map((item) => [
+`${item._id.year}-${item._id.month}`,
+{
+closures: Number(item.closures || 0),
+won: Number(item.won || 0),
+lost: Number(item.lost || 0),
+cancelled: Number(item.cancelled || 0)
+}
+])
+);
+
+const monthNames = [
+'Jan',
+'Fev',
+'Mar',
+'Abr',
+'Mai',
+'Jun',
+'Jul',
+'Ago',
+'Set',
+'Out',
+'Nov',
+'Dez'
+];
+
+const months = [];
+
+const cursor = new Date(
+rangeStart.getFullYear(),
+rangeStart.getMonth(),
+1
+);
+
+const finalMonth = new Date(
+rangeEnd.getFullYear(),
+rangeEnd.getMonth(),
+1
+);
+
+let backlog = Number(startingBacklog || 0);
+
+while (cursor <= finalMonth) {
+const year = cursor.getFullYear();
+const month = cursor.getMonth() + 1;
+const key = `${year}-${month}`;
+
+
+const entries =
+  entriesMap.get(key) || 0;
+
+const closureData =
+  closuresMap.get(key) || {
+    closures: 0,
+    won: 0,
+    lost: 0,
+    cancelled: 0
+  };
+
+const balance =
+  entries - closureData.closures;
+
+backlog = Math.max(
+  backlog + balance,
+  0
+);
+
+months.push({
+  year,
+  month,
+  monthName: monthNames[month - 1],
+  label: `${monthNames[month - 1]}/${year}`,
+  entries,
+  closures: closureData.closures,
+  won: closureData.won,
+  lost: closureData.lost,
+  cancelled: closureData.cancelled,
+  balance,
+  backlog
+});
+
+cursor.setMonth(
+  cursor.getMonth() + 1
+);
+
+
+}
+
+const totals = months.reduce(
+(acc, item) => {
+acc.entries += item.entries;
+acc.closures += item.closures;
+acc.won += item.won;
+acc.lost += item.lost;
+acc.cancelled += item.cancelled;
+acc.balance += item.balance;
+
+
+  return acc;
+},
+{
+  entries: 0,
+  closures: 0,
+  won: 0,
+  lost: 0,
+  cancelled: 0,
+  balance: 0
+}
+
+
+);
+
+return {
+filters: {
+startDate: rangeStart,
+endDate: rangeEnd
+},
+
+
+startingBacklog:
+  Number(startingBacklog || 0),
+
+endingBacklog:
+  months.length > 0
+    ? months[months.length - 1].backlog
+    : Number(startingBacklog || 0),
+
+totals,
+
+months
+
+
+};
+}
+
 // ========================================
 // DASHBOARD - FULL DATA
 // ========================================
@@ -2104,7 +2436,8 @@ app.get('/api/dashboard/full', async (req, res) => {
       funnel,
       leadTime,
       states,
-      dataQuality
+      dataQuality,
+      commercialFlow
     ] = await Promise.all([
       getGeneralDashboard(startDate, endDate),
       getPerformanceDashboard(startDate, endDate, 'closer'),
@@ -2114,7 +2447,11 @@ app.get('/api/dashboard/full', async (req, res) => {
       getFunnelDashboard(startDate, endDate),
       getLeadTimeDashboard(startDate, endDate),
       getStatesDashboard(startDate, endDate),
-      getDataQualityDashboard()
+      getDataQualityDashboard(),
+      getLeadTimeDashboard(startDate, endDate),
+      getStatesDashboard(startDate, endDate),
+      getDataQualityDashboard(),
+      getCommercialFlowDashboard(startDate, endDate)
     ]);
 
     res.json({
@@ -2127,7 +2464,8 @@ app.get('/api/dashboard/full', async (req, res) => {
       funnel,
       leadTime,
       states,
-      dataQuality
+      dataQuality,
+      commercialFlow
     });
 
   } catch (error) {
