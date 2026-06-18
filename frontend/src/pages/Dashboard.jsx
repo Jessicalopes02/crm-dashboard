@@ -107,18 +107,55 @@ function Dashboard() {
       ? ((metrics.wonLeads / metrics.totalLeads) * 100).toFixed(2)
       : 0;
 
-  const statusLabels = {
-    0: 'Open',
-    1: 'Pending',
-    10: 'Won',
-    11: 'Lost',
-    12: 'Cancelado'
-  };
+  const STATUS_CONFIG = [
+{
+code: 0,
+name: 'Open',
+color: '#0f172a'
+},
+{
+code: 1,
+name: 'Pending',
+color: '#f59e0b'
+},
+{
+code: 10,
+name: 'Won',
+color: '#16a34a'
+},
+{
+code: 11,
+name: 'Lost',
+color: '#ef4444'
+},
+{
+code: 12,
+name: 'Cancelado',
+color: '#64748b'
+}
+];
 
-  const statusData = dashboard.charts.leadsByStatus.map((item) => ({
-    name: statusLabels[item._id] || `Status ${item._id}`,
-    total: item.total
-  }));
+const statusTotalsMap = new Map(
+(dashboard.charts.leadsByStatus || []).map(
+(item) => [
+Number(item._id),
+Number(item.total || 0)
+]
+)
+);
+
+const statusData = STATUS_CONFIG.map((status) => ({
+code: status.code,
+name: status.name,
+color: status.color,
+total: statusTotalsMap.get(status.code) || 0
+}));
+
+const totalStatusLeads = statusData.reduce(
+(sum, item) => sum + Number(item.total || 0),
+0
+);
+
 
   const funnelData = [...funnel]
   .map((item) => ({
@@ -1362,75 +1399,119 @@ async function handleSyncNow() {
   </ResponsiveContainer>
 </div>
 
-          <ChartCard title="Leads por Status">
-  <div className="grid grid-cols-1 md:grid-cols-[1fr_220px] gap-4 items-center">
-    <ResponsiveContainer width="100%" height={300}>
-      <PieChart>
-        <Pie
-          data={statusData}
-          dataKey="total"
-          nameKey="name"
-          innerRadius={70}
-          outerRadius={110}
-          paddingAngle={3}
-        >
-          {statusData.map((entry, index) => (
-            <Cell
-              key={index}
-              fill={COLORS[index % COLORS.length]}
-            />
-          ))}
-        </Pie>
+          <ChartCard
+title="Leads por Status"
+subtitle="Distribuição das oportunidades no período selecionado"
 
-        <Tooltip
-          formatter={(value, name) => [
-            formatNumber(value),
-            name
-          ]}
-          contentStyle={{
-            borderRadius: 12,
-            border: '1px solid #e2e8f0'
-          }}
-        />
-      </PieChart>
-    </ResponsiveContainer>
+>
 
-    <div className="space-y-3">
-      {statusData.map((item, index) => {
-        const total = statusData.reduce((acc, current) => acc + Number(current.total || 0), 0);
-        const percent = total > 0 ? ((Number(item.total || 0) / total) * 100).toFixed(1) : '0.0';
-
-        return (
-          <div
-            key={item.name}
-            className="flex items-center justify-between gap-3 border-b border-slate-200 pb-2"
+  <div className="grid grid-cols-1 md:grid-cols-[minmax(0,1fr)_240px] gap-6 items-center">
+    <div className="relative w-full h-[320px]">
+      <ResponsiveContainer width="100%" height="100%">
+        <PieChart>
+          <Pie
+            data={statusData}
+            dataKey="total"
+            nameKey="name"
+            innerRadius={78}
+            outerRadius={118}
+            paddingAngle={3}
+            stroke="#ffffff"
+            strokeWidth={3}
           >
-            <div className="flex items-center gap-2 min-w-0">
-              <span
-                className="w-3 h-3 rounded-full shrink-0"
-                style={{ backgroundColor: COLORS[index % COLORS.length] }}
+            {statusData.map((entry) => (
+              <Cell
+                key={entry.code}
+                fill={entry.color}
               />
+            ))}
+          </Pie>
 
-              <span className="text-sm font-semibold text-slate-700 truncate">
-                {item.name}
-              </span>
-            </div>
 
-            <div className="text-right shrink-0">
-              <div className="text-sm font-black text-slate-900">
-                {formatNumber(item.total)}
-              </div>
+      <Tooltip
+        formatter={(value, name) => {
+          const percent =
+            totalStatusLeads > 0
+              ? (
+                  (Number(value || 0) /
+                    totalStatusLeads) *
+                  100
+                ).toFixed(1)
+              : '0.0';
 
-              <div className="text-[11px] text-slate-500">
-                {percent}%
-              </div>
-            </div>
-          </div>
-        );
-      })}
+          return [
+            `${formatNumber(value)} leads · ${percent}%`,
+            name
+          ];
+        }}
+        contentStyle={{
+          borderRadius: 12,
+          border: '1px solid #e2e8f0',
+          boxShadow:
+            '0 8px 20px rgba(15, 23, 42, 0.10)'
+        }}
+      />
+    </PieChart>
+  </ResponsiveContainer>
+
+  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+    <div className="text-3xl font-black text-slate-900">
+      {formatNumber(totalStatusLeads)}
+    </div>
+
+    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+      Total de leads
     </div>
   </div>
+</div>
+
+<div className="space-y-2">
+  {statusData.map((item) => {
+    const percent =
+      totalStatusLeads > 0
+        ? (
+            (Number(item.total || 0) /
+              totalStatusLeads) *
+            100
+          ).toFixed(1)
+        : '0.0';
+
+    return (
+      <div
+        key={item.code}
+        className="flex items-center justify-between gap-4 border-b border-slate-200 py-3"
+      >
+        <div className="flex items-center gap-3 min-w-0">
+          <span
+            className="w-3.5 h-3.5 rounded-full shrink-0"
+            style={{
+              backgroundColor: item.color
+            }}
+          />
+
+          <span className="text-sm font-bold text-slate-700 truncate">
+            {item.name}
+          </span>
+        </div>
+
+        <div className="text-right shrink-0">
+          <div className="text-base font-black text-slate-900">
+            {formatNumber(item.total)}
+          </div>
+
+          <div className="text-xs text-slate-500">
+            {percent}%
+          </div>
+        </div>
+      </div>
+    );
+  })}
+</div>
+
+
+  </div>
 </ChartCard>
+
 
           <ChartCard title="Top Responsáveis por Receita">
             <ResponsiveContainer width="100%" height={320}>
