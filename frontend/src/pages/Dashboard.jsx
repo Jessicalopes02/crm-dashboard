@@ -193,66 +193,81 @@ const totalProductRevenue = productData.reduce(
   0
 );
 
-    const comparisonEndMonth = endDate
-? new Date(`${endDate}T12:00:00`).getMonth() + 1
-: new Date().getMonth() + 1;
+   const comparisonEndMonth = endDate
+  ? new Date(`${endDate}T12:00:00`).getMonth() + 1
+  : new Date().getMonth() + 1;
 
 const comparisonData = yearComparison
-.filter((item) => Number(item.month) <= comparisonEndMonth)
-.map((item) => {
-const currentRevenue = Number(item.current?.revenue || 0);
-const previousRevenue = Number(item.previous?.revenue || 0);
+  .filter(
+    (item) =>
+      Number(item.month) <= comparisonEndMonth
+  )
+  .map((item) => {
+    const currentRevenue = Number(
+      item.current?.revenue || 0
+    );
 
+    const previousRevenue = Number(
+      item.previous?.revenue || 0
+    );
 
-const difference = currentRevenue - previousRevenue;
+    const difference =
+      currentRevenue - previousRevenue;
 
-const growth =
-  previousRevenue > 0
-    ? (difference / previousRevenue) * 100
-    : currentRevenue > 0
+    const growth =
+      previousRevenue > 0
+        ? (difference / previousRevenue) * 100
+        : currentRevenue > 0
+          ? 100
+          : 0;
+
+    return {
+      month: item.monthName,
+      monthNumber: Number(item.month),
+      currentYear: item.currentYear,
+      previousYear: item.previousYear,
+      currentRevenue,
+      previousRevenue,
+      difference,
+      growth
+    };
+  });
+
+const comparisonCurrentTotal =
+  comparisonData.reduce(
+    (sum, item) =>
+      sum + Number(item.currentRevenue || 0),
+    0
+  );
+
+const comparisonPreviousTotal =
+  comparisonData.reduce(
+    (sum, item) =>
+      sum + Number(item.previousRevenue || 0),
+    0
+  );
+
+const comparisonDifference =
+  comparisonCurrentTotal -
+  comparisonPreviousTotal;
+
+const comparisonGrowth =
+  comparisonPreviousTotal > 0
+    ? (
+        comparisonDifference /
+        comparisonPreviousTotal
+      ) * 100
+    : comparisonCurrentTotal > 0
       ? 100
       : 0;
 
-return {
-  month: item.monthName,
-  monthNumber: Number(item.month),
-  currentYear: item.currentYear,
-  previousYear: item.previousYear,
-  currentRevenue,
-  previousRevenue,
-  difference,
-  growth
-};
-
-});
-
-const comparisonCurrentTotal = comparisonData.reduce(
-(sum, item) => sum + Number(item.currentRevenue || 0),
-0
-);
-
-const comparisonPreviousTotal = comparisonData.reduce(
-(sum, item) => sum + Number(item.previousRevenue || 0),
-0
-);
-
-const comparisonDifference =
-comparisonCurrentTotal - comparisonPreviousTotal;
-
-const comparisonGrowth =
-comparisonPreviousTotal > 0
-? (comparisonDifference / comparisonPreviousTotal) * 100
-: comparisonCurrentTotal > 0
-? 100
-: 0;
-
 const comparisonCurrentYear =
-comparisonData[0]?.currentYear ||
-new Date().getFullYear();
+  comparisonData[0]?.currentYear ||
+  new Date().getFullYear();
 
 const comparisonPreviousYear =
-comparisonData[0]?.previousYear ||
-comparisonCurrentYear - 1;
+  comparisonData[0]?.previousYear ||
+  comparisonCurrentYear - 1;
 
 
     const leadTimeData =
