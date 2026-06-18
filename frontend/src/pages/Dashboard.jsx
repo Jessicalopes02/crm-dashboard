@@ -441,6 +441,95 @@ function getMapColor(value) {
   return '#dbeafe';
 }
 
+function normalizeGoalName(name) {
+return String(name || '')
+.normalize('NFD')
+.replace(/[\u0300-\u036f]/g, '')
+.replace(/\s+/g, ' ')
+.trim()
+.toLowerCase();
+}
+
+function canonicalGoalName(name) {
+const normalized = normalizeGoalName(name);
+
+const aliases = {
+'marcus santana': 'marcus vinicius dias santana',
+'marcus vinicius dias santana': 'marcus vinicius dias santana',
+'beatriz costa costa': 'beatriz costa',
+'beatriz costa': 'beatriz costa',
+'edson da silva bomfim junior': 'edson da silva bomfim junior'
+};
+
+return aliases[normalized] || normalized;
+}
+
+const closerProjectionData = goalResults
+.filter(
+(item) =>
+item.goal?.sector === 'closer' &&
+Number(item.goal?.targetRevenue || 0) > 0
+)
+.map((goalItem) => {
+const name =
+goalItem.goal?.userName ||
+'Sem responsável';
+
+
+const performanceItem = performance.find(
+  (item) =>
+    canonicalGoalName(item._id) ===
+    canonicalGoalName(name)
+);
+
+const goal = Number(
+  goalItem.goal?.targetRevenue || 0
+);
+
+const actual = Number(
+  goalItem.actual?.revenue || 0
+);
+
+const estimated = Number(
+  performanceItem?.estimatedRevenue || 0
+);
+
+const projected = actual + estimated;
+
+const actualPercent =
+  goal > 0
+    ? (actual / goal) * 100
+    : 0;
+
+const projectedPercent =
+  goal > 0
+    ? (projected / goal) * 100
+    : 0;
+
+return {
+  name,
+  firstName: String(name)
+    .split(' ')
+    .filter(Boolean)[0],
+  goal,
+  actual,
+  estimated,
+  projected,
+  actualPercent,
+  projectedPercent,
+  gap: Math.max(goal - projected, 0)
+};
+
+
+})
+.sort(
+(a, b) =>
+b.projectedPercent -
+a.projectedPercent
+)
+.slice(0, 8);
+
+
 async function handleSyncNow() {
   try {
     setSyncing(true);
@@ -1741,17 +1830,169 @@ subtitle="Distribuição das oportunidades no período selecionado"
 </ChartCard>
 
 
-          <ChartCard title="Top Responsáveis por Receita">
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={assigneeData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`} />
-                <Tooltip formatter={(value) => formatBRL(value)} />
-                <Bar dataKey="receita" fill="#0f172a" radius={[8, 8, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </ChartCard>
+         <ChartCard
+title="Meta Individual: Realizado x Projeção"
+subtitle="Comparação entre meta, receita realizada e projeção com estimativas"
+
+>
+
+  <ResponsiveContainer width="100%" height={420}>
+    <BarChart
+      data={closerProjectionData}
+      layout="vertical"
+      margin={{
+        top: 10,
+        right: 25,
+        left: 15,
+        bottom: 10
+      }}
+    >
+      <CartesianGrid
+        strokeDasharray="3 3"
+        stroke="#e2e8f0"
+        horizontal={false}
+      />
+
+
+  <XAxis
+    type="number"
+    tick={{
+      fontSize: 11,
+      fill: '#475569'
+    }}
+    axisLine={false}
+    tickLine={false}
+    tickFormatter={(value) =>
+      `R$ ${(value / 1000).toFixed(0)}k`
+    }
+  />
+
+  <YAxis
+    type="category"
+    dataKey="firstName"
+    width={75}
+    tick={{
+      fontSize: 12,
+      fill: '#334155',
+      fontWeight: 700
+    }}
+    axisLine={false}
+    tickLine={false}
+  />
+
+  <Tooltip
+    formatter={(value, name, props) => {
+      const labels = {
+        goal: 'Meta',
+        actual: 'Realizado',
+        projected: 'Projeção'
+      };
+
+      return [
+        formatBRL(value),
+        labels[name] || name
+      ];
+    }}
+    labelFormatter={(label, payload) => {
+      const item = payload?.[0]?.payload;
+
+      if (!item) {
+        return label;
+      }
+
+      return `${item.name} · Projeção: ${item.projectedPercent.toFixed(1)}%`;
+    }}
+    contentStyle={{
+      borderRadius: 12,
+      border: '1px solid #e2e8f0',
+      boxShadow:
+        '0 8px 20px rgba(15, 23, 42, 0.10)'
+    }}
+  />
+
+  <Legend />
+
+  <Bar
+    dataKey="goal"
+    name="Meta"
+    fill="#0f172a"
+    radius={[0, 6, 6, 0]}
+    barSize={12}
+  />
+
+  <Bar
+    dataKey="actual"
+    name="Realizado"
+    fill="#2563eb"
+    radius={[0, 6, 6, 0]}
+    barSize={12}
+  />
+
+  <Bar
+    dataKey="projected"
+    name="Projeção"
+    fill="#06b6d4"
+    radius={[0, 6, 6, 0]}
+    barSize={12}
+  />
+</BarChart>
+
+
+  </ResponsiveContainer>
+
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+    {closerProjectionData.slice(0, 4).map((item) => {
+      const achieved =
+        item.actualPercent >= 100;
+
+
+  const projectedAchievement =
+    item.projectedPercent >= 100;
+
+  return (
+    <div
+      key={item.name}
+      className={`rounded-xl border px-3 py-2 ${
+        achieved
+          ? 'border-green-200 bg-green-50'
+          : projectedAchievement
+            ? 'border-cyan-200 bg-cyan-50'
+            : 'border-slate-200 bg-slate-50'
+      }`}
+    >
+      <div className="flex items-center justify-between gap-3">
+        <span className="text-sm font-black text-slate-900 truncate">
+          {item.firstName}
+        </span>
+
+        <span
+          className={`text-sm font-black ${
+            achieved
+              ? 'text-green-700'
+              : projectedAchievement
+                ? 'text-cyan-700'
+                : 'text-slate-700'
+          }`}
+        >
+          {item.projectedPercent.toFixed(1)}%
+        </span>
+      </div>
+
+      <div className="text-xs text-slate-500 mt-1">
+        {achieved
+          ? 'Meta já atingida'
+          : projectedAchievement
+            ? 'Meta atingida na projeção'
+            : `Faltam ${formatBRL(item.gap)}`}
+      </div>
+    </div>
+  );
+})}
+
+
+  </div>
+</ChartCard>
+
 
           <ChartCard title="Evolução de Leads Mensais">
            <ResponsiveContainer width="100%" height={320}>
