@@ -2130,7 +2130,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
 
           <ChartCard
   title="Fluxo Comercial Mensal"
-  subtitle="Entradas, fechamentos e evolução do backlog"
+  subtitle="Entradas, fechamentos e evolução das Oportunidades"
 >
   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
     <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
@@ -2246,7 +2246,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
           const labels = {
             entries: 'Entradas',
             closures: 'Fechamentos',
-            backlog: 'Backlog'
+            backlog: 'Oportunidades'
           };
 
           return [
@@ -2297,7 +2297,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
         yAxisId="right"
         type="monotone"
         dataKey="backlog"
-        name="Backlog"
+        name="Oportunidades"
         stroke="#9333ea"
         strokeWidth={4}
         dot={{
@@ -2330,10 +2330,10 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
           }`}
         >
           {backlogDifference < 0
-            ? 'Redução do backlog'
+            ? 'Redução das Oportunidades'
             : backlogDifference > 0
-              ? 'Aumento do backlog'
-              : 'Backlog estável'}
+              ? 'Aumento das Oportunidades'
+              : 'Oportunidade estável'}
         </div>
 
         <div className="text-xs text-slate-600 mt-1">
