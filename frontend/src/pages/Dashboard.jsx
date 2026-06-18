@@ -441,6 +441,20 @@ function getMapColor(value) {
   return '#dbeafe';
 }
 
+const goalResults =
+  achievement?.results ||
+  achievement?.data?.results ||
+  [];
+
+const generalGoal =
+  goalResults
+    .filter((item) => item.goal?.sector === 'geral')
+    .reduce(
+      (sum, item) =>
+        sum + Number(item.goal?.targetRevenue || 0),
+      0
+    );
+    
 function normalizeGoalName(name) {
 return String(name || '')
 .normalize('NFD')
@@ -553,19 +567,7 @@ async function handleSyncNow() {
   }
 }
 
-const goalResults =
-  achievement?.results ||
-  achievement?.data?.results ||
-  [];
 
-const generalGoal =
-  goalResults
-    .filter((item) => item.goal?.sector === 'geral')
-    .reduce(
-      (sum, item) =>
-        sum + Number(item.goal?.targetRevenue || 0),
-      0
-    );
 
 const realizedRevenue =
   Number(metrics.totalRevenue || 0);
