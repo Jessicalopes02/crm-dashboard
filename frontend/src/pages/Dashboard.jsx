@@ -2184,7 +2184,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
 
     <div className="rounded-xl border border-purple-100 bg-purple-50 p-3">
       <div className="text-xs font-bold uppercase text-purple-600">
-        Backlog atual
+        Saldo Acumulado
       </div>
 
       <div className="text-2xl font-black text-purple-800 mt-1">
