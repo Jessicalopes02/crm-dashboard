@@ -1410,142 +1410,238 @@ async function getProductsDashboard(startDate, endDate) {
   return products;
 }
 
-async function getYearComparisonDashboard(year = null) {
-  const currentYear = Number(year) || new Date().getFullYear();
-  const previousYear = currentYear - 1;
+async function getYearComparisonDashboard(
+year = null,
+comparisonSource = ''
+) {
+const currentYear =
+Number(year) || new Date().getFullYear();
 
-  const startDate = new Date(previousYear, 0, 1);
-  const endDate = new Date(currentYear, 11, 31, 23, 59, 59);
+const previousYear = currentYear - 1;
 
-  const ignoredPipelineFilter = {
-    'stageset.name': { $ne: 'Processo de Vendas - Global Alliance' }
-  };
+const startDate = new Date(
+previousYear,
+0,
+1,
+0,
+0,
+0,
+0
+);
 
-  const data = await Lead.aggregate([
-    {
-      $match: {
-        ...ignoredPipelineFilter,
-        closedTime: {
-          $gte: startDate,
-          $lte: endDate
-        }
-      }
-    },
-    {
-      $group: {
-        _id: {
-          year: { $year: '$closedTime' },
-          month: { $month: '$closedTime' }
-        },
+const endDate = new Date(
+currentYear,
+11,
+31,
+23,
+59,
+59,
+999
+);
 
-        totalLeads: {
-          $sum: 1
-        },
-
-        wonLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 10] }, 1, 0]
-          }
-        },
-
-        lostLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 11] }, 1, 0]
-          }
-        },
-
-        revenue: {
-          $sum: {
-            $cond: [
-              {
-                $and: [
-                  { $eq: ['$status', 10] },
-                  { $ne: ['$value.amount', null] }
-                ]
-              },
-              '$value.amount',
-              0
-            ]
-          }
-        }
-      }
-    },
-    {
-      $sort: {
-        '_id.year': 1,
-        '_id.month': 1
-      }
-    }
-  ]);
-
-  const months = [
-    'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-    'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-  ];
-
-  const today = new Date();
-
-  const maxMonth =
-    currentYear === today.getFullYear()
-      ? today.getMonth() + 1
-      : 12;
-
-  const comparison = months
-    .slice(0, maxMonth)
-    .map((monthName, index) => {
-      const month = index + 1;
-
-      const current = data.find(
-        (item) =>
-          item._id.year === currentYear &&
-          item._id.month === month
-      );
-
-      const previous = data.find(
-        (item) =>
-          item._id.year === previousYear &&
-          item._id.month === month
-      );
-
-      const currentRevenue = current?.revenue || 0;
-      const previousRevenue = previous?.revenue || 0;
-
-      const revenueGrowth =
-        previousRevenue > 0
-          ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
-          : currentRevenue > 0
-            ? 100
-            : 0;
-
-      return {
-        month,
-        monthName,
-
-        currentYear,
-        previousYear,
-
-        current: {
-          totalLeads: current?.totalLeads || 0,
-          wonLeads: current?.wonLeads || 0,
-          lostLeads: current?.lostLeads || 0,
-          revenue: currentRevenue
-        },
-
-        previous: {
-          totalLeads: previous?.totalLeads || 0,
-          wonLeads: previous?.wonLeads || 0,
-          lostLeads: previous?.lostLeads || 0,
-          revenue: previousRevenue
-        },
-
-        growth: {
-          revenuePercent: revenueGrowth
-        }
-      };
-    });
-
-  return comparison;
+const ignoredPipelineFilter = {
+'stageset.name': {
+$ne: 'Processo de Vendas - Global Alliance'
 }
+};
+
+const SOURCE_GROUPS = {
+chinaLink: [
+'PARTNER - China Link BR',
+'PARTNER - China Link SC'
+],
+
+
+metodo12p: [
+  'PARTNER - Método 12P'
+],
+
+process: [
+  'Ativo',
+  'Base Process'
+]
+
+
+};
+
+const selectedSources =
+SOURCE_GROUPS[comparisonSource] || [];
+
+const sourceFilter =
+selectedSources.length > 0
+? {
+'sources.name': {
+$in: selectedSources
+}
+}
+: {};
+
+const data = await Lead.aggregate([
+{
+$match: {
+...ignoredPipelineFilter,
+...sourceFilter,
+
+
+    status: 10,
+
+    closedTime: {
+      $gte: startDate,
+      $lte: endDate,
+      $ne: null
+    },
+
+    'value.amount': {
+      $type: 'number'
+    }
+  }
+},
+
+{
+  $group: {
+    _id: {
+      year: {
+        $year: '$closedTime'
+      },
+
+      month: {
+        $month: '$closedTime'
+      }
+    },
+
+    totalLeads: {
+      $sum: 1
+    },
+
+    wonLeads: {
+      $sum: 1
+    },
+
+    lostLeads: {
+      $sum: 0
+    },
+
+    revenue: {
+      $sum: '$value.amount'
+    }
+  }
+},
+
+{
+  $sort: {
+    '_id.year': 1,
+    '_id.month': 1
+  }
+}
+
+
+]);
+
+const months = [
+'Jan',
+'Fev',
+'Mar',
+'Abr',
+'Mai',
+'Jun',
+'Jul',
+'Ago',
+'Set',
+'Out',
+'Nov',
+'Dez'
+];
+
+const today = new Date();
+
+const maxMonth =
+currentYear === today.getFullYear()
+? today.getMonth() + 1
+: 12;
+
+const comparison = months
+.slice(0, maxMonth)
+.map((monthName, index) => {
+const month = index + 1;
+
+
+  const current = data.find(
+    (item) =>
+      Number(item._id.year) ===
+        currentYear &&
+      Number(item._id.month) === month
+  );
+
+  const previous = data.find(
+    (item) =>
+      Number(item._id.year) ===
+        previousYear &&
+      Number(item._id.month) === month
+  );
+
+  const currentRevenue =
+    Number(current?.revenue || 0);
+
+  const previousRevenue =
+    Number(previous?.revenue || 0);
+
+  const revenueGrowth =
+    previousRevenue > 0
+      ? (
+          (currentRevenue -
+            previousRevenue) /
+          previousRevenue
+        ) * 100
+      : currentRevenue > 0
+        ? 100
+        : 0;
+
+  return {
+    month,
+    monthName,
+
+    currentYear,
+    previousYear,
+
+    sourceGroup:
+      comparisonSource || 'all',
+
+    current: {
+      totalLeads:
+        Number(current?.totalLeads || 0),
+
+      wonLeads:
+        Number(current?.wonLeads || 0),
+
+      lostLeads:
+        Number(current?.lostLeads || 0),
+
+      revenue: currentRevenue
+    },
+
+    previous: {
+      totalLeads:
+        Number(previous?.totalLeads || 0),
+
+      wonLeads:
+        Number(previous?.wonLeads || 0),
+
+      lostLeads:
+        Number(previous?.lostLeads || 0),
+
+      revenue: previousRevenue
+    },
+
+    growth: {
+      revenuePercent: revenueGrowth
+    }
+  };
+});
+
+
+return comparison;
+}
+
 async function getFunnelDashboard(startDate, endDate) {
   const dateConditions = {};
 
@@ -2424,7 +2520,11 @@ months
 // ========================================
 
 app.get('/api/dashboard/full', async (req, res) => {
-const { startDate, endDate } = req.query;
+  const {
+    startDate,
+    endDate,
+    comparisonSource
+  } = req.query;
 
 async function runDashboardStep(stepName, callback) {
 try {
@@ -2495,7 +2595,10 @@ const products = await runDashboardStep(
 const comparison = await runDashboardStep(
   'comparison',
   () =>
-    getYearComparisonDashboard()
+    getYearComparisonDashboard(
+      null,
+      comparisonSource || ''
+    )
 );
 
 const funnel = await runDashboardStep(
@@ -5787,156 +5890,275 @@ app.get('/api/dashboard/transport-estimate', async (req, res) => {
 // ========================================
 
 app.get('/api/dashboard/year-comparison', async (req, res) => {
-  try {
-    const currentYear = Number(req.query.year) || new Date().getFullYear();
-    const previousYear = currentYear - 1;
+try {
+const currentYear =
+Number(req.query.year) ||
+new Date().getFullYear();
 
-    const startDate = new Date(previousYear, 0, 1);
-    const endDate = new Date(currentYear, 11, 31, 23, 59, 59);
 
-    const ignoredPipelineFilter = {
-      'stageset.name': { $ne: 'Processo de Vendas - Global Alliance' }
-    };
+const previousYear =
+  currentYear - 1;
 
-    const data = await Lead.aggregate([
-      {
-        $match: {
-          ...ignoredPipelineFilter,
-          closedTime: {
-            $gte: startDate,
-            $lte: endDate
-          }
-        }
-      },
-      {
-        $group: {
-          _id: {
-            year: { $year: '$closedTime' },
-            month: { $month: '$closedTime' }
-          },
+const comparisonSource =
+  req.query.comparisonSource || '';
 
-          totalLeads: {
-            $sum: 1
-          },
+const startDate =
+  new Date(previousYear, 0, 1);
 
-          wonLeads: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 10] }, 1, 0]
-            }
-          },
+const endDate =
+  new Date(
+    currentYear,
+    11,
+    31,
+    23,
+    59,
+    59,
+    999
+  );
 
-          lostLeads: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 11] }, 1, 0]
-            }
-          },
+const ignoredPipelineFilter = {
+  'stageset.name': {
+    $ne:
+      'Processo de Vendas - Global Alliance'
+  }
+};
 
-          revenue: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$status', 10] },
-                    { $ne: ['$value.amount', null] }
-                  ]
-                },
-                '$value.amount',
-                0
-              ]
-            }
-          }
-        }
-      },
-      {
-        $sort: {
-          '_id.year': 1,
-          '_id.month': 1
+const SOURCE_GROUPS = {
+  chinaLink: [
+    'PARTNER - China Link BR',
+    'PARTNER - China Link SC'
+  ],
+
+  metodo12p: [
+    'PARTNER - Método 12P'
+  ],
+
+  process: [
+    'Ativo',
+    'Base Process'
+  ]
+};
+
+const selectedSources =
+  SOURCE_GROUPS[comparisonSource] || [];
+
+const sourceFilter =
+  selectedSources.length > 0
+    ? {
+        'sources.name': {
+          $in: selectedSources
         }
       }
-    ]);
+    : {};
 
-    const months = [
-      'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun',
-      'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
-    ];
+const data = await Lead.aggregate([
+  {
+    $match: {
+      ...ignoredPipelineFilter,
+      ...sourceFilter,
 
-    const today = new Date();
+      status: 10,
 
-    const maxMonth =
-      currentYear === today.getFullYear()
-        ? today.getMonth() + 1
-        : 12;
+      closedTime: {
+        $gte: startDate,
+        $lte: endDate,
+        $ne: null
+      },
 
-    const comparison = months
-      .slice(0, maxMonth)
-      .map((monthName, index) => {
-        const month = index + 1;
+      'value.amount': {
+        $type: 'number'
+      }
+    }
+  },
 
-        const current = data.find(
-          (item) =>
-            item._id.year === currentYear &&
-            item._id.month === month
-        );
+  {
+    $group: {
+      _id: {
+        year: {
+          $year: '$closedTime'
+        },
 
-        const previous = data.find(
-          (item) =>
-            item._id.year === previousYear &&
-            item._id.month === month
-        );
+        month: {
+          $month: '$closedTime'
+        }
+      },
 
-        const currentRevenue = current?.revenue || 0;
-        const previousRevenue = previous?.revenue || 0;
+      totalLeads: {
+        $sum: 1
+      },
 
-        const revenueGrowth =
-          previousRevenue > 0
-            ? ((currentRevenue - previousRevenue) / previousRevenue) * 100
-            : currentRevenue > 0
-              ? 100
-              : 0;
+      wonLeads: {
+        $sum: 1
+      },
 
-        return {
-          month,
-          monthName,
+      lostLeads: {
+        $sum: 0
+      },
 
-          currentYear,
-          previousYear,
+      revenue: {
+        $sum: '$value.amount'
+      }
+    }
+  },
 
-          current: {
-            totalLeads: current?.totalLeads || 0,
-            wonLeads: current?.wonLeads || 0,
-            lostLeads: current?.lostLeads || 0,
-            revenue: currentRevenue
-          },
+  {
+    $sort: {
+      '_id.year': 1,
+      '_id.month': 1
+    }
+  }
+]);
 
-          previous: {
-            totalLeads: previous?.totalLeads || 0,
-            wonLeads: previous?.wonLeads || 0,
-            lostLeads: previous?.lostLeads || 0,
-            revenue: previousRevenue
-          },
+const months = [
+  'Jan',
+  'Fev',
+  'Mar',
+  'Abr',
+  'Mai',
+  'Jun',
+  'Jul',
+  'Ago',
+  'Set',
+  'Out',
+  'Nov',
+  'Dez'
+];
 
-          growth: {
-            revenuePercent: revenueGrowth
-          }
-        };
-      });
+const today = new Date();
 
-    res.json({
-      sucesso: true,
+const maxMonth =
+  currentYear === today.getFullYear()
+    ? today.getMonth() + 1
+    : 12;
+
+const comparison = months
+  .slice(0, maxMonth)
+  .map((monthName, index) => {
+    const month = index + 1;
+
+    const current = data.find(
+      (item) =>
+        Number(item._id.year) ===
+          currentYear &&
+        Number(item._id.month) ===
+          month
+    );
+
+    const previous = data.find(
+      (item) =>
+        Number(item._id.year) ===
+          previousYear &&
+        Number(item._id.month) ===
+          month
+    );
+
+    const currentRevenue =
+      Number(current?.revenue || 0);
+
+    const previousRevenue =
+      Number(previous?.revenue || 0);
+
+    const revenueGrowth =
+      previousRevenue > 0
+        ? (
+            (currentRevenue -
+              previousRevenue) /
+            previousRevenue
+          ) * 100
+        : currentRevenue > 0
+          ? 100
+          : 0;
+
+    return {
+      month,
+      monthName,
       currentYear,
       previousYear,
-      comparison
-    });
 
-  } catch (error) {
-    console.error('ERRO YEAR COMPARISON:', error.message);
+      sourceGroup:
+        comparisonSource || 'all',
 
-    res.status(500).json({
-      sucesso: false,
-      erro: error.message
-    });
-  }
+      current: {
+        totalLeads:
+          Number(
+            current?.totalLeads || 0
+          ),
+
+        wonLeads:
+          Number(
+            current?.wonLeads || 0
+          ),
+
+        lostLeads:
+          Number(
+            current?.lostLeads || 0
+          ),
+
+        revenue:
+          currentRevenue
+      },
+
+      previous: {
+        totalLeads:
+          Number(
+            previous?.totalLeads || 0
+          ),
+
+        wonLeads:
+          Number(
+            previous?.wonLeads || 0
+          ),
+
+        lostLeads:
+          Number(
+            previous?.lostLeads || 0
+          ),
+
+        revenue:
+          previousRevenue
+      },
+
+      growth: {
+        revenuePercent:
+          revenueGrowth
+      }
+    };
+  });
+
+res.json({
+  sucesso: true,
+
+  filters: {
+    year: currentYear,
+    comparisonSource:
+      comparisonSource || 'all',
+
+    sources:
+      selectedSources
+  },
+
+  currentYear,
+  previousYear,
+  comparison
 });
+
+
+} catch (error) {
+console.error(
+'ERRO YEAR COMPARISON:',
+error.message
+);
+
+
+res.status(500).json({
+  sucesso: false,
+  erro: error.message
+});
+
+
+}
+});
+
 
 // ========================================
 // DASHBOARD - FUNIL COMERCIAL
