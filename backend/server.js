@@ -2292,9 +2292,9 @@ Lead.aggregate([
   {
     $match: {
       ...ignoredPipelineFilter,
-      status: {
-        $in: [10, 11, 12]
-      },
+
+      status: 10,
+
       closedTime: {
         $gte: rangeStart,
         $lte: rangeEnd,
@@ -2318,39 +2318,15 @@ Lead.aggregate([
       },
 
       won: {
-        $sum: {
-          $cond: [
-            {
-              $eq: ['$status', 10]
-            },
-            1,
-            0
-          ]
-        }
+        $sum: 1
       },
 
       lost: {
-        $sum: {
-          $cond: [
-            {
-              $eq: ['$status', 11]
-            },
-            1,
-            0
-          ]
-        }
+        $sum: 0
       },
 
       cancelled: {
-        $sum: {
-          $cond: [
-            {
-              $eq: ['$status', 12]
-            },
-            1,
-            0
-          ]
-        }
+        $sum: 0
       }
     }
   },
@@ -2372,14 +2348,22 @@ Lead.countDocuments({
 
   $or: [
     {
+      status: {
+        $ne: 10
+      }
+    },
+    {
+      status: 10,
       closedTime: null
     },
     {
+      status: 10,
       closedTime: {
         $exists: false
       }
     },
     {
+      status: 10,
       closedTime: {
         $gte: rangeStart
       }
