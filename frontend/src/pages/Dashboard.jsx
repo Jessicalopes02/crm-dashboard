@@ -183,14 +183,49 @@ const totalStatusLeads = statusData.reduce(
 );
 
 
-  const funnelData = [...funnel]
-  .map((item) => ({
-    label: item.label,
-    total: item.total || 0,
-    percent: item.percentOfTotal || 0,
-    revenue: item.revenue || 0
-  }))
-  .sort((a, b) => b.total - a.total);
+  const FUNNEL_STATUS_ORDER = [
+'Lost',
+'Won',
+'Open'
+];
+
+const funnelData = [...funnel]
+.filter((item) =>
+FUNNEL_STATUS_ORDER.includes(item.label)
+)
+.map((item) => ({
+label: item.label,
+total: item.total || 0,
+percent: item.percentOfTotal || 0,
+revenue: item.revenue || 0
+}))
+.sort(
+(a, b) =>
+FUNNEL_STATUS_ORDER.indexOf(a.label) -
+FUNNEL_STATUS_ORDER.indexOf(b.label)
+);
+
+const visibleFunnelTotal = funnelData.reduce(
+(sum, item) =>
+sum + Number(item.total || 0),
+0
+);
+
+const normalizedFunnelData = funnelData.map(
+(item) => ({
+...item,
+
+percent:
+  visibleFunnelTotal > 0
+    ? (
+        Number(item.total || 0) /
+        visibleFunnelTotal
+      ) * 100
+    : 0
+
+})
+);
+
 
   const monthlyData =
   dashboard?.charts?.leadsByMonth?.map((item) => ({
@@ -1037,10 +1072,10 @@ endingBacklog - startingBacklog;
   </div>
 
   <FunnelChart
-    data={funnelData}
-    formatNumber={formatNumber}
-    formatBRL={formatBRL}
-  />
+  data={normalizedFunnelData}
+  formatNumber={formatNumber}
+  formatBRL={formatBRL}
+/>
 </section>
 
 <ChartCard
