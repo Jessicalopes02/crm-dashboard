@@ -466,7 +466,15 @@ const mapData = stateData.reduce((acc, item) => {
 
 const mapArray = Object.values(mapData);
 
-const maxLeads = Math.max(...mapArray.map((item) => item.leads), 1);
+const totalMapLeads = mapArray.reduce(
+  (sum, item) => sum + Number(item.leads || 0),
+  0
+);
+
+const maxLeads = Math.max(
+  ...mapArray.map((item) => item.leads),
+  1
+);
 
 function getMapColor(value) {
   if (!value) return '#e2e8f0';
@@ -1578,9 +1586,18 @@ endingBacklog - startingBacklog;
 
       <div className="space-y-3">
         {mapArray
-          .sort((a, b) => b.leads - a.leads)
-          .slice(0, 8)
-          .map((item) => (
+  .sort((a, b) => b.leads - a.leads)
+  .slice(0, 8)
+  .map((item) => {
+    const statePercentage =
+      totalMapLeads > 0
+        ? (
+            Number(item.leads || 0) /
+            totalMapLeads
+          ) * 100
+        : 0;
+
+    return (
             <div
               key={item.uf}
               className="flex items-center justify-between border-b border-slate-200 pb-2"
@@ -1600,12 +1617,17 @@ endingBacklog - startingBacklog;
                   {formatNumber(item.leads)} leads
                 </div>
 
-                <div className="text-xs text-slate-500">
-                  {formatBRL(item.receita)}
-                </div>
+              <div className="text-xs font-semibold text-blue-600">
+                {statePercentage.toFixed(1)}% do total
+              </div>
+
+              <div className="text-xs text-slate-500">
+                {formatBRL(item.receita)}
+              </div>
               </div>
             </div>
-          ))}
+          );
+       })}
       </div>
         </div>
   </div>
