@@ -46,6 +46,7 @@ function Dashboard() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [selectedRevenueMonth, setSelectedRevenueMonth] = useState('');
+  const [achievement, setAchievement] = useState(null);
 
   useEffect(() => {
     loadDashboard();
@@ -61,6 +62,26 @@ function Dashboard() {
     });
 
     const full = response.data;
+
+    const referenceDate = endDate
+  ? new Date(`${endDate}T12:00:00`)
+  : new Date();
+
+const goalPeriod = `${referenceDate.getFullYear()}-${String(
+  referenceDate.getMonth() + 1
+).padStart(2, '0')}`;
+
+const achievementResponse = await api.get('/goals/achievement', {
+  params: {
+    period: goalPeriod
+  }
+});
+
+const achievementPayload =
+  achievementResponse.data?.data ||
+  achievementResponse.data;
+
+setAchievement(achievementPayload);
 
     setDashboard({
       metrics: full.general.metrics,
@@ -442,6 +463,67 @@ async function handleSyncNow() {
     setSyncing(false);
   }
 }
+
+const goalResults =
+  achievement?.results ||
+  achievement?.data?.results ||
+  [];
+
+const generalGoal =
+  goalResults
+    .filter((item) => item.goal?.sector === 'geral')
+    .reduce(
+      (sum, item) =>
+        sum + Number(item.goal?.targetRevenue || 0),
+      0
+    );
+
+const realizedRevenue =
+  Number(metrics.totalRevenue || 0);
+
+const estimatedRevenue =
+  performance.reduce(
+    (sum, item) =>
+      sum + Number(item.estimatedRevenue || 0),
+    0
+  );
+
+const projectedRevenue =
+  realizedRevenue + estimatedRevenue;
+
+const realizedPercent =
+  generalGoal > 0
+    ? (realizedRevenue / generalGoal) * 100
+    : 0;
+
+const projectedPercent =
+  generalGoal > 0
+    ? (projectedRevenue / generalGoal) * 100
+    : 0;
+
+const remainingToGoal =
+  Math.max(generalGoal - realizedRevenue, 0);
+
+const projectedRemaining =
+  Math.max(generalGoal - projectedRevenue, 0);
+
+const goalComparisonData = [
+  {
+    name: 'Meta',
+    value: generalGoal,
+    fill: '#0f172a'
+  },
+  {
+    name: 'Realizado',
+    value: realizedRevenue,
+    fill: '#2563eb'
+  },
+  {
+    name: 'Projeção',
+    value: projectedRevenue,
+    fill: '#06b6d4'
+  }
+];
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
 
@@ -1328,60 +1410,111 @@ async function handleSyncNow() {
 </section>
 
 <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-  <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
-  <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
+ <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+  <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
     <div>
-      <h2 className="text-lg font-semibold text-slate-800">
-        Receita Mensal
+      <h2 className="text-xl font-black text-slate-900">
+        Meta x Realizado x Estimado
       </h2>
 
-      <p className="text-sm text-slate-500">
-        Evolução da receita por mês
+      <p className="text-sm text-slate-500 mt-1">
+        Resultado atual e projeção comercial do período
       </p>
     </div>
 
-    <select
-      value={selectedRevenueMonth}
-      onChange={(e) => setSelectedRevenueMonth(e.target.value)}
-      className="border border-slate-200 rounded-xl px-3 py-2 text-sm bg-white"
+    <div
+      className={`px-4 py-2 rounded-xl text-sm font-black ${
+        projectedPercent >= 100
+          ? 'bg-green-100 text-green-700'
+          : projectedPercent >= 80
+            ? 'bg-blue-100 text-blue-700'
+            : 'bg-amber-100 text-amber-700'
+      }`}
     >
-      <option value="">Últimos 12 meses</option>
-
-      {revenueMonthOptions.map((month) => (
-        <option key={month} value={month}>
-          {month}
-        </option>
-      ))}
-    </select>
+      Projeção: {projectedPercent.toFixed(1)}%
+    </div>
   </div>
 
-  <ResponsiveContainer width="100%" height={320}>
+  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
+    <div className="rounded-xl bg-slate-100 border border-slate-200 p-3">
+      <div className="text-xs font-bold uppercase text-slate-500">
+        Meta
+      </div>
+
+      <div className="text-lg font-black text-slate-900 mt-1">
+        {formatBRL(generalGoal)}
+      </div>
+    </div>
+
+    <div className="rounded-xl bg-blue-50 border border-blue-100 p-3">
+      <div className="text-xs font-bold uppercase text-blue-600">
+        Realizado
+      </div>
+
+      <div className="text-lg font-black text-blue-800 mt-1">
+        {formatBRL(realizedRevenue)}
+      </div>
+    </div>
+
+    <div className="rounded-xl bg-cyan-50 border border-cyan-100 p-3">
+      <div className="text-xs font-bold uppercase text-cyan-600">
+        Estimado
+      </div>
+
+      <div className="text-lg font-black text-cyan-800 mt-1">
+        {formatBRL(estimatedRevenue)}
+      </div>
+    </div>
+  </div>
+
+  <ResponsiveContainer width="100%" height={220}>
     <BarChart
-      data={selectedRevenueData}
-      margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
+      data={goalComparisonData}
+      layout="vertical"
+      margin={{
+        top: 10,
+        right: 30,
+        left: 15,
+        bottom: 10
+      }}
     >
-      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <CartesianGrid
+        strokeDasharray="3 3"
+        stroke="#e2e8f0"
+        horizontal={false}
+      />
 
       <XAxis
-        dataKey="month"
-        tick={{ fontSize: 11, fill: '#475569' }}
+        type="number"
+        tick={{
+          fontSize: 11,
+          fill: '#475569'
+        }}
         axisLine={false}
         tickLine={false}
+        tickFormatter={(value) =>
+          `R$ ${(value / 1000).toFixed(0)}k`
+        }
       />
 
       <YAxis
-        tick={{ fontSize: 11, fill: '#475569' }}
+        type="category"
+        dataKey="name"
+        width={75}
+        tick={{
+          fontSize: 12,
+          fill: '#334155',
+          fontWeight: 700
+        }}
         axisLine={false}
         tickLine={false}
-        tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
       />
 
       <Tooltip
-        formatter={(value) => [formatBRL(value), 'Receita']}
-        labelStyle={{
-          color: '#0f172a',
-          fontWeight: 700
-        }}
+        formatter={(value) => [
+          formatBRL(value),
+          'Valor'
+        ]}
         contentStyle={{
           borderRadius: 12,
           border: '1px solid #e2e8f0'
@@ -1389,14 +1522,109 @@ async function handleSyncNow() {
       />
 
       <Bar
-        dataKey="receita"
-        name="Receita"
-        fill="#2563eb"
-        radius={[8, 8, 0, 0]}
-        barSize={42}
-      />
+        dataKey="value"
+        radius={[0, 8, 8, 0]}
+        barSize={30}
+      >
+        {goalComparisonData.map((item) => (
+          <Cell
+            key={item.name}
+            fill={item.fill}
+          />
+        ))}
+      </Bar>
     </BarChart>
   </ResponsiveContainer>
+
+  <div className="space-y-3 mt-2">
+    <div>
+      <div className="flex items-center justify-between text-xs font-bold mb-1">
+        <span className="text-slate-600">
+          Progresso realizado
+        </span>
+
+        <span className="text-blue-700">
+          {realizedPercent.toFixed(1)}%
+        </span>
+      </div>
+
+      <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+        <div
+          className="h-full bg-blue-600 rounded-full"
+          style={{
+            width: `${Math.min(realizedPercent, 100)}%`
+          }}
+        />
+      </div>
+    </div>
+
+    <div>
+      <div className="flex items-center justify-between text-xs font-bold mb-1">
+        <span className="text-slate-600">
+          Progresso com estimativa
+        </span>
+
+        <span className="text-cyan-700">
+          {projectedPercent.toFixed(1)}%
+        </span>
+      </div>
+
+      <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+        <div
+          className={`h-full rounded-full ${
+            projectedPercent >= 100
+              ? 'bg-green-500'
+              : 'bg-cyan-500'
+          }`}
+          style={{
+            width: `${Math.min(projectedPercent, 100)}%`
+          }}
+        />
+      </div>
+    </div>
+  </div>
+
+  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
+      <div className="text-xs text-slate-500">
+        Falta realizar
+      </div>
+
+      <div className="text-base font-black text-slate-900 mt-1">
+        {formatBRL(remainingToGoal)}
+      </div>
+    </div>
+
+    <div
+      className={`rounded-xl border p-3 ${
+        projectedRemaining === 0
+          ? 'border-green-200 bg-green-50'
+          : 'border-amber-200 bg-amber-50'
+      }`}
+    >
+      <div
+        className={`text-xs ${
+          projectedRemaining === 0
+            ? 'text-green-600'
+            : 'text-amber-600'
+        }`}
+      >
+        Falta considerando a estimativa
+      </div>
+
+      <div
+        className={`text-base font-black mt-1 ${
+          projectedRemaining === 0
+            ? 'text-green-700'
+            : 'text-amber-700'
+        }`}
+      >
+        {projectedRemaining === 0
+          ? 'Meta projetada atingida'
+          : formatBRL(projectedRemaining)}
+      </div>
+    </div>
+  </div>
 </div>
 
           <ChartCard
