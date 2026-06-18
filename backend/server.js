@@ -1446,35 +1446,53 @@ $ne: 'Processo de Vendas - Global Alliance'
 };
 
 const SOURCE_GROUPS = {
-chinaLink: [
-'PARTNER - China Link BR',
-'PARTNER - China Link SC'
-],
+  chinaLink: [
+    'PARTNER - China Link BR',
+    'PARTNER - China Link SC'
+  ],
 
-
-metodo12p: [
-  'PARTNER - Método 12P'
-],
-
-process: [
-  'Ativo',
-  'Base Process'
-]
-
-
+  metodo12p: [
+    'PARTNER - Método 12P'
+  ]
 };
 
-const selectedSources =
-SOURCE_GROUPS[comparisonSource] || [];
+const PROCESS_EXCLUDED_SOURCES = [
+  'PARTNER - China Link BR',
+  'PARTNER - China Link SC',
+  'PARTNER - Método 12P',
+  'Cloned Lead'
+];
 
-const sourceFilter =
-selectedSources.length > 0
-? {
-'sources.name': {
-$in: selectedSources
+let selectedSources = [];
+let sourceFilter = {};
+
+if (comparisonSource === 'chinaLink') {
+  selectedSources = SOURCE_GROUPS.chinaLink;
+
+  sourceFilter = {
+    'sources.name': {
+      $in: selectedSources
+    }
+  };
 }
+
+if (comparisonSource === 'metodo12p') {
+  selectedSources = SOURCE_GROUPS.metodo12p;
+
+  sourceFilter = {
+    'sources.name': {
+      $in: selectedSources
+    }
+  };
 }
-: {};
+
+if (comparisonSource === 'process') {
+  sourceFilter = {
+    'sources.name': {
+      $nin: PROCESS_EXCLUDED_SOURCES
+    }
+  };
+}
 
 const data = await Lead.aggregate([
 {
@@ -5931,25 +5949,46 @@ const SOURCE_GROUPS = {
 
   metodo12p: [
     'PARTNER - Método 12P'
-  ],
-
-  process: [
-    'Ativo',
-    'Base Process'
   ]
 };
 
-const selectedSources =
-  SOURCE_GROUPS[comparisonSource] || [];
+const PROCESS_EXCLUDED_SOURCES = [
+  'PARTNER - China Link BR',
+  'PARTNER - China Link SC',
+  'PARTNER - Método 12P',
+  'Cloned Lead'
+];
 
-const sourceFilter =
-  selectedSources.length > 0
-    ? {
-        'sources.name': {
-          $in: selectedSources
-        }
-      }
-    : {};
+let selectedSources = [];
+let sourceFilter = {};
+
+if (comparisonSource === 'chinaLink') {
+  selectedSources = SOURCE_GROUPS.chinaLink;
+
+  sourceFilter = {
+    'sources.name': {
+      $in: selectedSources
+    }
+  };
+}
+
+if (comparisonSource === 'metodo12p') {
+  selectedSources = SOURCE_GROUPS.metodo12p;
+
+  sourceFilter = {
+    'sources.name': {
+      $in: selectedSources
+    }
+  };
+}
+
+if (comparisonSource === 'process') {
+  sourceFilter = {
+    'sources.name': {
+      $nin: PROCESS_EXCLUDED_SOURCES
+    }
+  };
+}
 
 const data = await Lead.aggregate([
   {
@@ -6129,13 +6168,19 @@ res.json({
   sucesso: true,
 
   filters: {
-    year: currentYear,
-    comparisonSource:
-      comparisonSource || 'all',
+  year: currentYear,
 
-    sources:
-      selectedSources
-  },
+  comparisonSource:
+    comparisonSource || 'all',
+
+  sources:
+    comparisonSource === 'process'
+      ? {
+          rule: 'Todas, exceto',
+          excluded: PROCESS_EXCLUDED_SOURCES
+        }
+      : selectedSources
+},
 
   currentYear,
   previousYear,
