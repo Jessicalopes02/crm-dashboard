@@ -203,7 +203,7 @@ const comparisonData = yearComparison
 const currentRevenue = Number(item.current?.revenue || 0);
 const previousRevenue = Number(item.previous?.revenue || 0);
 
-```
+
 const difference = currentRevenue - previousRevenue;
 
 const growth =
@@ -223,7 +223,6 @@ return {
   difference,
   growth
 };
-```
 
 });
 
