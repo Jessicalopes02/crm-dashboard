@@ -193,12 +193,68 @@ const totalProductRevenue = productData.reduce(
   0
 );
 
-    const comparisonData = yearComparison.map((item) => ({
-      month: item.monthName,
-      currentRevenue: item.current.revenue || 0,
-      previousRevenue: item.previous.revenue || 0,
-      growth: item.growth.revenuePercent || 0
-    }));
+    const comparisonEndMonth = endDate
+? new Date(`${endDate}T12:00:00`).getMonth() + 1
+: new Date().getMonth() + 1;
+
+const comparisonData = yearComparison
+.filter((item) => Number(item.month) <= comparisonEndMonth)
+.map((item) => {
+const currentRevenue = Number(item.current?.revenue || 0);
+const previousRevenue = Number(item.previous?.revenue || 0);
+
+```
+const difference = currentRevenue - previousRevenue;
+
+const growth =
+  previousRevenue > 0
+    ? (difference / previousRevenue) * 100
+    : currentRevenue > 0
+      ? 100
+      : 0;
+
+return {
+  month: item.monthName,
+  monthNumber: Number(item.month),
+  currentYear: item.currentYear,
+  previousYear: item.previousYear,
+  currentRevenue,
+  previousRevenue,
+  difference,
+  growth
+};
+```
+
+});
+
+const comparisonCurrentTotal = comparisonData.reduce(
+(sum, item) => sum + Number(item.currentRevenue || 0),
+0
+);
+
+const comparisonPreviousTotal = comparisonData.reduce(
+(sum, item) => sum + Number(item.previousRevenue || 0),
+0
+);
+
+const comparisonDifference =
+comparisonCurrentTotal - comparisonPreviousTotal;
+
+const comparisonGrowth =
+comparisonPreviousTotal > 0
+? (comparisonDifference / comparisonPreviousTotal) * 100
+: comparisonCurrentTotal > 0
+? 100
+: 0;
+
+const comparisonCurrentYear =
+comparisonData[0]?.currentYear ||
+new Date().getFullYear();
+
+const comparisonPreviousYear =
+comparisonData[0]?.previousYear ||
+comparisonCurrentYear - 1;
+
 
     const leadTimeData =
       leadTime?.byMonth?.map((item) => ({
@@ -862,81 +918,229 @@ async function handleSyncNow() {
   </div>
 </section>
 <section className="bg-white rounded-2xl shadow p-6">
-
-  <div className="flex items-center justify-between mb-6">
-
+  <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
     <div>
       <h2 className="text-2xl font-bold">
         Comparativo Anual
       </h2>
 
-      <p className="text-slate-500">
-        Receita atual vs ano anterior
-      </p>
-    </div>
+
+  <p className="text-slate-500">
+    Receita acumulada até o período selecionado
+  </p>
+</div>
+
+<div
+  className={`px-4 py-2 rounded-xl text-sm font-black ${
+    comparisonGrowth >= 0
+      ? 'bg-green-100 text-green-700'
+      : 'bg-red-100 text-red-700'
+  }`}
+>
+  {comparisonGrowth >= 0 ? '▲' : '▼'}{' '}
+  {Math.abs(comparisonGrowth).toFixed(1)}%
+</div>
+
 
   </div>
 
-  <ResponsiveContainer width="100%" height={420}>
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-7">
+    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+      <div className="text-xs font-bold uppercase tracking-wide text-blue-600">
+        Ano atual · {comparisonCurrentYear}
+      </div>
 
-    <LineChart data={comparisonData}>
 
-      <CartesianGrid strokeDasharray="3 3" />
+  <div className="text-2xl font-black text-blue-800 mt-1">
+    {formatBRL(comparisonCurrentTotal)}
+  </div>
 
-      <XAxis dataKey="month" />
+  <div className="text-xs text-blue-600 mt-1">
+    Acumulado no período
+  </div>
+</div>
 
-      <YAxis
-        tickFormatter={(value) =>
-          `R$ ${(value / 1000).toFixed(0)}k`
-        }
-      />
+<div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
+  <div className="text-xs font-bold uppercase tracking-wide text-slate-500">
+    Ano anterior · {comparisonPreviousYear}
+  </div>
 
-      <Tooltip
-        formatter={(value, name) => {
+  <div className="text-2xl font-black text-slate-800 mt-1">
+    {formatBRL(comparisonPreviousTotal)}
+  </div>
 
-          const labels = {
-            currentRevenue: 'Ano Atual',
-            previousRevenue: 'Ano Anterior',
-            growth: 'Crescimento %'
-          };
+  <div className="text-xs text-slate-500 mt-1">
+    Mesmo período comparativo
+  </div>
+</div>
 
-          if (name === 'growth') {
-            return [
-              `${Number(value).toFixed(1)}%`,
-              labels[name]
-            ];
-          }
+<div
+  className={`rounded-2xl border p-4 ${
+    comparisonDifference >= 0
+      ? 'border-green-200 bg-green-50'
+      : 'border-red-200 bg-red-50'
+  }`}
+>
+  <div
+    className={`text-xs font-bold uppercase tracking-wide ${
+      comparisonDifference >= 0
+        ? 'text-green-600'
+        : 'text-red-600'
+    }`}
+  >
+    Diferença acumulada
+  </div>
 
+  <div
+    className={`text-2xl font-black mt-1 ${
+      comparisonDifference >= 0
+        ? 'text-green-700'
+        : 'text-red-700'
+    }`}
+  >
+    {comparisonDifference >= 0 ? '+' : ''}
+    {formatBRL(comparisonDifference)}
+  </div>
+
+  <div
+    className={`text-xs mt-1 ${
+      comparisonDifference >= 0
+        ? 'text-green-600'
+        : 'text-red-600'
+    }`}
+  >
+    {comparisonGrowth.toFixed(1)}% em relação ao ano anterior
+  </div>
+</div>
+
+
+  </div>
+
+  <div style={{ width: '100%', height: 420 }}>
+    <ResponsiveContainer width="100%" height="100%">
+      <LineChart
+        data={comparisonData}
+        margin={{
+          top: 20,
+          right: 30,
+          left: 20,
+          bottom: 10
+        }}
+      >
+        <CartesianGrid
+          strokeDasharray="3 3"
+          stroke="#e2e8f0"
+        />
+
+
+    <XAxis
+      dataKey="month"
+      tick={{
+        fontSize: 12,
+        fill: '#475569'
+      }}
+      axisLine={false}
+      tickLine={false}
+    />
+
+    <YAxis
+      tick={{
+        fontSize: 12,
+        fill: '#475569'
+      }}
+      axisLine={false}
+      tickLine={false}
+      tickFormatter={(value) =>
+        `R$ ${(value / 1000).toFixed(0)}k`
+      }
+    />
+
+    <Tooltip
+      formatter={(value, name, props) => {
+        const item = props?.payload || {};
+
+        if (name === `Ano Atual (${comparisonCurrentYear})`) {
           return [
             formatBRL(value),
-            labels[name]
+            `Ano Atual (${comparisonCurrentYear})`
           ];
-        }}
-      />
+        }
 
-      <Legend />
+        if (name === `Ano Anterior (${comparisonPreviousYear})`) {
+          return [
+            formatBRL(value),
+            `Ano Anterior (${comparisonPreviousYear})`
+          ];
+        }
 
-      <Line
-        type="monotone"
-        dataKey="currentRevenue"
-        name="Ano Atual"
-        stroke="#2563eb"
-        strokeWidth={4}
-      />
+        return [formatBRL(value), name];
+      }}
+      labelFormatter={(label, payload) => {
+        const item = payload?.[0]?.payload;
 
-      <Line
-        type="monotone"
-        dataKey="previousRevenue"
-        name="Ano Anterior"
-        stroke="#94a3b8"
-        strokeWidth={4}
-      />
+        if (!item) {
+          return label;
+        }
 
-    </LineChart>
+        return `${label} · Variação: ${
+          item.growth >= 0 ? '+' : ''
+        }${Number(item.growth || 0).toFixed(1)}%`;
+      }}
+      labelStyle={{
+        color: '#0f172a',
+        fontWeight: 800
+      }}
+      contentStyle={{
+        borderRadius: 14,
+        border: '1px solid #e2e8f0',
+        boxShadow:
+          '0 10px 25px rgba(15, 23, 42, 0.12)'
+      }}
+    />
 
-  </ResponsiveContainer>
+    <Legend />
 
+    <Line
+      type="monotone"
+      dataKey="previousRevenue"
+      name={`Ano Anterior (${comparisonPreviousYear})`}
+      stroke="#94a3b8"
+      strokeWidth={3}
+      strokeDasharray="8 6"
+      dot={{
+        r: 4,
+        strokeWidth: 2,
+        fill: '#ffffff',
+        stroke: '#94a3b8'
+      }}
+      activeDot={{
+        r: 7
+      }}
+    />
+
+    <Line
+      type="monotone"
+      dataKey="currentRevenue"
+      name={`Ano Atual (${comparisonCurrentYear})`}
+      stroke="#2563eb"
+      strokeWidth={4}
+      dot={{
+        r: 5,
+        strokeWidth: 3,
+        fill: '#ffffff',
+        stroke: '#2563eb'
+      }}
+      activeDot={{
+        r: 8
+      }}
+    />
+  </LineChart>
+</ResponsiveContainer>
+
+
+  </div>
 </section>
+
 <section className="bg-white rounded-2xl shadow p-6">
   <div className="flex items-center justify-between mb-6">
     <div>
