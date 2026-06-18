@@ -2424,59 +2424,152 @@ months
 // ========================================
 
 app.get('/api/dashboard/full', async (req, res) => {
-  try {
-    const { startDate, endDate } = req.query;
+const { startDate, endDate } = req.query;
 
-    const [
-      general,
-      performance,
-      sources,
-      products,
-      comparison,
-      funnel,
-      leadTime,
-      states,
-      dataQuality,
-      commercialFlow
-    ] = await Promise.all([
-      getGeneralDashboard(startDate, endDate),
-      getPerformanceDashboard(startDate, endDate, 'closer'),
-      getSourcesDashboard(startDate, endDate),
-      getProductsDashboard(startDate, endDate),
-      getYearComparisonDashboard(),
-      getFunnelDashboard(startDate, endDate),
-      getLeadTimeDashboard(startDate, endDate),
-      getStatesDashboard(startDate, endDate),
-      getDataQualityDashboard(),
-      getLeadTimeDashboard(startDate, endDate),
-      getStatesDashboard(startDate, endDate),
-      getDataQualityDashboard(),
-      getCommercialFlowDashboard(startDate, endDate)
-    ]);
+async function runDashboardStep(stepName, callback) {
+try {
+console.log(
+`[DASHBOARD FULL] Iniciando: ${stepName}`
+);
 
-    res.json({
-      sucesso: true,
-      general,
-      performance,
-      sources,
-      products,
-      comparison,
-      funnel,
-      leadTime,
-      states,
-      dataQuality,
-      commercialFlow
-    });
+  const result = await callback();
 
-  } catch (error) {
-    console.error('ERRO DASHBOARD FULL:', error.message);
+  console.log(
+    `[DASHBOARD FULL] Finalizado: ${stepName}`
+  );
 
-    res.status(500).json({
-      sucesso: false,
-      erro: error.message
-    });
-  }
+  return result;
+} catch (error) {
+  console.error(
+    `[DASHBOARD FULL] ERRO EM ${stepName}:`,
+    error.stack || error
+  );
+
+  error.dashboardStep = stepName;
+
+  throw error;
+}
+
+
+}
+
+try {
+const general = await runDashboardStep(
+'general',
+() =>
+getGeneralDashboard(
+startDate,
+endDate
+)
+);
+
+
+const performance = await runDashboardStep(
+  'performance',
+  () =>
+    getPerformanceDashboard(
+      startDate,
+      endDate,
+      'closer'
+    )
+);
+
+const sources = await runDashboardStep(
+  'sources',
+  () =>
+    getSourcesDashboard(
+      startDate,
+      endDate
+    )
+);
+
+const products = await runDashboardStep(
+  'products',
+  () =>
+    getProductsDashboard(
+      startDate,
+      endDate
+    )
+);
+
+const comparison = await runDashboardStep(
+  'comparison',
+  () =>
+    getYearComparisonDashboard()
+);
+
+const funnel = await runDashboardStep(
+  'funnel',
+  () =>
+    getFunnelDashboard(
+      startDate,
+      endDate
+    )
+);
+
+const leadTime = await runDashboardStep(
+  'leadTime',
+  () =>
+    getLeadTimeDashboard(
+      startDate,
+      endDate
+    )
+);
+
+const states = await runDashboardStep(
+  'states',
+  () =>
+    getStatesDashboard(
+      startDate,
+      endDate
+    )
+);
+
+const dataQuality = await runDashboardStep(
+  'dataQuality',
+  () =>
+    getDataQualityDashboard()
+);
+
+const commercialFlow = await runDashboardStep(
+  'commercialFlow',
+  () =>
+    getCommercialFlowDashboard(
+      startDate,
+      endDate
+    )
+);
+
+res.json({
+  sucesso: true,
+  general,
+  performance,
+  sources,
+  products,
+  comparison,
+  funnel,
+  leadTime,
+  states,
+  dataQuality,
+  commercialFlow
 });
+
+
+} catch (error) {
+console.error(
+'ERRO DASHBOARD FULL:',
+error.stack || error
+);
+
+
+res.status(500).json({
+  sucesso: false,
+  etapa: error.dashboardStep || 'desconhecida',
+  erro: error.message
+});
+}
+});
+
 
 app.get('/api/dashboard/sdr', async (req, res) => {
   try {
