@@ -48,19 +48,22 @@ function Dashboard() {
   const [selectedRevenueMonth, setSelectedRevenueMonth] = useState('');
   const [achievement, setAchievement] = useState(null);
   const [commercialFlow, setCommercialFlow] = useState(null);
+  const [comparisonSource, setComparisonSource] = useState('');
 
   useEffect(() => {
     loadDashboard();
-  }, [startDate, endDate]);
+  }, [startDate, endDate, comparisonSource]);
 
   async function loadDashboard() {
   try {
     const response = await api.get('/dashboard/full', {
       params: {
         startDate: startDate || undefined,
-        endDate: endDate || undefined
-      }
-    });
+        endDate: endDate || undefined,
+        comparisonSource:
+        comparisonSource || undefined
+     }
+  });
 
     const full = response.data;
 
@@ -1181,7 +1184,8 @@ endingBacklog - startingBacklog;
     />
   </div>
 </section>
-<section className="bg-white rounded-2xl shadow p-6">
+
+  <section className="bg-white rounded-2xl shadow p-6">
   <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
     <div>
       <h2 className="text-2xl font-bold">
@@ -1194,19 +1198,51 @@ endingBacklog - startingBacklog;
   </p>
 </div>
 
-<div
-  className={`px-4 py-2 rounded-xl text-sm font-black ${
-    comparisonGrowth >= 0
-      ? 'bg-green-100 text-green-700'
-      : 'bg-red-100 text-red-700'
-  }`}
->
-  {comparisonGrowth >= 0 ? '▲' : '▼'}{' '}
-  {Math.abs(comparisonGrowth).toFixed(1)}%
+<div className="flex flex-wrap items-end gap-3">
+  <div>
+    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">
+      Origem
+    </label>
+
+    <select
+      value={comparisonSource}
+      onChange={(event) =>
+        setComparisonSource(event.target.value)
+      }
+      className="h-10 min-w-[180px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+    >
+      <option value="">
+        Todas as sources
+      </option>
+
+      <option value="chinaLink">
+        China Link
+      </option>
+
+      <option value="metodo12p">
+        Método 12P
+      </option>
+
+      <option value="process">
+        Process
+      </option>
+    </select>
+  </div>
+
+  <div
+    className={`h-10 flex items-center px-4 rounded-xl text-sm font-black ${
+      comparisonGrowth >= 0
+        ? 'bg-green-100 text-green-700'
+        : 'bg-red-100 text-red-700'
+    }`}
+  >
+    {comparisonGrowth >= 0 ? '▲' : '▼'}{' '}
+    {Math.abs(comparisonGrowth).toFixed(1)}%
+  </div>
 </div>
 
-
   </div>
+
 
   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-7">
     <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
