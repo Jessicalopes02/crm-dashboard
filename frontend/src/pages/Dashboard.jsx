@@ -47,6 +47,7 @@ function Dashboard() {
   const [endDate, setEndDate] = useState('');
   const [selectedRevenueMonth, setSelectedRevenueMonth] = useState('');
   const [achievement, setAchievement] = useState(null);
+  const [commercialFlow, setCommercialFlow] = useState(null);
 
   useEffect(() => {
     loadDashboard();
@@ -96,6 +97,7 @@ setAchievement(achievementPayload);
     setLeadTime(full.leadTime || null);
     setStates(full.states || []);
     setDataQuality(full.dataQuality || null);
+    setCommercialFlow(full.commercialFlow || null);
 
   } catch (error) {
     console.error(error);
@@ -454,7 +456,7 @@ const generalGoal =
         sum + Number(item.goal?.targetRevenue || 0),
       0
     );
-    
+
 function normalizeGoalName(name) {
 return String(name || '')
 .normalize('NFD')
@@ -598,23 +600,61 @@ const remainingToGoal =
 const projectedRemaining =
   Math.max(generalGoal - projectedRevenue, 0);
 
+
 const goalComparisonData = [
-  {
-    name: 'Meta',
-    value: generalGoal,
-    fill: '#0f172a'
-  },
-  {
-    name: 'Realizado',
-    value: realizedRevenue,
-    fill: '#2563eb'
-  },
-  {
-    name: 'Projeção',
-    value: projectedRevenue,
-    fill: '#06b6d4'
-  }
+{
+name: 'Meta',
+value: generalGoal,
+fill: '#0f172a'
+},
+{
+name: 'Realizado',
+value: realizedRevenue,
+fill: '#2563eb'
+},
+{
+name: 'Projeção',
+value: projectedRevenue,
+fill: '#06b6d4'
+}
 ];
+
+const commercialFlowData =
+commercialFlow?.months?.map((item) => ({
+label: item.label,
+entries: Number(item.entries || 0),
+closures: Number(item.closures || 0),
+backlog: Number(item.backlog || 0),
+won: Number(item.won || 0),
+lost: Number(item.lost || 0),
+cancelled: Number(item.cancelled || 0),
+balance: Number(item.balance || 0)
+})) || [];
+
+const commercialFlowTotals =
+commercialFlow?.totals || {
+entries: 0,
+closures: 0,
+won: 0,
+lost: 0,
+cancelled: 0,
+balance: 0
+};
+
+const startingBacklog =
+Number(
+commercialFlow?.startingBacklog || 0
+);
+
+const endingBacklog =
+Number(
+commercialFlow?.endingBacklog || 0
+);
+
+const backlogDifference =
+endingBacklog - startingBacklog;
+
+
   return (
     <div className="min-h-screen bg-slate-100 text-slate-900">
 
@@ -1995,91 +2035,233 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
   </div>
 </ChartCard>
 
+          <ChartCard
+  title="Fluxo Comercial Mensal"
+  subtitle="Entradas, fechamentos e evolução do backlog"
+>
+  <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+    <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+      <div className="text-xs font-bold uppercase text-blue-600">
+        Entradas
+      </div>
 
-          <ChartCard title="Evolução de Leads Mensais">
-           <ResponsiveContainer width="100%" height={320}>
-  <ComposedChart
-    data={monthlyData.slice(-12)}
-    margin={{ top: 20, right: 20, left: 10, bottom: 10 }}
+      <div className="text-2xl font-black text-blue-800 mt-1">
+        {formatNumber(commercialFlowTotals.entries)}
+      </div>
+    </div>
+
+    <div className="rounded-xl border border-green-100 bg-green-50 p-3">
+      <div className="text-xs font-bold uppercase text-green-600">
+        Fechamentos
+      </div>
+
+      <div className="text-2xl font-black text-green-800 mt-1">
+        {formatNumber(commercialFlowTotals.closures)}
+      </div>
+    </div>
+
+    <div
+      className={`rounded-xl border p-3 ${
+        commercialFlowTotals.balance <= 0
+          ? 'border-emerald-100 bg-emerald-50'
+          : 'border-amber-100 bg-amber-50'
+      }`}
+    >
+      <div
+        className={`text-xs font-bold uppercase ${
+          commercialFlowTotals.balance <= 0
+            ? 'text-emerald-600'
+            : 'text-amber-600'
+        }`}
+      >
+        Saldo do período
+      </div>
+
+      <div
+        className={`text-2xl font-black mt-1 ${
+          commercialFlowTotals.balance <= 0
+            ? 'text-emerald-800'
+            : 'text-amber-800'
+        }`}
+      >
+        {commercialFlowTotals.balance > 0 ? '+' : ''}
+        {formatNumber(commercialFlowTotals.balance)}
+      </div>
+    </div>
+
+    <div className="rounded-xl border border-purple-100 bg-purple-50 p-3">
+      <div className="text-xs font-bold uppercase text-purple-600">
+        Backlog atual
+      </div>
+
+      <div className="text-2xl font-black text-purple-800 mt-1">
+        {formatNumber(endingBacklog)}
+      </div>
+    </div>
+  </div>
+
+  <ResponsiveContainer width="100%" height={380}>
+    <ComposedChart
+      data={commercialFlowData}
+      margin={{
+        top: 20,
+        right: 30,
+        left: 10,
+        bottom: 10
+      }}
+    >
+      <CartesianGrid
+        strokeDasharray="3 3"
+        stroke="#e2e8f0"
+      />
+
+      <XAxis
+        dataKey="label"
+        tick={{
+          fontSize: 12,
+          fill: '#475569'
+        }}
+        axisLine={false}
+        tickLine={false}
+      />
+
+      <YAxis
+        yAxisId="left"
+        tick={{
+          fontSize: 12,
+          fill: '#475569'
+        }}
+        axisLine={false}
+        tickLine={false}
+        allowDecimals={false}
+      />
+
+      <YAxis
+        yAxisId="right"
+        orientation="right"
+        tick={{
+          fontSize: 12,
+          fill: '#7e22ce'
+        }}
+        axisLine={false}
+        tickLine={false}
+        allowDecimals={false}
+      />
+
+      <Tooltip
+        formatter={(value, name) => {
+          const labels = {
+            entries: 'Entradas',
+            closures: 'Fechamentos',
+            backlog: 'Backlog'
+          };
+
+          return [
+            formatNumber(value),
+            labels[name] || name
+          ];
+        }}
+        labelFormatter={(label, payload) => {
+          const item = payload?.[0]?.payload;
+
+          if (!item) {
+            return label;
+          }
+
+          return `${label} · Saldo: ${
+            item.balance > 0 ? '+' : ''
+          }${formatNumber(item.balance)}`;
+        }}
+        contentStyle={{
+          borderRadius: 12,
+          border: '1px solid #e2e8f0',
+          boxShadow:
+            '0 8px 20px rgba(15, 23, 42, 0.10)'
+        }}
+      />
+
+      <Legend />
+
+      <Bar
+        yAxisId="left"
+        dataKey="entries"
+        name="Entradas"
+        fill="#2563eb"
+        radius={[6, 6, 0, 0]}
+        barSize={34}
+      />
+
+      <Bar
+        yAxisId="left"
+        dataKey="closures"
+        name="Fechamentos"
+        fill="#16a34a"
+        radius={[6, 6, 0, 0]}
+        barSize={34}
+      />
+
+      <Line
+        yAxisId="right"
+        type="monotone"
+        dataKey="backlog"
+        name="Backlog"
+        stroke="#9333ea"
+        strokeWidth={4}
+        dot={{
+          r: 6,
+          fill: '#ffffff',
+          stroke: '#9333ea',
+          strokeWidth: 3
+        }}
+        activeDot={{
+          r: 8
+        }}
+      />
+    </ComposedChart>
+  </ResponsiveContainer>
+
+  <div
+    className={`mt-5 rounded-xl border px-4 py-3 ${
+      backlogDifference <= 0
+        ? 'border-green-200 bg-green-50'
+        : 'border-amber-200 bg-amber-50'
+    }`}
   >
-    <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+    <div className="flex flex-wrap items-center justify-between gap-3">
+      <div>
+        <div
+          className={`text-sm font-black ${
+            backlogDifference <= 0
+              ? 'text-green-700'
+              : 'text-amber-700'
+          }`}
+        >
+          {backlogDifference < 0
+            ? 'Redução do backlog'
+            : backlogDifference > 0
+              ? 'Aumento do backlog'
+              : 'Backlog estável'}
+        </div>
 
-    <XAxis
-      dataKey="month"
-      tick={{ fontSize: 11, fill: '#475569' }}
-      axisLine={false}
-      tickLine={false}
-    />
+        <div className="text-xs text-slate-600 mt-1">
+          Início: {formatNumber(startingBacklog)} · Final:{' '}
+          {formatNumber(endingBacklog)}
+        </div>
+      </div>
 
-    <YAxis
-      yAxisId="revenue"
-      tick={{ fontSize: 11, fill: '#475569' }}
-      axisLine={false}
-      tickLine={false}
-      tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
-    />
-
-    <YAxis
-      yAxisId="won"
-      orientation="right"
-      tick={{ fontSize: 11, fill: '#16a34a' }}
-      axisLine={false}
-      tickLine={false}
-      allowDecimals={false}
-    />
-
-    <Tooltip
-      formatter={(value, name) => {
-        if (name === 'Receita') {
-          return [formatBRL(value), 'Receita'];
-        }
-
-        if (name === 'Won') {
-          return [formatNumber(value), 'Won'];
-        }
-
-        return [formatNumber(value), name];
-      }}
-      labelStyle={{
-        color: '#0f172a',
-        fontWeight: 700
-      }}
-      contentStyle={{
-        borderRadius: 12,
-        border: '1px solid #e2e8f0'
-      }}
-    />
-
-    <Legend />
-
-    <Bar
-      yAxisId="revenue"
-      dataKey="revenue"
-      name="Receita"
-      fill="#2563eb"
-      radius={[8, 8, 0, 0]}
-      barSize={36}
-    />
-
-    <Line
-      yAxisId="won"
-      type="monotone"
-      dataKey="won"
-      name="Won"
-      stroke="#16a34a"
-      strokeWidth={3}
-      dot={{
-        r: 4,
-        strokeWidth: 2,
-        fill: '#ffffff'
-      }}
-      activeDot={{
-        r: 6
-      }}
-    />
-  </ComposedChart>
-</ResponsiveContainer>
-          </ChartCard>
+      <div
+        className={`text-2xl font-black ${
+          backlogDifference <= 0
+            ? 'text-green-700'
+            : 'text-amber-700'
+        }`}
+      >
+        {backlogDifference > 0 ? '+' : ''}
+        {formatNumber(backlogDifference)}
+      </div>
+    </div>
+  </div>
+</ChartCard>
 
         </section>
 
