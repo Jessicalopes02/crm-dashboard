@@ -309,6 +309,35 @@ appliedFilters.status !== '' ||
 appliedFilters.assignee ||
 appliedFilters.account;
 
+function openLeadInNutshell(lead) {
+const leadId =
+lead?.nutshell_id ||
+lead?.id;
+
+if (!leadId) {
+console.warn(
+'Lead sem nutshell_id:',
+lead
+);
+
+
+return;
+
+
+}
+
+const nutshellUrl =
+lead?.htmlUrl ||
+`https://app.nutshell.com/lead/${leadId}`;
+
+window.open(
+nutshellUrl,
+'_blank',
+'noopener,noreferrer'
+);
+}
+
+
 return ( <div className="min-h-screen bg-slate-100 p-5 lg:p-8"> <div className="max-w-[1600px] mx-auto space-y-6"> <header className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5"> <div> <h1 className="text-4xl font-black text-slate-950">
 Leads </h1>
 
@@ -588,21 +617,41 @@ Leads </h1>
                 const referenceDate =
                   getReferenceDate(lead);
 
-                return (
-                  <tr
-                    key={
-                      lead._id ||
-                      lead.nutshell_id ||
-                      index
-                    }
-                    className="hover:bg-blue-50/40 transition"
-                  >
-                    <td className="px-5 py-4 max-w-[360px]">
-                      <div className="font-black text-slate-900">
-                        {lead.name ||
-                          `Lead ${lead.nutshell_id || ''}`}
-                      </div>
+               return (
+  <tr
+    key={
+      lead._id ||
+      lead.nutshell_id ||
+      index
+    }
+    role="button"
+    tabIndex={0}
+    title="Clique para abrir esta lead no Nutshell"
+    onClick={() =>
+      openLeadInNutshell(lead)
+    }
+    onKeyDown={(event) => {
+      if (
+        event.key === 'Enter' ||
+        event.key === ' '
+      ) {
+        event.preventDefault();
+        openLeadInNutshell(lead);
+      }
+    }}
+    className="group cursor-pointer hover:bg-blue-50 transition focus:bg-blue-50 focus:outline-none"
+  >
+    <td className="px-5 py-4 max-w-[360px]">
+      <div className="flex items-center gap-2">
+        <div className="font-black text-slate-900">
+          {lead.name ||
+            `Lead ${lead.nutshell_id || ''}`}
+        </div>
 
+        <span className="shrink-0 text-[10px] font-black uppercase tracking-wide text-blue-600 bg-blue-50 border border-blue-200 rounded-full px-2 py-0.5 opacity-0 group-hover:opacity-100 transition">
+          Abrir
+        </span>
+      </div>
                       <div
                         className="text-xs text-slate-500 mt-1 line-clamp-2"
                         title={
