@@ -2422,7 +2422,7 @@ rangeEnd.getMonth(),
 1
 );
 
-let backlog = Number(startingBacklog || 0);
+let backlog = 0;
 
 while (cursor <= finalMonth) {
 const year = cursor.getFullYear();
@@ -2501,13 +2501,12 @@ endDate: rangeEnd
 },
 
 
-startingBacklog:
-  Number(startingBacklog || 0),
+startingBacklog: 0,
 
 endingBacklog:
   months.length > 0
     ? months[months.length - 1].backlog
-    : Number(startingBacklog || 0),
+    : 0,
 
 totals,
 
