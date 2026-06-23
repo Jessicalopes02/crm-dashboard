@@ -3862,7 +3862,7 @@ const PERFORMANCE_TEAMS = {
       aliases: [
         'Beatriz Costa',
         'Beatriz Costa Costa',
-        'Beatriz Costa  Costa '
+        'Beatriz Costa  Costa'
       ]
     },
     {
@@ -3892,21 +3892,9 @@ const PERFORMANCE_TEAMS = {
       ]
     },
     {
-      displayName: 'Giovanna Fernandes',
-      aliases: [
-        'Giovanna Fernandes'
-      ]
-    },
-    {
       displayName: 'Luiza Carvalho',
       aliases: [
         'Luiza Carvalho'
-      ]
-    },
-    {
-      displayName: 'Pedro Scarillo',
-      aliases: [
-        'Pedro Scarillo'
       ]
     },
     {
@@ -4298,12 +4286,15 @@ async function getTeamPerformanceDashboard({
 
       const goal =
         role === 'closer'
-          ? goalsMap.get(
-              normalizePerformanceName(
-                teamUser.displayName
-              )
+          ? aliases
+              .map((alias) =>
+                goalsMap.get(
+                  normalizePerformanceName(alias)
+                )
             )
+            .filter(Boolean)[0] || null
           : null;
+
 
       const targetRevenue =
         role === 'closer'
