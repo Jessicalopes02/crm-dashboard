@@ -2520,6 +2520,56 @@ months
 }
 
 // ========================================
+// DASHBOARD - PERFORMANCE SDR / CLOSER
+// ========================================
+
+app.get(
+  '/api/dashboard/team-performance',
+  async (req, res) => {
+    try {
+      const {
+        role = 'closer',
+        startDate,
+        endDate
+      } = req.query;
+
+      if (
+        !['sdr', 'closer'].includes(role)
+      ) {
+        return res.status(400).json({
+          sucesso: false,
+          erro:
+            'Role inválido. Utilize role=sdr ou role=closer.'
+        });
+      }
+
+      const result =
+        await getTeamPerformanceDashboard({
+          role,
+          startDate,
+          endDate
+        });
+
+      res.json({
+        sucesso: true,
+        ...result
+      });
+    } catch (error) {
+      console.error(
+        'ERRO TEAM PERFORMANCE:',
+        error.stack || error
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro: error.message
+      });
+    }
+  }
+);
+
+
+// ========================================
 // DASHBOARD - FULL DATA
 // ========================================
 
@@ -3789,8 +3839,725 @@ async function saveFullLead(fullLead) {
   await Lead.findOneAndUpdate(
     { nutshell_id: fullLead.id },
     updatePayload,
-    { upsert: true, returnDocument: 'after' }
+    { upsert: true, new: true, runValidators: true }
   );
+}
+
+const PERFORMANCE_TEAMS = {
+  closer: [
+    {
+      displayName: 'Alba Danielly Rezende Lima',
+      aliases: [
+        'Alba Danielly Rezende Lima'
+      ]
+    },
+    {
+      displayName: 'Accounts Grupo',
+      aliases: [
+        'Accounts Grupo'
+      ]
+    },
+    {
+      displayName: 'Beatriz Costa',
+      aliases: [
+        'Beatriz Costa',
+        'Beatriz Costa Costa',
+        'Beatriz Costa  Costa '
+      ]
+    },
+    {
+      displayName: 'Edson da Silva Bomfim Júnior',
+      aliases: [
+        'Edson da Silva Bomfim Júnior',
+        'Edson da Silva Bomfim Junior'
+      ]
+    },
+    {
+      displayName: 'Fabiane Carvalho Nascimento',
+      aliases: [
+        'Fabiane Carvalho Nascimento'
+      ]
+    },
+    {
+      displayName: 'Fábio Souza',
+      aliases: [
+        'Fábio Souza',
+        'Fabio Souza'
+      ]
+    },
+    {
+      displayName: 'Gabriel Lopes',
+      aliases: [
+        'Gabriel Lopes'
+      ]
+    },
+    {
+      displayName: 'Giovanna Fernandes',
+      aliases: [
+        'Giovanna Fernandes'
+      ]
+    },
+    {
+      displayName: 'Luiza Carvalho',
+      aliases: [
+        'Luiza Carvalho'
+      ]
+    },
+    {
+      displayName: 'Pedro Scarillo',
+      aliases: [
+        'Pedro Scarillo'
+      ]
+    },
+    {
+      displayName: 'Marcus Vinicius Dias Santana',
+      aliases: [
+        'Marcus Vinicius Dias Santana',
+        'Marcus Santana'
+      ]
+    }
+  ],
+
+  sdr: []
+};
+
+function normalizePerformanceName(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function createPerformanceDateRange(
+  startDate,
+  endDate
+) {
+  const now = new Date();
+
+  const start = startDate
+    ? new Date(`${startDate}T00:00:00`)
+    : new Date(
+        now.getFullYear(),
+        now.getMonth(),
+        1,
+        0,
+        0,
+        0,
+        0
+      );
+
+  const end = endDate
+    ? new Date(`${endDate}T23:59:59.999`)
+    : new Date(
+        now.getFullYear(),
+        now.getMonth() + 1,
+        0,
+        23,
+        59,
+        59,
+        999
+      );
+
+  if (
+    Number.isNaN(start.getTime()) ||
+    Number.isNaN(end.getTime())
+  ) {
+    throw new Error(
+      'Datas inválidas. Utilize YYYY-MM-DD.'
+    );
+  }
+
+  if (start > end) {
+    throw new Error(
+      'A data inicial não pode ser maior que a data final.'
+    );
+  }
+
+  return {
+    start,
+    end
+  };
+}
+
+async function getTeamPerformanceDashboard({
+  role = 'closer',
+  startDate,
+  endDate
+}) {
+  if (!['sdr', 'closer'].includes(role)) {
+    throw new Error(
+      'Role inválido. Utilize sdr ou closer.'
+    );
+  }
+
+  const {
+    start: rangeStart,
+    end: rangeEnd
+  } = createPerformanceDateRange(
+    startDate,
+    endDate
+  );
+
+  const team =
+    PERFORMANCE_TEAMS[role] || [];
+
+  const period = `${rangeEnd.getFullYear()}-${String(
+    rangeEnd.getMonth() + 1
+  ).padStart(2, '0')}`;
+
+  const ignoredPipelineFilter = {
+    'stageset.name': {
+      $ne:
+        'Processo de Vendas - Global Alliance'
+    }
+  };
+
+  if (team.length === 0) {
+    return {
+      role,
+
+      filters: {
+        startDate: rangeStart,
+        endDate: rangeEnd,
+        period
+      },
+
+      totals: {
+        received: 0,
+        open: 0,
+        pending: 0,
+        won: 0,
+        lost: 0,
+        cancelled: 0,
+
+        workedLeads: null,
+        activities: null,
+        meetingsScheduled: null,
+        meetingsCompleted: null,
+        noMovement: null,
+
+        revenue: 0,
+        estimatedRevenue: 0,
+        projectedRevenue: 0,
+        averageTicket: 0,
+        conversionRate: 0,
+
+        targetRevenue: 0,
+        goalAchievement: null,
+        projectedGoalAchievement: null
+      },
+
+      users: [],
+
+      warning:
+        `Nenhum usuário foi configurado para a equipe ${role}.`
+    };
+  }
+
+  const goals =
+    role === 'closer'
+      ? await Goal.find({
+          period,
+          sector: 'closer'
+        }).lean()
+      : [];
+
+  const goalsMap = new Map();
+
+  goals.forEach((goal) => {
+    goalsMap.set(
+      normalizePerformanceName(
+        goal.userName
+      ),
+      goal
+    );
+  });
+
+  const users = await Promise.all(
+    team.map(async (teamUser) => {
+      const aliases =
+        Array.isArray(teamUser.aliases)
+          ? teamUser.aliases
+          : [];
+
+      const assigneeFilter = {
+        ...ignoredPipelineFilter,
+
+        'assignee.name': {
+          $in: aliases
+        }
+      };
+
+      const receivedFilter = {
+        ...assigneeFilter,
+
+        createdTime: {
+          $gte: rangeStart,
+          $lte: rangeEnd
+        }
+      };
+
+      const closedFilter = {
+        ...assigneeFilter,
+
+        closedTime: {
+          $gte: rangeStart,
+          $lte: rangeEnd
+        }
+      };
+
+      const estimatedFilter = {
+        ...assigneeFilter,
+
+        status: {
+          $in: [0, 1]
+        },
+
+        dueTime: {
+          $gte: rangeStart,
+          $lte: rangeEnd,
+          $ne: null
+        }
+      };
+
+      const [
+        received,
+        open,
+        pending,
+        won,
+        lost,
+        cancelled,
+        revenueResult,
+        estimatedResult
+      ] = await Promise.all([
+        Lead.countDocuments(
+          receivedFilter
+        ),
+
+        Lead.countDocuments({
+          ...assigneeFilter,
+          status: 0
+        }),
+
+        Lead.countDocuments({
+          ...assigneeFilter,
+          status: 1
+        }),
+
+        Lead.countDocuments({
+          ...closedFilter,
+          status: 10
+        }),
+
+        Lead.countDocuments({
+          ...closedFilter,
+          status: 11
+        }),
+
+        Lead.countDocuments({
+          ...closedFilter,
+          status: 12
+        }),
+
+        Lead.aggregate([
+          {
+            $match: {
+              ...closedFilter,
+              status: 10
+            }
+          },
+
+          {
+            $addFields: {
+              performanceRevenue: {
+                $ifNull: [
+                  '$value.amount',
+                  {
+                    $ifNull: [
+                      '$normalizedValue.amount',
+                      {
+                        $ifNull: [
+                          '$rawData.value.amount',
+                          0
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+
+          {
+            $group: {
+              _id: null,
+
+              revenue: {
+                $sum:
+                  '$performanceRevenue'
+              },
+
+              averageTicket: {
+                $avg:
+                  '$performanceRevenue'
+              }
+            }
+          }
+        ]),
+
+        Lead.aggregate([
+          {
+            $match:
+              estimatedFilter
+          },
+
+          {
+            $addFields: {
+              performanceEstimate: {
+                $ifNull: [
+                  '$estimatedValue.amount',
+                  {
+                    $ifNull: [
+                      '$value.amount',
+                      {
+                        $ifNull: [
+                          '$normalizedValue.amount',
+                          {
+                            $ifNull: [
+                              '$rawData.estimatedValue.amount',
+                              {
+                                $ifNull: [
+                                  '$rawData.value.amount',
+                                  0
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+
+          {
+            $group: {
+              _id: null,
+
+              estimatedRevenue: {
+                $sum:
+                  '$performanceEstimate'
+              },
+
+              estimatedLeads: {
+                $sum: 1
+              }
+            }
+          }
+        ])
+      ]);
+
+      const revenue = Number(
+        revenueResult[0]?.revenue || 0
+      );
+
+      const averageTicket = Number(
+        revenueResult[0]?.averageTicket || 0
+      );
+
+      const estimatedRevenue = Number(
+        estimatedResult[0]
+          ?.estimatedRevenue || 0
+      );
+
+      const estimatedLeads = Number(
+        estimatedResult[0]
+          ?.estimatedLeads || 0
+      );
+
+      const closedDecisions =
+        Number(won || 0) +
+        Number(lost || 0) +
+        Number(cancelled || 0);
+
+      const conversionRate =
+        closedDecisions > 0
+          ? (
+              Number(won || 0) /
+              closedDecisions
+            ) * 100
+          : 0;
+
+      const projectedRevenue =
+        revenue +
+        estimatedRevenue;
+
+      const goal =
+        role === 'closer'
+          ? goalsMap.get(
+              normalizePerformanceName(
+                teamUser.displayName
+              )
+            )
+          : null;
+
+      const targetRevenue =
+        role === 'closer'
+          ? Number(
+              goal?.targetRevenue || 0
+            )
+          : 0;
+
+      const goalAchievement =
+        targetRevenue > 0
+          ? (
+              revenue /
+              targetRevenue
+            ) * 100
+          : 0;
+
+      const projectedGoalAchievement =
+        targetRevenue > 0
+          ? (
+              projectedRevenue /
+              targetRevenue
+            ) * 100
+          : 0;
+
+      return {
+        name:
+          teamUser.displayName,
+
+        aliases,
+
+        received,
+        open,
+        pending,
+
+        won,
+        lost,
+        cancelled,
+
+        closedDecisions,
+        conversionRate,
+
+        revenue,
+        estimatedRevenue,
+        estimatedLeads,
+        projectedRevenue,
+        averageTicket,
+
+        workedLeads: null,
+        activities: null,
+        meetingsScheduled: null,
+        meetingsCompleted: null,
+        noMovement: null,
+
+        goal:
+          role === 'closer'
+            ? {
+                targetRevenue,
+
+                targetLeads: Number(
+                  goal?.targetLeads || 0
+                ),
+
+                targetMeetings: Number(
+                  goal?.targetMeetings || 0
+                ),
+
+                targetWon: Number(
+                  goal?.targetWon || 0
+                ),
+
+                achievement:
+                  goalAchievement,
+
+                projectedAchievement:
+                  projectedGoalAchievement,
+
+                remaining: Math.max(
+                  targetRevenue -
+                    revenue,
+                  0
+                )
+              }
+            : null
+      };
+    })
+  );
+
+  const totals = users.reduce(
+    (acc, user) => {
+      acc.received += Number(
+        user.received || 0
+      );
+
+      acc.open += Number(
+        user.open || 0
+      );
+
+      acc.pending += Number(
+        user.pending || 0
+      );
+
+      acc.won += Number(
+        user.won || 0
+      );
+
+      acc.lost += Number(
+        user.lost || 0
+      );
+
+      acc.cancelled += Number(
+        user.cancelled || 0
+      );
+
+      acc.revenue += Number(
+        user.revenue || 0
+      );
+
+      acc.estimatedRevenue += Number(
+        user.estimatedRevenue || 0
+      );
+
+      acc.estimatedLeads += Number(
+        user.estimatedLeads || 0
+      );
+
+      acc.targetRevenue += Number(
+        user.goal?.targetRevenue || 0
+      );
+
+      return acc;
+    },
+    {
+      received: 0,
+      open: 0,
+      pending: 0,
+
+      won: 0,
+      lost: 0,
+      cancelled: 0,
+
+      revenue: 0,
+      estimatedRevenue: 0,
+      estimatedLeads: 0,
+      targetRevenue: 0
+    }
+  );
+
+  const totalClosedDecisions =
+    totals.won +
+    totals.lost +
+    totals.cancelled;
+
+  totals.closedDecisions =
+    totalClosedDecisions;
+
+  totals.conversionRate =
+    totalClosedDecisions > 0
+      ? (
+          totals.won /
+          totalClosedDecisions
+        ) * 100
+      : 0;
+
+  totals.averageTicket =
+    totals.won > 0
+      ? totals.revenue /
+        totals.won
+      : 0;
+
+  totals.projectedRevenue =
+    totals.revenue +
+    totals.estimatedRevenue;
+
+  totals.goalAchievement =
+    role === 'closer' &&
+    totals.targetRevenue > 0
+      ? (
+          totals.revenue /
+          totals.targetRevenue
+        ) * 100
+      : null;
+
+  totals.projectedGoalAchievement =
+    role === 'closer' &&
+    totals.targetRevenue > 0
+      ? (
+          totals.projectedRevenue /
+          totals.targetRevenue
+        ) * 100
+      : null;
+
+  totals.workedLeads = null;
+  totals.activities = null;
+  totals.meetingsScheduled = null;
+  totals.meetingsCompleted = null;
+  totals.noMovement = null;
+
+  return {
+    role,
+
+    filters: {
+      startDate: rangeStart,
+      endDate: rangeEnd,
+      period
+    },
+
+    configuration: {
+      usersConfigured:
+        team.length,
+
+      goalsFound:
+        goals.length
+    },
+
+    totals,
+
+    users: users.sort((a, b) => {
+      if (role === 'closer') {
+        return (
+          Number(b.revenue || 0) -
+          Number(a.revenue || 0)
+        );
+      }
+
+      return (
+        Number(b.received || 0) -
+        Number(a.received || 0)
+      );
+    }),
+
+    dataAvailability: {
+      received: true,
+      open: true,
+      pending: true,
+
+      won: true,
+      lost: true,
+      cancelled: true,
+
+      revenue:
+        role === 'closer',
+
+      estimatedRevenue:
+        role === 'closer',
+
+      goals:
+        role === 'closer',
+
+      workedLeads: false,
+      activities: false,
+      meetings: false,
+      noMovement: false
+    }
+  };
 }
 
 // ========================================
