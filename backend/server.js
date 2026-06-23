@@ -3900,7 +3900,28 @@ const PERFORMANCE_TEAMS = {
     }
   ],
 
-  sdr: []
+  sdr: [
+    {
+      displayName: 'Leticia Barbosa',
+      aliases: ['Leticia Barbosa']
+    },
+    {
+      displayName: 'Luma Farias Silva Santos',
+      aliases: ['Luma Farias Silva Santos']
+    },
+    {
+      displayName: 'Pedro Scarillo',
+      aliases: ['Pedro Scarillo']
+    },
+    {
+      displayName: 'Gisele Santos Gama',
+      aliases: ['Gisele Santos Gama']
+    },
+    {
+      displayName: 'Guilherme Velloso',
+      aliases: ['Guilherme Velloso']
+    }
+  ]
 };
 
 function normalizePerformanceName(value) {
