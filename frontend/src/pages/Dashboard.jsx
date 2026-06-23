@@ -29,7 +29,9 @@ import {
   Users,
   Trophy,
   XCircle,
-  DollarSign
+  DollarSign,
+  Sun,
+  Moon
 } from 'lucide-react';
 
 function Dashboard() {
@@ -49,10 +51,24 @@ function Dashboard() {
   const [achievement, setAchievement] = useState(null);
   const [commercialFlow, setCommercialFlow] = useState(null);
   const [comparisonSource, setComparisonSource] = useState('');
+  const [theme, setTheme] = useState(() => {
+  return localStorage.getItem('crm-theme') || 'light';
+  });
 
   useEffect(() => {
     loadDashboard();
   }, [startDate, endDate, comparisonSource]);
+
+  useEffect(() => {
+  const isDark = theme === 'dark';
+
+  document.documentElement.classList.toggle(
+    'dark',
+    isDark
+  );
+
+  localStorage.setItem('crm-theme', theme);
+}, [theme]);
 
   async function loadDashboard() {
   try {
@@ -65,8 +81,8 @@ function Dashboard() {
      }
   });
 
-    const full = response.data;
-
+  const full = response.data;
+  
     const referenceDate = endDate
   ? new Date(`${endDate}T12:00:00`)
   : new Date();
@@ -120,7 +136,7 @@ setAchievement(achievementPayload);
 
   if (!dashboard) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-100 text-slate-600">
+      <div className="flex min-h-screen items-center justify-center bg-slate-100 text-slate-600 transition-colors dark:bg-slate-950 dark:text-slate-300">
         Carregando dashboard...
       </div>
     );
@@ -137,7 +153,7 @@ setAchievement(achievementPayload);
 {
 code: 0,
 name: 'Open',
-color: '#0f172a'
+color: theme === 'dark' ? '#3b82f6' : '#0f172a'
 },
 {
 code: 1,
@@ -651,7 +667,7 @@ const goalComparisonData = [
 {
 name: 'Meta',
 value: generalGoal,
-fill: '#0f172a'
+fill: theme === 'dark' ? '#e2e8f0' : '#0f172a'
 },
 {
 name: 'Realizado',
@@ -702,26 +718,64 @@ endingBacklog - startingBacklog;
 
 
   return (
-    <div className="min-h-screen bg-slate-100 text-slate-900">
+    <div className="min-h-screen bg-slate-100 text-slate-900 transition-colors duration-300 dark:bg-slate-950 dark:text-slate-100">
 
-      <header className="bg-slate-950 text-white px-8 py-6 shadow-lg">
-        <div className="flex flex-col gap-1">
-          <h1 className="text-3xl font-bold tracking-tight">
-            CRM Dashboard
-          </h1>
-          <p className="text-slate-300 text-sm">
-            Visão gerencial de leads, receita, conversão e performance comercial
-          </p>
+      <header className="border-b border-slate-200 bg-white/95 px-8 py-5 shadow-sm backdrop-blur transition-colors duration-300 dark:border-slate-800 dark:bg-slate-950/95">
+  <div className="flex flex-wrap items-center justify-between gap-5">
+    <div className="flex items-center gap-4">
+      <div className="hidden h-12 w-1.5 rounded-full bg-blue-600 sm:block" />
+
+      <div>
+        <div className="mb-1 flex items-center gap-2">
+          <span className="rounded-full bg-blue-50 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-blue-700 dark:bg-blue-950 dark:text-blue-300">
+            Visão geral
+          </span>
         </div>
-      </header>
 
-      <main className="p-8 space-y-8">
-        <div className="bg-white rounded-2xl shadow p-5 mb-6">
+        <h1 className="text-2xl font-black tracking-tight text-slate-950 sm:text-3xl dark:text-white">
+          Dashboard - Process Log & Comex
+        </h1>
+
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          Visão gerencial de leads, receita, conversão e performance comercial
+        </p>
+      </div>
+    </div>
+
+    <button
+      type="button"
+      onClick={() =>
+        setTheme((currentTheme) =>
+          currentTheme === 'dark'
+            ? 'light'
+            : 'dark'
+        )
+      }
+      className="flex h-11 items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-4 text-sm font-bold text-slate-700 transition hover:border-blue-300 hover:bg-blue-50 hover:text-blue-700 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 dark:hover:border-blue-700 dark:hover:bg-blue-950 dark:hover:text-blue-300"
+      aria-label="Alternar tema"
+    >
+      {theme === 'dark' ? (
+        <>
+          <Sun size={18} />
+          Modo claro
+        </>
+      ) : (
+        <>
+          <Moon size={18} />
+          Modo escuro
+        </>
+      )}
+    </button>
+  </div>
+</header>
+
+      <main className="space-y-8 p-4 transition-colors sm:p-6 lg:p-8">
+        <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-5 shadow transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
 
         <div className="flex flex-wrap items-end gap-4">
 
          <div>
-           <label className="block text-sm text-slate-500 mb-1">
+           <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">
              Data Inicial
            </label>
 
@@ -729,12 +783,12 @@ endingBacklog - startingBacklog;
              type="date"
              value={startDate}
              onChange={(e) => setStartDate(e.target.value)}
-             className="border rounded-xl px-4 py-2"
+             className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
            />
         </div>
 
         <div>
-          <label className="block text-sm text-slate-500 mb-1">
+          <label className="block text-sm text-slate-500 dark:text-slate-400 mb-1">
             Data Final
           </label>
 
@@ -742,7 +796,7 @@ endingBacklog - startingBacklog;
             type="date"
             value={endDate}
             onChange={(e) => setEndDate(e.target.value)}
-            className="border rounded-xl px-4 py-2"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-slate-900 outline-none transition dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100"
          />
        </div>
 
@@ -751,7 +805,7 @@ endingBacklog - startingBacklog;
            setStartDate('');
            setEndDate('');
          }}
-         className="bg-slate-200 hover:bg-slate-300 px-5 py-2 rounded-xl"
+         className="rounded-xl bg-slate-200 px-5 py-2 text-slate-800 transition hover:bg-slate-300 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600"
        >
          Limpar filtro
        </button>
@@ -762,7 +816,7 @@ endingBacklog - startingBacklog;
           setStartDate(today);
           setEndDate(today);
          }}
-         className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-5 py-2 rounded-xl"
+         className="rounded-xl bg-blue-100 px-5 py-2 text-blue-700 transition hover:bg-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
         >
           Hoje
         </button>
@@ -790,7 +844,7 @@ endingBacklog - startingBacklog;
             setStartDate(firstDay);
             setEndDate(lastDay);
           }}
-          className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-5 py-2 rounded-xl"
+          className="rounded-xl bg-blue-100 px-5 py-2 text-blue-700 transition hover:bg-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
         >
           Este mês
         </button>
@@ -802,7 +856,7 @@ endingBacklog - startingBacklog;
             setStartDate(`${now.getFullYear()}-01-01`);
             setEndDate(`${now.getFullYear()}-12-31`);
           }}
-          className="bg-blue-100 text-blue-700 hover:bg-blue-200 px-5 py-2 rounded-xl"
+          className="rounded-xl bg-blue-100 px-5 py-2 text-blue-700 transition hover:bg-blue-200 dark:bg-blue-950 dark:text-blue-300 dark:hover:bg-blue-900"
         >
           Este ano
         </button>
@@ -810,14 +864,14 @@ endingBacklog - startingBacklog;
         </div>
 
         </div>
-        <section className="bg-white rounded-2xl shadow p-5">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
   <div className="flex flex-wrap items-center justify-between gap-4">
     <div>
       <h2 className="text-lg font-semibold">
         Status do Banco
       </h2>
 
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Total: {formatNumber(dataQuality?.totalLeads)} leads |
         Criadas hoje: {formatNumber(dataQuality?.today?.createdToday)} |
         Fechadas hoje: {formatNumber(dataQuality?.today?.closedToday)} |
@@ -828,7 +882,7 @@ endingBacklog - startingBacklog;
     <button
       onClick={handleSyncNow}
       disabled={syncing}
-      className="bg-slate-900 text-white px-5 py-2 rounded-xl disabled:opacity-50"
+      className="rounded-xl bg-slate-900 px-5 py-2 text-white transition hover:bg-slate-800 disabled:opacity-50 dark:border dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
     >
       {syncing ? 'Atualizando...' : 'Atualizar banco agora'}
     </button>
@@ -856,7 +910,7 @@ endingBacklog - startingBacklog;
     description="Tempo médio da abertura até a venda"
   />
 </section>
-        <section className="bg-white rounded-2xl shadow p-5">
+        <section className="rounded-2xl border border-slate-200 bg-white p-5 shadow transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
 
          <div className="flex items-center justify-between mb-6">
             <div>
@@ -864,7 +918,7 @@ endingBacklog - startingBacklog;
                Evolução Mensal
              </h2>
 
-             <p className="text-slate-500">
+             <p className="text-slate-500 dark:text-slate-400">
                 Receita mensal comparada com quantidade de vendas ganhas
              </p>
             </div>
@@ -876,18 +930,24 @@ endingBacklog - startingBacklog;
       data={monthlyData.slice(-12)}
       margin={{ top: 20, right: 30, left: 10, bottom: 10 }}
     >
-      <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+      <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#334155' : '#e2e8f0'} />
 
       <XAxis
         dataKey="month"
-        tick={{ fontSize: 12, fill: '#475569' }}
+        tick={{
+          fontSize: 12,
+          fill: theme === 'dark' ? '#cbd5e1' : '#475569'
+      }}
         axisLine={false}
         tickLine={false}
       />
 
       <YAxis
         yAxisId="revenue"
-        tick={{ fontSize: 12, fill: '#475569' }}
+        tick={{
+          fontSize: 12,
+          fill: theme === 'dark' ? '#cbd5e1' : '#475569'
+        }}
         axisLine={false}
         tickLine={false}
         tickFormatter={(value) => `R$ ${(value / 1000).toFixed(0)}k`}
@@ -915,13 +975,27 @@ endingBacklog - startingBacklog;
           return [value, name];
         }}
         labelStyle={{
-          color: '#0f172a',
-          fontWeight: 700
-        }}
+  color:
+    theme === 'dark'
+      ? '#f8fafc'
+      : '#0f172a',
+  fontWeight: 700
+}}
         contentStyle={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0'
-        }}
+  borderRadius: 12,
+  border:
+    theme === 'dark'
+      ? '1px solid #334155'
+      : '1px solid #e2e8f0',
+  backgroundColor:
+    theme === 'dark'
+      ? '#0f172a'
+      : '#ffffff',
+  color:
+    theme === 'dark'
+      ? '#f8fafc'
+      : '#0f172a'
+}}
       />
 
       <Legend />
@@ -957,14 +1031,14 @@ endingBacklog - startingBacklog;
 
 </section>
 
-<section className="bg-white rounded-2xl shadow p-5">
+<section className="rounded-2xl border border-slate-200 bg-white p-5 shadow transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
   <div className="flex items-center justify-between mb-4">
     <div>
-      <h2 className="text-lg font-black text-slate-900">
+      <h2 className="text-lg font-black text-slate-900 dark:text-slate-100">
         Ranking Comercial
       </h2>
 
-      <p className="text-sm text-slate-500">
+      <p className="text-sm text-slate-500 dark:text-slate-400">
         Performance por responsável no período
       </p>
     </div>
@@ -982,7 +1056,7 @@ endingBacklog - startingBacklog;
       return (
         <div
           key={`${item._id}-${index}`}
-          className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 hover:bg-white transition"
+          className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 transition hover:bg-white dark:border-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700"
         >
           <div className="grid grid-cols-[38px_minmax(0,1.4fr)_130px_130px_70px_100px_110px] gap-3 items-center">
             <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center text-xs font-black">
@@ -990,27 +1064,27 @@ endingBacklog - startingBacklog;
             </div>
 
            <div className="min-w-0">
-  <div className="font-black text-slate-900 truncate">
+  <div className="font-black text-slate-900 dark:text-slate-100 truncate">
     {item._id || 'Sem responsável'}
   </div>
 
-  <div className="text-xs text-slate-500">
+  <div className="text-xs text-slate-500 dark:text-slate-400">
     {formatNumber(leads)} leads • {formatNumber(lost)} lost
   </div>
 </div>
 
 <div>
-  <div className="text-[11px] text-slate-500">
+  <div className="text-[11px] text-slate-500 dark:text-slate-400">
     Estimativa
   </div>
 
-  <div className="text-sm font-black text-cyan-700">
+  <div className="text-sm font-black text-cyan-700 dark:text-cyan-300">
     {formatBRL(item.estimatedRevenue || 0)}
   </div>
 </div>
 
 <div>
-  <div className="text-[11px] text-slate-500">
+  <div className="text-[11px] text-slate-500 dark:text-slate-400">
     Receita
   </div>
 
@@ -1020,7 +1094,7 @@ endingBacklog - startingBacklog;
 </div>
 
 <div>
-  <div className="text-[11px] text-slate-500">
+  <div className="text-[11px] text-slate-500 dark:text-slate-400">
     Won
   </div>
 
@@ -1030,7 +1104,7 @@ endingBacklog - startingBacklog;
             </div>
 
             <div>
-              <div className="text-[11px] text-slate-500">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 Conversão
               </div>
 
@@ -1040,7 +1114,7 @@ endingBacklog - startingBacklog;
                 </span>
               </div>
 
-              <div className="w-full h-1.5 bg-slate-200 rounded-full overflow-hidden mt-1">
+              <div className="w-full h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden mt-1">
                 <div
                   className="h-full bg-blue-600 rounded-full"
                   style={{
@@ -1051,11 +1125,11 @@ endingBacklog - startingBacklog;
             </div>
 
             <div>
-              <div className="text-[11px] text-slate-500">
+              <div className="text-[11px] text-slate-500 dark:text-slate-400">
                 Ticket
               </div>
 
-              <div className="text-sm font-black text-slate-900 truncate">
+              <div className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
                 {formatBRL(ticket)}
               </div>
             </div>
@@ -1066,14 +1140,14 @@ endingBacklog - startingBacklog;
   </div>
 </section>
 
-<section className="bg-white rounded-2xl shadow p-6">
+<section className="rounded-2xl border border-slate-200 bg-white p-6 shadow transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
   <div className="flex items-center justify-between mb-6">
     <div>
       <h2 className="text-2xl font-bold">
         Funil Comercial
       </h2>
 
-      <p className="text-slate-500">
+      <p className="text-slate-500 dark:text-slate-400">
         Distribuição dos leads por status no período selecionado
       </p>
     </div>
@@ -1096,25 +1170,31 @@ endingBacklog - startingBacklog;
         data={leadTimeChartData}
         margin={{ top: 20, right: 30, left: 10, bottom: 10 }}
       >
-        <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+        <CartesianGrid strokeDasharray="3 3" stroke={theme === 'dark' ? '#334155' : '#e2e8f0'} />
 
         <XAxis
           dataKey="month"
-          tick={{ fontSize: 12, fill: '#475569' }}
+          tick={{
+            fontSize: 12,
+            fill: theme === 'dark' ? '#cbd5e1' : '#475569'
+          }}
           axisLine={false}
           tickLine={false}
         />
 
         <YAxis
           yAxisId="days"
-          tick={{ fontSize: 12, fill: '#475569' }}
+          tick={{
+            fontSize: 12,
+            fill: theme === 'dark' ? '#cbd5e1' : '#475569'
+          }}
           axisLine={false}
           tickLine={false}
           label={{
             value: 'Dias',
             angle: -90,
             position: 'insideLeft',
-            fill: '#475569',
+            fill: theme === 'dark' ? '#cbd5e1' : '#475569',
             fontSize: 12
           }}
         />
@@ -1140,8 +1220,25 @@ endingBacklog - startingBacklog;
 
             return [value, name];
           }}
-          labelStyle={{ color: '#0f172a', fontWeight: 700 }}
-          contentStyle={{ borderRadius: 12, border: '1px solid #e2e8f0' }}
+          labelStyle={{
+  color: theme === 'dark' ? '#f8fafc' : '#0f172a',
+  fontWeight: 700
+}}
+contentStyle={{
+  borderRadius: 12,
+  border:
+    theme === 'dark'
+      ? '1px solid #334155'
+      : '1px solid #e2e8f0',
+  backgroundColor:
+    theme === 'dark'
+      ? '#0f172a'
+      : '#ffffff',
+  color:
+    theme === 'dark'
+      ? '#f8fafc'
+      : '#0f172a'
+}}
         />
 
         <Legend />
@@ -1171,14 +1268,14 @@ endingBacklog - startingBacklog;
 </ChartCard>
 
 <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-  <div className="bg-white rounded-2xl shadow p-5">
+  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
     <div className="flex items-start justify-between gap-4 mb-4">
       <div>
-        <h2 className="text-xl font-black text-slate-900">
+        <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">
           Receita por Source
         </h2>
 
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           Principais origens por receita
         </p>
       </div>
@@ -1194,20 +1291,20 @@ endingBacklog - startingBacklog;
     />
   </div>
 
-  <div className="bg-white rounded-2xl shadow p-5">
+  <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
     <div className="flex items-start justify-between gap-4 mb-4">
       <div>
-        <h2 className="text-xl font-black text-slate-900">
+        <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">
           Receita por Produto
         </h2>
 
-        <p className="text-sm text-slate-500">
+        <p className="text-sm text-slate-500 dark:text-slate-400">
           Produtos por receita individual
         </p>
       </div>
 
       <div className="text-right shrink-0">
-        <div className="text-xs text-slate-500">
+        <div className="text-xs text-slate-500 dark:text-slate-400">
           Total listado
         </div>
 
@@ -1228,7 +1325,7 @@ endingBacklog - startingBacklog;
   </div>
 </section>
 
-  <section className="bg-white rounded-2xl shadow p-6">
+  <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
   <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
     <div>
       <h2 className="text-2xl font-bold">
@@ -1236,14 +1333,14 @@ endingBacklog - startingBacklog;
       </h2>
 
 
-  <p className="text-slate-500">
+  <p className="text-slate-500 dark:text-slate-400">
     Receita acumulada até o período selecionado
   </p>
 </div>
 
 <div className="flex flex-wrap items-end gap-3">
   <div>
-    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 mb-1">
+    <label className="block text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400 mb-1">
       Origem
     </label>
 
@@ -1252,7 +1349,7 @@ endingBacklog - startingBacklog;
       onChange={(event) =>
         setComparisonSource(event.target.value)
       }
-      className="h-10 min-w-[180px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      className="h-10 min-w-[180px] rounded-xl border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-700 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100 dark:border-slate-700 dark:bg-slate-950 dark:text-slate-100 dark:focus:ring-blue-950"
     >
       <option value="">
         Todas as sources
@@ -1288,13 +1385,13 @@ endingBacklog - startingBacklog;
 
 
   <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-7">
-    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4">
+    <div className="rounded-2xl border border-blue-100 bg-blue-50 p-4 dark:border-blue-900 dark:bg-blue-950/50">
       <div className="text-xs font-bold uppercase tracking-wide text-blue-600">
         Ano atual · {comparisonCurrentYear}
       </div>
 
 
-  <div className="text-2xl font-black text-blue-800 mt-1">
+  <div className="mt-1 text-2xl font-black text-blue-800 dark:text-blue-200">
     {formatBRL(comparisonCurrentTotal)}
   </div>
 
@@ -1303,26 +1400,26 @@ endingBacklog - startingBacklog;
   </div>
 </div>
 
-<div className="rounded-2xl border border-slate-200 bg-slate-50 p-4">
-  <div className="text-xs font-bold uppercase tracking-wide text-slate-500">
+<div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+  <div className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
     Ano anterior · {comparisonPreviousYear}
   </div>
 
-  <div className="text-2xl font-black text-slate-800 mt-1">
+  <div className="mt-1 text-2xl font-black text-slate-800 dark:text-slate-100">
     {formatBRL(comparisonPreviousTotal)}
   </div>
 
-  <div className="text-xs text-slate-500 mt-1">
+  <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
     Mesmo período comparativo
   </div>
 </div>
 
 <div
   className={`rounded-2xl border p-4 ${
-    comparisonDifference >= 0
-      ? 'border-green-200 bg-green-50'
-      : 'border-red-200 bg-red-50'
-  }`}
+  comparisonDifference >= 0
+    ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/50'
+    : 'border-red-200 bg-red-50 dark:border-red-900 dark:bg-red-950/50'
+}`}
 >
   <div
     className={`text-xs font-bold uppercase tracking-wide ${
@@ -1372,7 +1469,7 @@ endingBacklog - startingBacklog;
       >
         <CartesianGrid
           strokeDasharray="3 3"
-          stroke="#e2e8f0"
+          stroke={theme === 'dark' ? '#334155' : '#e2e8f0'}
         />
 
 
@@ -1380,7 +1477,7 @@ endingBacklog - startingBacklog;
       dataKey="month"
       tick={{
         fontSize: 12,
-        fill: '#475569'
+        fill: theme === 'dark' ? '#cbd5e1' : '#475569'
       }}
       axisLine={false}
       tickLine={false}
@@ -1389,7 +1486,7 @@ endingBacklog - startingBacklog;
     <YAxis
       tick={{
         fontSize: 12,
-        fill: '#475569'
+        fill: theme === 'dark' ? '#cbd5e1' : '#475569'
       }}
       axisLine={false}
       tickLine={false}
@@ -1430,15 +1527,27 @@ endingBacklog - startingBacklog;
         }${Number(item.growth || 0).toFixed(1)}%`;
       }}
       labelStyle={{
-        color: '#0f172a',
-        fontWeight: 800
-      }}
+  color:
+    theme === 'dark'
+      ? '#f8fafc'
+      : '#0f172a',
+  fontWeight: 700
+}}
       contentStyle={{
-        borderRadius: 14,
-        border: '1px solid #e2e8f0',
-        boxShadow:
-          '0 10px 25px rgba(15, 23, 42, 0.12)'
-      }}
+  borderRadius: 12,
+  border:
+    theme === 'dark'
+      ? '1px solid #334155'
+      : '1px solid #e2e8f0',
+  backgroundColor:
+    theme === 'dark'
+      ? '#0f172a'
+      : '#ffffff',
+  color:
+    theme === 'dark'
+      ? '#f8fafc'
+      : '#0f172a'
+}}
     />
 
     <Legend />
@@ -1484,21 +1593,21 @@ endingBacklog - startingBacklog;
   </div>
 </section>
 
-<section className="bg-white rounded-2xl shadow p-6">
+<section className="rounded-2xl border border-slate-200 bg-white p-6 shadow transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
   <div className="flex items-center justify-between mb-6">
     <div>
       <h2 className="text-2xl font-bold">
         Ranking por Estado / Território
       </h2>
 
-      <p className="text-slate-500">
+      <p className="text-slate-500 dark:text-slate-400">
         Distribuição geográfica dos leads e receita por UF
       </p>
     </div>
   </div>
 
     <div className="grid grid-cols-1 md:grid-cols-[minmax(0,2fr)_360px] gap-6 items-start">
-    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors dark:border-slate-700 dark:bg-slate-800">
       <div className="w-full h-[520px] flex items-center justify-center overflow-hidden">
     <ComposableMap
       projection="geoMercator"
@@ -1564,7 +1673,7 @@ endingBacklog - startingBacklog;
     </ComposableMap>
   </div>
 
-  <div className="flex items-center gap-3 mt-4 text-xs text-slate-600">
+  <div className="mt-4 flex items-center gap-3 text-xs text-slate-600 dark:text-slate-300">
     <span>Menor volume</span>
 
     <div className="flex h-3 w-40 rounded-full overflow-hidden border border-slate-200">
@@ -1579,7 +1688,7 @@ endingBacklog - startingBacklog;
   </div>
 </div>
 
-    <div className="bg-slate-50 rounded-2xl p-4 border border-slate-200">
+    <div className="rounded-2xl border border-slate-200 bg-slate-50 p-4 transition-colors dark:border-slate-700 dark:bg-slate-800">
       <h3 className="text-lg font-semibold mb-4">
         Top estados
       </h3>
@@ -1600,20 +1709,20 @@ endingBacklog - startingBacklog;
     return (
             <div
               key={item.uf}
-              className="flex items-center justify-between border-b border-slate-200 pb-2"
+              className="flex items-center justify-between border-b border-slate-200 pb-2 dark:border-slate-700"
             >
               <div>
-                <div className="font-semibold text-slate-800">
+                <div className="font-semibold text-slate-800 dark:text-slate-100">
                   {item.uf}
                 </div>
 
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-slate-500 dark:text-slate-400">
                   Won: {formatNumber(item.won)} | Open: {formatNumber(item.open)}
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="font-semibold text-blue-700">
+                <div className="font-semibold text-green-600 dark:text-green-400">
                   {formatNumber(item.leads)} leads
                 </div>
 
@@ -1621,7 +1730,7 @@ endingBacklog - startingBacklog;
                 {statePercentage.toFixed(1)}% do total
               </div>
 
-              <div className="text-xs text-slate-500">
+              <div className="text-xs text-slate-500 dark:text-slate-400">
                 {formatBRL(item.receita)}
               </div>
               </div>
@@ -1634,14 +1743,14 @@ endingBacklog - startingBacklog;
 </section>
 
 <section className="grid grid-cols-1 xl:grid-cols-2 gap-6">
- <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+ <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
   <div className="flex flex-wrap items-start justify-between gap-4 mb-5">
     <div>
-      <h2 className="text-xl font-black text-slate-900">
+      <h2 className="text-xl font-black text-slate-900 dark:text-slate-100">
         Meta x Realizado x Estimado
       </h2>
 
-      <p className="text-sm text-slate-500 mt-1">
+      <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
         Resultado atual e projeção comercial do período
       </p>
     </div>
@@ -1660,32 +1769,32 @@ endingBacklog - startingBacklog;
   </div>
 
   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-5">
-    <div className="rounded-xl bg-slate-100 border border-slate-200 p-3">
-      <div className="text-xs font-bold uppercase text-slate-500">
+    <div className="rounded-xl border border-slate-200 bg-slate-100 p-3 dark:border-slate-700 dark:bg-slate-800">
+      <div className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400">
         Meta
       </div>
 
-      <div className="text-lg font-black text-slate-900 mt-1">
+      <div className="text-lg font-black text-slate-900 dark:text-slate-100 mt-1">
         {formatBRL(generalGoal)}
       </div>
     </div>
 
-    <div className="rounded-xl bg-blue-50 border border-blue-100 p-3">
+    <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/50">
       <div className="text-xs font-bold uppercase text-blue-600">
         Realizado
       </div>
 
-      <div className="text-lg font-black text-blue-800 mt-1">
+      <div className="mt-1 text-lg font-black text-blue-800 dark:text-blue-200">
         {formatBRL(realizedRevenue)}
       </div>
     </div>
 
-    <div className="rounded-xl bg-cyan-50 border border-cyan-100 p-3">
-      <div className="text-xs font-bold uppercase text-cyan-600">
+    <div className="rounded-xl border border-cyan-100 bg-cyan-50 p-3 dark:border-cyan-900 dark:bg-cyan-950/50">
+      <div className="text-xs font-bold uppercase text-cyan-600 dark:text-cyan-300">
         Estimado
       </div>
 
-      <div className="text-lg font-black text-cyan-800 mt-1">
+      <div className="mt-1 text-lg font-black text-cyan-800 dark:text-cyan-200">
         {formatBRL(estimatedRevenue)}
       </div>
     </div>
@@ -1704,7 +1813,7 @@ endingBacklog - startingBacklog;
     >
       <CartesianGrid
         strokeDasharray="3 3"
-        stroke="#e2e8f0"
+        stroke={theme === 'dark' ? '#334155' : '#e2e8f0'}
         horizontal={false}
       />
 
@@ -1712,7 +1821,7 @@ endingBacklog - startingBacklog;
         type="number"
         tick={{
           fontSize: 11,
-          fill: '#475569'
+          fill: theme === 'dark' ? '#cbd5e1' : '#475569'
         }}
         axisLine={false}
         tickLine={false}
@@ -1727,7 +1836,7 @@ endingBacklog - startingBacklog;
         width={75}
         tick={{
           fontSize: 12,
-          fill: '#334155',
+          fill: theme === 'dark' ? '#e2e8f0' : '#334155',
           fontWeight: 700
         }}
         axisLine={false}
@@ -1740,9 +1849,20 @@ endingBacklog - startingBacklog;
           'Valor'
         ]}
         contentStyle={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0'
-        }}
+  borderRadius: 12,
+  border:
+    theme === 'dark'
+      ? '1px solid #334155'
+      : '1px solid #e2e8f0',
+  backgroundColor:
+    theme === 'dark'
+      ? '#0f172a'
+      : '#ffffff',
+  color:
+    theme === 'dark'
+      ? '#f8fafc'
+      : '#0f172a'
+}}
       />
 
       <Bar
@@ -1772,7 +1892,7 @@ endingBacklog - startingBacklog;
         </span>
       </div>
 
-      <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+      <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
         <div
           className="h-full bg-blue-600 rounded-full"
           style={{
@@ -1788,12 +1908,12 @@ endingBacklog - startingBacklog;
           Progresso com estimativa
         </span>
 
-        <span className="text-cyan-700">
+        <span className="text-cyan-700 dark:text-cyan-300">
           {projectedPercent.toFixed(1)}%
         </span>
       </div>
 
-      <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+      <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
         <div
           className={`h-full rounded-full ${
             projectedPercent >= 100
@@ -1809,12 +1929,12 @@ endingBacklog - startingBacklog;
   </div>
 
   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-5">
-    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3">
-      <div className="text-xs text-slate-500">
+    <div className="rounded-xl border border-slate-200 bg-slate-50 p-3 transition-colors dark:border-slate-700 dark:bg-slate-800">
+      <div className="text-xs text-slate-500 dark:text-slate-400">
         Falta realizar
       </div>
 
-      <div className="text-base font-black text-slate-900 mt-1">
+      <div className="text-base font-black text-slate-900 dark:text-slate-100 mt-1">
         {formatBRL(remainingToGoal)}
       </div>
     </div>
@@ -1897,21 +2017,30 @@ subtitle="Distribuição das oportunidades no período selecionado"
           ];
         }}
         contentStyle={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow:
-            '0 8px 20px rgba(15, 23, 42, 0.10)'
-        }}
+  borderRadius: 12,
+  border:
+    theme === 'dark'
+      ? '1px solid #334155'
+      : '1px solid #e2e8f0',
+  backgroundColor:
+    theme === 'dark'
+      ? '#0f172a'
+      : '#ffffff',
+  color:
+    theme === 'dark'
+      ? '#f8fafc'
+      : '#0f172a'
+}}
       />
     </PieChart>
   </ResponsiveContainer>
 
   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-    <div className="text-3xl font-black text-slate-900">
+    <div className="text-3xl font-black text-slate-900 dark:text-slate-100">
       {formatNumber(totalStatusLeads)}
     </div>
 
-    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+    <div className="text-xs font-semibold uppercase tracking-wide text-slate-500 dark:text-slate-400">
       Total de leads
     </div>
   </div>
@@ -1931,7 +2060,7 @@ subtitle="Distribuição das oportunidades no período selecionado"
     return (
       <div
         key={item.code}
-        className="flex items-center justify-between gap-4 border-b border-slate-200 py-3"
+        className="flex items-center justify-between gap-4 border-b border-slate-200 py-3 dark:border-slate-700"
       >
         <div className="flex items-center gap-3 min-w-0">
           <span
@@ -1941,17 +2070,17 @@ subtitle="Distribuição das oportunidades no período selecionado"
             }}
           />
 
-          <span className="text-sm font-bold text-slate-700 truncate">
+          <span className="truncate text-sm font-bold text-slate-700 dark:text-slate-200">
             {item.name}
           </span>
         </div>
 
         <div className="text-right shrink-0">
-          <div className="text-base font-black text-slate-900">
+          <div className="text-base font-black text-slate-900 dark:text-slate-100">
             {formatNumber(item.total)}
           </div>
 
-          <div className="text-xs text-slate-500">
+          <div className="text-xs text-slate-500 dark:text-slate-400">
             {percent}%
           </div>
         </div>
@@ -1984,7 +2113,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
     >
       <CartesianGrid
         strokeDasharray="3 3"
-        stroke="#e2e8f0"
+        stroke={theme === 'dark' ? '#334155' : '#e2e8f0'}
         horizontal={false}
       />
 
@@ -1993,7 +2122,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
     type="number"
     tick={{
       fontSize: 11,
-      fill: '#475569'
+      fill: theme === 'dark' ? '#cbd5e1' : '#475569'
     }}
     axisLine={false}
     tickLine={false}
@@ -2008,7 +2137,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
     width={75}
     tick={{
       fontSize: 12,
-      fill: '#334155',
+      fill: theme === 'dark' ? '#e2e8f0' : '#334155',
       fontWeight: 700
     }}
     axisLine={false}
@@ -2038,11 +2167,20 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
       return `${item.name} · Projeção: ${item.projectedPercent.toFixed(1)}%`;
     }}
     contentStyle={{
-      borderRadius: 12,
-      border: '1px solid #e2e8f0',
-      boxShadow:
-        '0 8px 20px rgba(15, 23, 42, 0.10)'
-    }}
+  borderRadius: 12,
+  border:
+    theme === 'dark'
+      ? '1px solid #334155'
+      : '1px solid #e2e8f0',
+  backgroundColor:
+    theme === 'dark'
+      ? '#0f172a'
+      : '#ffffff',
+  color:
+    theme === 'dark'
+      ? '#f8fafc'
+      : '#0f172a'
+}}
   />
 
   <Legend />
@@ -2089,14 +2227,14 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
       key={item.name}
       className={`rounded-xl border px-3 py-2 ${
         achieved
-          ? 'border-green-200 bg-green-50'
+          ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/50'
           : projectedAchievement
-            ? 'border-cyan-200 bg-cyan-50'
-            : 'border-slate-200 bg-slate-50'
+          ? 'border-cyan-200 bg-cyan-50 dark:border-cyan-900 dark:bg-cyan-950/50'
+          : 'border-slate-200 bg-slate-50 dark:border-slate-700 dark:bg-slate-800'
       }`}
     >
       <div className="flex items-center justify-between gap-3">
-        <span className="text-sm font-black text-slate-900 truncate">
+        <span className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
           {item.firstName}
         </span>
 
@@ -2105,15 +2243,15 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
             achieved
               ? 'text-green-700'
               : projectedAchievement
-                ? 'text-cyan-700'
-                : 'text-slate-700'
+                ? 'text-cyan-700 dark:text-cyan-300'
+                : 'text-slate-700 dark:text-slate-200'
           }`}
         >
           {item.projectedPercent.toFixed(1)}%
         </span>
       </div>
 
-      <div className="text-xs text-slate-500 mt-1">
+      <div className="text-xs text-slate-500  dark:text-slate-400 mt-1">
         {achieved
           ? 'Meta já atingida'
           : projectedAchievement
@@ -2133,17 +2271,17 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
   subtitle="Entradas, fechamentos e evolução das Oportunidades"
 >
   <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
-    <div className="rounded-xl border border-blue-100 bg-blue-50 p-3">
+    <div className="rounded-xl border border-blue-100 bg-blue-50 p-3 dark:border-blue-900 dark:bg-blue-950/50">
       <div className="text-xs font-bold uppercase text-blue-600">
         Entradas
       </div>
 
-      <div className="text-2xl font-black text-blue-800 mt-1">
+      <div className="mt-1 text-2xl font-black text-blue-800 dark:text-blue-200">
         {formatNumber(commercialFlowTotals.entries)}
       </div>
     </div>
 
-    <div className="rounded-xl border border-green-100 bg-green-50 p-3">
+    <div className="rounded-xl border border-green-100 bg-green-50 p-3 dark:border-green-900 dark:bg-green-950/50">
       <div className="text-xs font-bold uppercase text-green-600">
         Fechamentos
       </div>
@@ -2156,25 +2294,25 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
     <div
       className={`rounded-xl border p-3 ${
         commercialFlowTotals.balance <= 0
-          ? 'border-emerald-100 bg-emerald-50'
-          : 'border-amber-100 bg-amber-50'
+           ? 'border-emerald-100 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/50'
+           : 'border-amber-100 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50'
       }`}
     >
       <div
         className={`text-xs font-bold uppercase ${
           commercialFlowTotals.balance <= 0
-            ? 'text-emerald-600'
-            : 'text-amber-600'
+            ? 'text-emerald-600 dark:text-emerald-300'
+            : 'text-amber-600 dark:text-amber-300'
         }`}
       >
         Saldo do período
       </div>
 
       <div
-        className={`text-2xl font-black mt-1 ${
+        className={`mt-1 text-2xl font-black ${
           commercialFlowTotals.balance <= 0
-            ? 'text-emerald-800'
-            : 'text-amber-800'
+            ? 'text-emerald-800 dark:text-emerald-200'
+            : 'text-amber-800 dark:text-amber-200'
         }`}
       >
         {commercialFlowTotals.balance > 0 ? '+' : ''}
@@ -2182,7 +2320,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
       </div>
     </div>
 
-    <div className="rounded-xl border border-purple-100 bg-purple-50 p-3">
+    <div className="rounded-xl border border-purple-100 bg-purple-50 p-3 dark:border-purple-900 dark:bg-purple-950/50">
       <div className="text-xs font-bold uppercase text-purple-600">
         Saldo Acumulado
       </div>
@@ -2205,14 +2343,14 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
     >
       <CartesianGrid
         strokeDasharray="3 3"
-        stroke="#e2e8f0"
+        stroke={theme === 'dark' ? '#334155' : '#e2e8f0'}
       />
 
       <XAxis
         dataKey="label"
         tick={{
           fontSize: 12,
-          fill: '#475569'
+          fill: theme === 'dark' ? '#cbd5e1' : '#475569'
         }}
         axisLine={false}
         tickLine={false}
@@ -2222,7 +2360,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
         yAxisId="left"
         tick={{
           fontSize: 12,
-          fill: '#475569'
+          fill: theme === 'dark' ? '#cbd5e1' : '#475569'
         }}
         axisLine={false}
         tickLine={false}
@@ -2266,11 +2404,20 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
           }${formatNumber(item.balance)}`;
         }}
         contentStyle={{
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          boxShadow:
-            '0 8px 20px rgba(15, 23, 42, 0.10)'
-        }}
+  borderRadius: 12,
+  border:
+    theme === 'dark'
+      ? '1px solid #334155'
+      : '1px solid #e2e8f0',
+  backgroundColor:
+    theme === 'dark'
+      ? '#0f172a'
+      : '#ffffff',
+  color:
+    theme === 'dark'
+      ? '#f8fafc'
+      : '#0f172a'
+}}
       />
 
       <Legend />
@@ -2316,8 +2463,8 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
   <div
     className={`mt-5 rounded-xl border px-4 py-3 ${
       backlogDifference <= 0
-        ? 'border-green-200 bg-green-50'
-        : 'border-amber-200 bg-amber-50'
+         ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/50'
+         : 'border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/50'
     }`}
   >
     <div className="flex flex-wrap items-center justify-between gap-3">
@@ -2325,8 +2472,8 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
         <div
           className={`text-sm font-black ${
             backlogDifference <= 0
-              ? 'text-green-700'
-              : 'text-amber-700'
+              ? 'text-green-700 dark:text-green-300'
+              : 'text-amber-700 dark:text-amber-300'
           }`}
         >
           {backlogDifference < 0
@@ -2336,7 +2483,7 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
               : 'Oportunidade estável'}
         </div>
 
-        <div className="text-xs text-slate-600 mt-1">
+        <div className="mt-1 text-xs text-slate-600 dark:text-slate-300">
           Início: {formatNumber(startingBacklog)} · Final:{' '}
           {formatNumber(endingBacklog)}
         </div>
@@ -2345,8 +2492,8 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
       <div
         className={`text-2xl font-black ${
           backlogDifference <= 0
-            ? 'text-green-700'
-            : 'text-amber-700'
+            ? 'text-green-700 dark:text-green-300'
+            : 'text-amber-700 dark:text-amber-300'
         }`}
       >
         {backlogDifference > 0 ? '+' : ''}
@@ -2365,25 +2512,25 @@ subtitle="Comparação entre meta, receita realizada e projeção com estimativa
 
 function MetricCard({ title, value, icon, description }) {
   return (
-    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-200">
+    <div className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0">
-          <p className="text-xs font-bold text-slate-500 uppercase tracking-wide">
+          <p className="text-xs font-bold uppercase tracking-wide text-slate-500 dark:text-slate-400">
             {title}
           </p>
 
-          <h3 className="text-2xl font-black text-slate-900 mt-1">
+          <h3 className="mt-1 text-2xl font-black text-slate-900 dark:text-slate-100">
             {value}
           </h3>
 
           {description && (
-            <p className="text-xs text-slate-500 mt-1">
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
               {description}
             </p>
           )}
         </div>
 
-        <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-700 flex items-center justify-center shrink-0">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300">
           {icon}
         </div>
       </div>
@@ -2393,14 +2540,14 @@ function MetricCard({ title, value, icon, description }) {
 
 function ChartCard({ title, subtitle, children }) {
   return (
-    <div className="bg-white rounded-2xl p-6 shadow-sm border border-slate-200">
+    <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition-colors duration-300 dark:border-slate-800 dark:bg-slate-900">
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-slate-800">
+        <h2 className="text-lg font-semibold text-slate-800 dark:text-slate-100">
           {title}
         </h2>
 
         {subtitle && (
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
             {subtitle}
           </p>
         )}
@@ -2517,32 +2664,32 @@ function SourceRanking({ data, formatBRL, formatNumber }) {
             <div className="flex items-start justify-between gap-4 mb-3">
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 flex items-center justify-center text-xs font-black">
+                  <span className="w-7 h-7 rounded-full bg-blue-100 text-blue-700 dark:text-blue-300 flex items-center justify-center text-xs font-black">
                     {index + 1}
                   </span>
 
-                  <h3 className="font-bold text-slate-900 truncate">
+                  <h3 className="font-bold text-slate-900 dark:text-slate-100 truncate">
                     {item.name || 'Sem source'}
                   </h3>
                 </div>
 
-                <p className="text-xs text-slate-500 mt-1 ml-9">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 ml-9">
                   Leads: {formatNumber(item.leads)} | Won: {formatNumber(item.won)} | Conversão: {conversion}%
                 </p>
               </div>
 
               <div className="text-right shrink-0">
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-slate-500 dark:text-slate-400">
                   Receita
                 </div>
 
-                <div className="text-xl font-black text-blue-700">
+                <div className="text-xl font-black text-blue-700 dark:text-blue-300">
                   {formatBRL(item.receita)}
                 </div>
               </div>
             </div>
 
-            <div className="w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+            <div className="w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-blue-600 to-cyan-400 rounded-full"
                 style={{
@@ -2585,27 +2732,27 @@ function ProductRanking({ data, totalRevenue, formatBRL, formatNumber }) {
               </div>
 
               <div className="min-w-0">
-                <div className="font-black text-slate-900 truncate">
+                <div className="font-black text-slate-900 dark:text-slate-100 truncate">
                   {item.name || 'Sem produto'}
                 </div>
 
-                <div className="text-xs text-slate-500 mt-1">
+                <div className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                   Leads: {formatNumber(item.leads)} | Won: {formatNumber(item.won)}
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-slate-500 dark:text-slate-400">
                   Receita
                 </div>
 
-                <div className="text-xl font-black text-blue-700">
+                <div className="text-xl font-black text-blue-700 dark:text-blue-300">
                   {formatBRL(receita)}
                 </div>
               </div>
 
               <div className="text-right">
-                <div className="text-xs text-slate-500">
+                <div className="text-xs text-slate-500 dark:text-slate-400">
                   Participação
                 </div>
 
@@ -2615,7 +2762,7 @@ function ProductRanking({ data, totalRevenue, formatBRL, formatNumber }) {
               </div>
             </div>
 
-            <div className="mt-3 w-full h-3 bg-slate-200 rounded-full overflow-hidden">
+            <div className="mt-3 w-full h-3 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-blue-700 to-cyan-400 rounded-full"
                 style={{
@@ -2656,7 +2803,7 @@ function CompactRanking({
         return (
           <div
             key={`${item.name}-${index}`}
-            className="rounded-xl border border-slate-200 bg-slate-50 p-3"
+            className="rounded-xl border border-slate-200 bg-slate-50 p-3 transition-colors dark:border-slate-700 dark:bg-slate-800"
           >
             <div className="flex items-center justify-between gap-3">
               <div className="flex items-center gap-3 min-w-0">
@@ -2665,24 +2812,24 @@ function CompactRanking({
                 </span>
 
                 <div className="min-w-0">
-                  <div className="text-sm font-black text-slate-900 truncate">
+                  <div className="text-sm font-black text-slate-900 dark:text-slate-100 truncate">
                     {item.name || 'Sem informação'}
                   </div>
 
-                  <div className="text-[11px] text-slate-500">
+                  <div className="text-[11px] text-slate-500 dark:text-slate-400">
                     {totalLabel}: {formatNumber(item.leads || 0)} | Won: {formatNumber(item.won || 0)}
                   </div>
                 </div>
               </div>
 
               <div className="text-right shrink-0">
-                <div className="text-sm font-black text-blue-700">
+                <div className="text-sm font-black text-blue-700 dark:text-blue-300">
                   {formatBRL(value)}
                 </div>
               </div>
             </div>
 
-            <div className="mt-2 w-full h-2 bg-slate-200 rounded-full overflow-hidden">
+            <div className="mt-2 w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-blue-700 to-cyan-400 rounded-full"
                 style={{
