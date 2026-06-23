@@ -3852,12 +3852,6 @@ const PERFORMANCE_TEAMS = {
       ]
     },
     {
-      displayName: 'Accounts Grupo',
-      aliases: [
-        'Accounts Grupo'
-      ]
-    },
-    {
       displayName: 'Beatriz Costa',
       aliases: [
         'Beatriz Costa',
