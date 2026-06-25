@@ -5,7 +5,7 @@ import {
   sumBySector,
   sumActualBySector,
   getBySector
-} from '../data/tvDataService';
+} from '../tv/data/tvDataService';
 
 function TVCloserPage({ tvMode = false }) {
   const [screen, setScreen] = useState(0);
