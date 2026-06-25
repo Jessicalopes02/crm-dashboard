@@ -1,11 +1,5 @@
 import { useEffect, useState } from 'react';
-import {
-  getAchievement,
-  getCampaignProgress,
-  sumBySector,
-  sumActualBySector,
-  getBySector
-} from '../tv/data/tvDataService';
+import api from '../../services/api';
 
 function TVCloserPage({ tvMode = false }) {
   const [screen, setScreen] = useState(0);
@@ -52,19 +46,43 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  async function load() {
-    const ach = await getAchievement(period);
-    const camp = await getCampaignProgress();
+  loadAchievement();
+  loadCampaignProgress();
 
-    setAchievement(ach);
-    setCampaignProgress(camp);
-  }
+  const interval = setInterval(() => {
+    loadAchievement();
+    loadCampaignProgress();
+  }, 60000);
 
-  load();
-
-  const interval = setInterval(load, 60000);
   return () => clearInterval(interval);
 }, [period]);
+
+async function loadAchievement() {
+  try {
+    const response = await api.get('api/goals/achievement', {
+      params: { period }
+    });
+
+    setAchievement(response.data);
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+async function loadCampaignProgress() {
+  try {
+    const response = await api.get(
+      '/api/campaigns/road-to-glory/progress'
+    );
+
+    setCampaignProgress(response.data);
+
+  } catch (error) {
+    console.error(error);
+  }
+}
+
+const goalResults = achievement?.results || [];
 
 const formatBRL = (value) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -89,31 +107,26 @@ const sumActualBySector = (sector) =>
     .filter((item) => item.goal.sector === sector)
     .reduce((sum, item) => sum + Number(item.actual?.revenue || 0), 0);
 
-const goalResults =
-  achievement?.results ||
-  achievement?.data?.results ||
-  [];
-
 const generalCards = [
   {
     name: 'Closers',
-    goal: sumBySector(goalResults, 'closer'),
-    actual: sumActualBySector(goalResults, 'closer')
+    goal: sumGoalBySector('closer'),
+    actual: sumActualBySector('closer')
   },
   {
     name: 'Accounts',
-    goal: getBySector(goalResults, 'accounts')?.goal?.targetRevenue || 0,
-    actual: getBySector(goalResults, 'accounts')?.actual?.revenue || 0
+    goal: getGoalBySector('accounts')?.goal?.targetRevenue || 0,
+    actual: getGoalBySector('accounts')?.actual?.revenue || 0
   },
   {
     name: 'Transportes',
-    goal: getBySector(goalResults, 'transportes')?.goal?.targetRevenue || 0,
-    actual: getBySector(goalResults, 'transportes')?.actual?.revenue || 0
+    goal: getGoalBySector('transportes')?.goal?.targetRevenue || 0,
+    actual: getGoalBySector('transportes')?.actual?.revenue || 0
   },
   {
     name: 'Geral',
-    goal: getBySector(goalResults, 'geral')?.goal?.targetRevenue || 0,
-    actual: getBySector(goalResults, 'geral')?.actual?.revenue || 0
+    goal: getGoalBySector('geral')?.goal?.targetRevenue || 0,
+    actual: getGoalBySector('geral')?.actual?.revenue || 0
   }
 ];
 
