@@ -1,5 +1,11 @@
 import { useEffect, useState } from 'react';
-import api from '../../services/api';
+import {
+  getAchievement,
+  getCampaignProgress,
+  sumBySector,
+  sumActualBySector,
+  getBySector
+} from '../data/tvDataService';
 
 function TVCloserPage({ tvMode = false }) {
   const [screen, setScreen] = useState(0);
@@ -46,14 +52,17 @@ useEffect(() => {
 }, []);
 
 useEffect(() => {
-  loadAchievement();
-  loadCampaignProgress();
+  async function load() {
+    const ach = await getAchievement(period);
+    const camp = await getCampaignProgress();
 
-  const interval = setInterval(() => {
-    loadAchievement();
-    loadCampaignProgress();
-  }, 60000);
+    setAchievement(ach);
+    setCampaignProgress(camp);
+  }
 
+  load();
+
+  const interval = setInterval(load, 60000);
   return () => clearInterval(interval);
 }, [period]);
 
@@ -82,7 +91,6 @@ async function loadCampaignProgress() {
   }
 }
 
-const goalResults = achievement?.results || [];
 
 const formatBRL = (value) => {
   return new Intl.NumberFormat('pt-BR', {
@@ -107,26 +115,28 @@ const sumActualBySector = (sector) =>
     .filter((item) => item.goal.sector === sector)
     .reduce((sum, item) => sum + Number(item.actual?.revenue || 0), 0);
 
+const goalResults = achievement?.results || [];
+
 const generalCards = [
   {
     name: 'Closers',
-    goal: sumGoalBySector('closer'),
-    actual: sumActualBySector('closer')
+    goal: sumBySector(goalResults, 'closer'),
+    actual: sumActualBySector(goalResults, 'closer')
   },
   {
     name: 'Accounts',
-    goal: getGoalBySector('accounts')?.goal?.targetRevenue || 0,
-    actual: getGoalBySector('accounts')?.actual?.revenue || 0
+    goal: getBySector(goalResults, 'accounts')?.goal?.targetRevenue || 0,
+    actual: getBySector(goalResults, 'accounts')?.actual?.revenue || 0
   },
   {
     name: 'Transportes',
-    goal: getGoalBySector('transportes')?.goal?.targetRevenue || 0,
-    actual: getGoalBySector('transportes')?.actual?.revenue || 0
+    goal: getBySector(goalResults, 'transportes')?.goal?.targetRevenue || 0,
+    actual: getBySector(goalResults, 'transportes')?.actual?.revenue || 0
   },
   {
     name: 'Geral',
-    goal: getGoalBySector('geral')?.goal?.targetRevenue || 0,
-    actual: getGoalBySector('geral')?.actual?.revenue || 0
+    goal: getBySector(goalResults, 'geral')?.goal?.targetRevenue || 0,
+    actual: getBySector(goalResults, 'geral')?.actual?.revenue || 0
   }
 ];
 
