@@ -2,16 +2,17 @@ import api from '../../../services/api';
 
 /**
  * CAMADA ÚNICA DE DADOS PARA TODAS AS TVS
- * (Closer, Geral, SDR, Operacional)
  */
 
 export async function getAchievement(period) {
   try {
-    const res = await api.get('/api/goals/achievement', {
+    const res = await api.get('/goals/achievement', {
       params: { period }
     });
 
-    return normalizeAchievement(res.data);
+    return {
+      results: res.data?.results || []
+    };
   } catch (err) {
     console.error('getAchievement error:', err);
     return { results: [] };
@@ -20,7 +21,7 @@ export async function getAchievement(period) {
 
 export async function getCampaignProgress() {
   try {
-    const res = await api.get('/api/campaigns/road-to-glory/progress');
+    const res = await api.get('/campaigns/road-to-glory/progress');
     return res.data || {};
   } catch (err) {
     console.error('getCampaignProgress error:', err);
@@ -29,7 +30,7 @@ export async function getCampaignProgress() {
 }
 
 /**
- * NORMALIZAÇÃO GLOBAL (REGRA DAS TVS)
+ * NORMALIZAÇÃO GLOBAL
  */
 export function normalizeAchievement(data) {
   return {
@@ -37,9 +38,6 @@ export function normalizeAchievement(data) {
   };
 }
 
-/**
- * MAPA PADRÃO DE SECTORS
- */
 export const SECTORS = {
   CLOSER: 'closer',
   ACCOUNTS: 'accounts',
@@ -47,13 +45,10 @@ export const SECTORS = {
   GERAL: 'geral'
 };
 
-/**
- * FUNÇÕES PADRÃO DE CÁLCULO
- */
-export function sumBySector(results, sector, field = 'targetRevenue') {
+export function sumBySector(results, sector) {
   return results
     .filter((i) => i?.goal?.sector === sector)
-    .reduce((acc, i) => acc + Number(i?.goal?.[field] || 0), 0);
+    .reduce((acc, i) => acc + Number(i?.goal?.targetRevenue || 0), 0);
 }
 
 export function sumActualBySector(results, sector) {
