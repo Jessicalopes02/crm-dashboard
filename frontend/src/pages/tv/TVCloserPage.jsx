@@ -66,32 +66,6 @@ useEffect(() => {
   return () => clearInterval(interval);
 }, [period]);
 
-async function loadAchievement() {
-  try {
-    const response = await api.get('api/goals/achievement', {
-      params: { period }
-    });
-
-    setAchievement(response.data);
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-async function loadCampaignProgress() {
-  try {
-    const response = await api.get(
-      '/api/campaigns/road-to-glory/progress'
-    );
-
-    setCampaignProgress(response.data);
-
-  } catch (error) {
-    console.error(error);
-  }
-}
-
-
 const formatBRL = (value) => {
   return new Intl.NumberFormat('pt-BR', {
     style: 'currency',
@@ -115,7 +89,10 @@ const sumActualBySector = (sector) =>
     .filter((item) => item.goal.sector === sector)
     .reduce((sum, item) => sum + Number(item.actual?.revenue || 0), 0);
 
-const goalResults = achievement?.results || [];
+const goalResults =
+  achievement?.results ||
+  achievement?.data?.results ||
+  [];
 
 const generalCards = [
   {
