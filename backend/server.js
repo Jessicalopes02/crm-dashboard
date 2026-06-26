@@ -5806,8 +5806,8 @@ app.get('/api/sync/nutshell/road-to-glory-meetings', async (req, res) => {
     const leads = await Lead.find({
       tags: {
         $in: [
-          'All Hands - Road to the Glory',
-          'Road to the Glory - Maio'
+         
+          'Road to the Glory - Junho'
         ]
       }
     })
@@ -7947,8 +7947,8 @@ app.get('/api/audit/goals-achievement-detail', async (req, res) => {
 
 app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
   try {
-    const start = new Date('2026-05-25T03:00:00.000Z');
-    const end = new Date('2026-05-30T02:59:59.999Z');
+    const start = new Date('2026-06-30T03:00:00.000Z');
+    const end = new Date('2026-07-01T02:59:59.999Z');
 
     const normalizeName = (name) =>
       String(name || '')
@@ -7979,14 +7979,14 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
         {
           tags: {
             $elemMatch: {
-              $regex: 'Road to the Glory - Maio',
+              $regex: 'Road to the Glory - Junho',
               $options: 'i'
             }
           }
         },
         {
           tags: {
-            $regex: 'Road to the Glory - Maio',
+            $regex: 'Road to the Glory - Junho',
             $options: 'i'
           }
         }
@@ -8221,8 +8221,8 @@ Object.keys(result).forEach((team) => {
 
 app.get('/api/campaigns/road-to-glory/progress-v2', async (req, res) => {
   try {
-    const start = new Date('2026-05-25T03:00:00.000Z');
-    const end = new Date('2026-05-30T02:59:59.999Z');
+    const start = new Date('2026-06-30T03:00:00.000Z');
+    const end = new Date('2026-07-01T02:59:59.999Z');
     const limitMiles = 6000;
 
     const normalizeName = (name) =>
@@ -8255,8 +8255,8 @@ app.get('/api/campaigns/road-to-glory/progress-v2', async (req, res) => {
     const leads = await Lead.find({
       tags: {
         $in: [
-          'All Hands - Road to the Glory',
-          'Road to the Glory - Maio'
+          
+          'Road to the Glory - Junho'
         ]
       }
     }).lean();
@@ -8420,7 +8420,7 @@ app.get('/api/campaigns/road-to-glory/progress-v2', async (req, res) => {
 
 app.get('/api/audit/road-to-glory-summary', async (req, res) => {
   const leads = await Lead.find({
-    tags: { $in: ['All Hands - Road to the Glory', 'Road to the Glory - Maio'] }
+    tags: { $in: ['Road to the Glory - Junho'] }
   }).select('name assignee.name tags milestone.name stageset.name activities value status').lean();
 
   const normalizeName = (name) =>
@@ -8469,8 +8469,8 @@ app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
           params: {
             query: {
               createdTime: {
-                from: '2026-05-25',
-                to: '2026-05-29'
+                from: '2026-06-30',
+                to: '2026-07-01'
               }
             },
             limit,
@@ -8514,8 +8514,7 @@ app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
       const normalizedTag = String(tag || '').toLowerCase();
 
       return (
-        normalizedTag.includes('road to the glory - maio') ||
-        normalizedTag.includes('all hands - road to the glory')
+        normalizedTag.includes('road to the glory - junho') 
        );
      });
 
@@ -8549,14 +8548,14 @@ app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
 
 app.get('/api/audit/road-to-glory-period', async (req, res) => {
   try {
-    const start = new Date('2026-05-25T03:00:00.000Z');
-    const end = new Date('2026-05-30T02:59:59.999Z');
+    const start = new Date('2026-06-30T03:00:00.000Z');
+    const end = new Date('2026-07-01T02:59:59.999Z');
 
     const leads = await Lead.find({
   tags: {
     $in: [
-      'All Hands - Road to the Glory',
-      'Road to the Glory - Maio'
+
+      'Road to the Glory - Junho'
     ]
   },
   $or: [
@@ -8583,8 +8582,8 @@ app.get('/api/audit/road-to-glory-period', async (req, res) => {
 });
 
 app.get('/api/audit/redbull-meetings', async (req, res) => {
-  const start = new Date('2026-05-25T03:00:00.000Z');
-  const end = new Date('2026-05-30T02:59:59.999Z');
+  const start = new Date('2026-06-30T03:00:00.000Z');
+  const end = new Date('2026-07-01T02:59:59.999Z');
 
   const normalizeName = (name) =>
     String(name || '')
@@ -8604,8 +8603,8 @@ app.get('/api/audit/redbull-meetings', async (req, res) => {
     },
     tags: {
       $in: [
-        'All Hands - Road to the Glory',
-        'Road to the Glory - Maio'
+        
+        'Road to the Glory - Junho'
       ]
     }
   }).lean();
@@ -8658,8 +8657,8 @@ app.get('/api/audit/redbull-meetings', async (req, res) => {
 
 app.get('/api/audit/road-to-glory-points', async (req, res) => {
   try {
-    const start = new Date('2026-05-25T03:00:00.000Z');
-    const end = new Date('2026-05-30T02:59:59.999Z');
+    const start = new Date('2026-06-30T03:00:00.000Z');
+    const end = new Date('2026-07-01T02:59:59.999Z');
 
     const normalizeName = (name) =>
       String(name || '')
@@ -8672,8 +8671,8 @@ app.get('/api/audit/road-to-glory-points', async (req, res) => {
     const leads = await Lead.find({
       tags: {
         $in: [
-          'All Hands - Road to the Glory',
-          'Road to the Glory - Maio'
+         
+          'Road to the Glory - Junho'
         ]
       }
     }).lean();
@@ -8772,8 +8771,8 @@ app.get('/api/sync/nutshell/road-to-glory-activities', async (req, res) => {
     const campaignLeads = await Lead.find({
       tags: {
         $in: [
-          'All Hands - Road to the Glory',
-          'Road to the Glory - Maio'
+        
+          'Road to the Glory - Junho'
         ]
       }
     })
@@ -8899,8 +8898,8 @@ app.get('/api/audit/road-to-glory-activities', async (req, res) => {
   const leads = await Lead.find({
     tags: {
       $in: [
-        'All Hands - Road to the Glory',
-        'Road to the Glory - Maio'
+        
+        'Road to the Glory - Junho'
       ]
     }
   })
@@ -8958,7 +8957,7 @@ app.get('/api/audit/road-to-glory', async (req, res) => {
   try {
 
     const leads = await Lead.find({
-      tags: 'Road to the Glory - Maio'
+      tags: 'Road to the Glory - Junho'
     })
       .select({
         name: 1,
