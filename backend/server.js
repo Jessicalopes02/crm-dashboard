@@ -8170,15 +8170,7 @@ if (hasMayRoadTag && isQualifiedStage) {
       }
     }
 
-  const manualAdjustments = {
-  mercedes: 2374,
-  ferrari: 1550,
-  redbull: 902
-};
-
-Object.keys(result).forEach((team) => {
-  result[team].miles = manualAdjustments[team] || 0;
-});
+  
     const ranking = Object.values(result)
       .sort((a, b) => b.miles - a.miles)
       .map((item, index) => ({
