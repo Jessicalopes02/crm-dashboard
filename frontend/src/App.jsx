@@ -8,6 +8,7 @@ import TVGeneralPage from './pages/tv/TVGeneralPage';
 import TVCloserPage from './pages/tv/TVCloserPage';
 import TVSdrPage from './pages/tv/TVSdrPage';
 import TVOperationalPage from './pages/tv/TVOperationalPage';
+import TVFullPage from './pages/tv/TVFullPage';
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
@@ -31,6 +32,9 @@ if (tvPage === 'operacional') {
   return <TVOperationalPage tvMode={isFullscreen} />;
 }
 
+if (tvPage === 'full') {
+  return <TVFullPage tvMode={isFullscreen} />;
+}
 
 return (
   <div className="flex min-h-screen bg-slate-100">
