@@ -419,9 +419,9 @@ function CloserScreenTwo({ campaignProgress }) {
   alt={teamName}
   className="absolute h-[68px] -translate-x-1/2 object-contain drop-shadow-2xl transition-[left] duration-1000 ease-out"
   style={{
-    left: `clamp(4%, ${percent}%, 97%)`,
-    top: '50%',
-    transform: 'translate(-50%, -50%)'
+    left: `clamp(7%, ${percent}% + 7%, 94%)`,
+    top: '56%',
+    transform: 'translate(-100%, -50%)'
   }}
 />
               )}
