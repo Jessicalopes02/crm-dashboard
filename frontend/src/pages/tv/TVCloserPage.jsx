@@ -70,7 +70,7 @@ function TVCloserPage({ tvMode = false }) {
   async function loadCampaignProgress() {
   try {
     const response = await api.get(
-      '/api/campaigns/road-to-glory/progress'
+      '/campaigns/road-to-glory/progress'
     );
 
     const payload =
