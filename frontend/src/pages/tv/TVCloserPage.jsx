@@ -415,13 +415,15 @@ function CloserScreenTwo({ campaignProgress }) {
               {/* Carro */}
               {carImage && (
                 <img
-                  src={carImage}
-                  alt={teamName}
-                  className="absolute top-1/2 h-[76px] -translate-y-1/2 -translate-x-1/2 object-contain drop-shadow-2xl transition-[left] duration-1000 ease-out"
-                  style={{
-                    left: `clamp(4%, ${percent}%, 97%)`
-                  }}
-                />
+  src={carImage}
+  alt={teamName}
+  className="absolute h-[68px] -translate-x-1/2 object-contain drop-shadow-2xl transition-[left] duration-1000 ease-out"
+  style={{
+    left: `clamp(4%, ${percent}%, 97%)`,
+    top: '50%',
+    transform: 'translate(-50%, -50%)'
+  }}
+/>
               )}
             </div>
           </div>
@@ -510,11 +512,11 @@ function CloserScreenThree({ campaignProgress }) {
       }}
     >
       {/* Total das milhas */}
-      <div className="absolute top-[30.5%] left-0 w-full text-center">
-        <div className="text-white font-black text-[56px] leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.9)]">
-          {totalMilesFormatted}
-        </div>
-      </div>
+      <div className="absolute top-[33.8%] left-[57%]">
+  <div className="text-white font-black text-[54px] leading-none drop-shadow-[0_0_18px_rgba(255,255,255,0.8)]">
+    {totalMilesFormatted}
+  </div>
+</div>
 
       {/* Barra geral */}
       <div className="absolute top-[42.8%] left-[4.3%] w-[91.4%]">
