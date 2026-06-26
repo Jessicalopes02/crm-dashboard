@@ -6,7 +6,7 @@ import TVCloserPage from './TVCloserPage';
 const TEMPO_POR_TV = 60_000;
 // 3 telas × 20 segundos = 60 segundos
 
-function TVFullPage() {
+function TVFullPage({ tvMode = false }) {
   const [currentTv, setCurrentTv] = useState('general');
 
   useEffect(() => {
@@ -20,10 +20,28 @@ function TVFullPage() {
   }, []);
 
   return (
-    <div className="tv-fullscreen">
-      {currentTv === 'general' && <TVGeneralPage />}
+    <div className="fixed inset-0 bg-black overflow-hidden">
+      {/* TV Geral permanece carregada */}
+      <div
+        className={`fixed inset-0 transition-opacity duration-500 ${
+          currentTv === 'general'
+            ? 'opacity-100 visible z-20'
+            : 'opacity-0 invisible pointer-events-none z-10'
+        }`}
+      >
+        <TVGeneralPage tvMode={tvMode} />
+      </div>
 
-      {currentTv === 'closer' && <TVCloserPage />}
+      {/* TV Closer permanece carregada */}
+      <div
+        className={`fixed inset-0 transition-opacity duration-500 ${
+          currentTv === 'closer'
+            ? 'opacity-100 visible z-20'
+            : 'opacity-0 invisible pointer-events-none z-10'
+        }`}
+      >
+        <TVCloserPage tvMode={tvMode} />
+      </div>
     </div>
   );
 }
