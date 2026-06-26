@@ -68,19 +68,27 @@ function TVCloserPage({ tvMode = false }) {
   }, []);
 
   async function loadCampaignProgress() {
-    try {
-      const response = await api.get(
-        '/api/campaigns/road-to-glory/progress'
-      );
+  try {
+    const response = await api.get(
+      '/api/campaigns/road-to-glory/progress'
+    );
 
-      setCampaignProgress(response.data);
-    } catch (error) {
-      console.error(
-        'Erro ao carregar progresso da campanha:',
-        error
-      );
-    }
+    const payload =
+      response.data?.data ||
+      response.data?.progress ||
+      response.data;
+
+    console.log('ROAD TO GLORY RESPONSE:', response.data);
+    console.log('ROAD TO GLORY PAYLOAD:', payload);
+
+    setCampaignProgress(payload);
+  } catch (error) {
+    console.error(
+      'Erro ao carregar progresso da campanha:',
+      error.response?.data || error
+    );
   }
+}
 
   function handleFullscreen() {
     const element = document.documentElement;
@@ -236,22 +244,23 @@ function CloserScreenOne() {
  * Era a antiga tela 5.
  */
 function CloserScreenTwo({ campaignProgress }) {
-  const ranking = (
-    campaignProgress?.ranking || []
-  ).slice(0, 3);
+  const rawRanking =
+    campaignProgress?.ranking ||
+    campaignProgress?.teams ||
+    [];
 
-  const podium = campaignProgress?.podium;
+  const ranking = rawRanking.slice(0, 3);
 
   const carMap = {
+    'Mercedes': '/campaign-tv/car-2.png',
     'Red Bull': '/campaign-tv/car-1.png',
-    Mercedes: '/campaign-tv/car-2.png',
-    Ferrari: '/campaign-tv/car-3.png'
+    'Ferrari': '/campaign-tv/car-3.png'
   };
 
   const badgeMap = {
+    'Mercedes': '/campaign-tv/mercedes.png',
     'Red Bull': '/campaign-tv/redbull.png',
-    Mercedes: '/campaign-tv/mercedes.png',
-    Ferrari: '/campaign-tv/ferrari.png'
+    'Ferrari': '/campaign-tv/ferrari.png'
   };
 
   const positionMap = [
@@ -260,19 +269,80 @@ function CloserScreenTwo({ campaignProgress }) {
     '/campaign-tv/third.png'
   ];
 
-  const topPositions = ['41%', '55%', '70%'];
+  /*
+   * Posição vertical de cada pista.
+   * Ajustada para o fundo screen-5.png.
+   */
+  const trackPositions = ['41%', '55%', '70%'];
 
-  const podiumTeams = [
-    podium?.first,
-    podium?.second,
-    podium?.third
-  ];
+  function getTeamName(item) {
+    return (
+      item?.team ||
+      item?.teamName ||
+      item?.name ||
+      ''
+    );
+  }
 
-  const bars = ranking.map((team, index) => ({
-    ...team,
-    top: topPositions[index],
-    car: carMap[team.team]
-  }));
+  function getMiles(item) {
+    return Number(
+      item?.miles ||
+      item?.points ||
+      item?.score ||
+      item?.totalMiles ||
+      0
+    );
+  }
+
+  function getFormattedMiles(item) {
+    if (item?.milesFormatted) {
+      return item.milesFormatted;
+    }
+
+    const miles = getMiles(item);
+
+    return new Intl.NumberFormat('pt-BR').format(miles);
+  }
+
+  /*
+   * Usa o percentual enviado pelo backend.
+   * Caso o backend não envie percent, calcula sobre 6.000.
+   */
+  function getPercent(item) {
+    const backendPercent = Number(
+      item?.percent ??
+      item?.percentage ??
+      item?.progressPercent
+    );
+
+    if (Number.isFinite(backendPercent)) {
+      return Math.min(
+        Math.max(backendPercent, 0),
+        100
+      );
+    }
+
+    const miles = getMiles(item);
+
+    return Math.min(
+      Math.max((miles / 6000) * 100, 0),
+      100
+    );
+  }
+
+  /*
+   * Prioriza o podium retornado pelo backend.
+   * Se não existir, utiliza o próprio ranking.
+   */
+  const backendPodium = campaignProgress?.podium;
+
+  const podiumTeams = backendPodium
+    ? [
+        backendPodium.first,
+        backendPodium.second,
+        backendPodium.third
+      ].filter(Boolean)
+    : ranking;
 
   return (
     <div
@@ -284,66 +354,72 @@ function CloserScreenTwo({ campaignProgress }) {
         backgroundPosition: 'center'
       }}
     >
-      <div className="absolute top-[7%] right-[11%] flex items-start gap-10 z-20">
+      {/* Ranking superior */}
+      <div className="absolute top-[6.5%] right-[7%] flex items-start gap-[34px] z-30">
         {podiumTeams.map((team, index) => {
-          if (!team) return null;
+          const teamName = getTeamName(team);
 
           return (
             <div
-              key={`${team.team}-${index}`}
-              className="flex flex-col items-center"
+              key={`${teamName}-${index}`}
+              className="w-[115px] flex flex-col items-center"
             >
               <img
                 src={positionMap[index]}
                 alt={`Posição ${index + 1}`}
-                className="h-[22px] object-contain mb-1"
+                className="h-[28px] object-contain mb-2"
               />
 
-              <img
-                src={badgeMap[team.team]}
-                alt={team.team}
-                className="h-[65px] object-contain drop-shadow-2xl"
-              />
+              {badgeMap[teamName] && (
+                <img
+                  src={badgeMap[teamName]}
+                  alt={teamName}
+                  className="h-[78px] max-w-[105px] object-contain drop-shadow-2xl"
+                />
+              )}
 
-              <div className="text-yellow-300 font-black text-[34px] leading-none mt-1 drop-shadow-2xl">
-                {team.milesFormatted || '0'}
+              <div className="text-white font-black text-[30px] leading-none mt-2 drop-shadow-2xl whitespace-nowrap">
+                {getFormattedMiles(team)}
               </div>
             </div>
           );
         })}
       </div>
 
-      {bars.map((item, index) => {
-        const percent = Math.max(
-          0,
-          Math.min(Number(item.percent || 0), 100)
-        );
+      {/* Pistas e carros */}
+      {ranking.map((team, index) => {
+        const teamName = getTeamName(team);
+        const percent = getPercent(team);
+        const carImage = carMap[teamName];
 
         return (
           <div
-            key={`${item.team}-${index}`}
-            className="absolute left-[4.2%] w-[90.8%]"
+            key={`${teamName}-${index}`}
+            className="absolute left-[3.7%] w-[91.5%]"
             style={{
-              top: item.top
+              top: trackPositions[index]
             }}
           >
-            <div className="relative h-[26px] rounded-full overflow-visible">
-              <div className="absolute inset-0 rounded-full bg-white/10 border border-white/60" />
+            <div className="relative h-[25px] overflow-visible">
+              {/* Fundo da barra */}
+              <div className="absolute inset-0 rounded-full bg-white/5 border-[2px] border-white/80 shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
 
+              {/* Progresso */}
               <div
-                className="absolute left-0 top-0 h-full rounded-full bg-white shadow-[0_0_18px_rgba(255,255,255,0.8)] transition-all duration-1000"
+                className="absolute left-0 top-0 h-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)] transition-[width] duration-1000 ease-out"
                 style={{
                   width: `${percent}%`
                 }}
               />
 
-              {item.car && (
+              {/* Carro */}
+              {carImage && (
                 <img
-                  src={item.car}
-                  alt={item.team}
-                  className="absolute top-1/2 h-[58px] -translate-y-1/2 -translate-x-1/2 object-contain drop-shadow-2xl transition-all duration-1000"
+                  src={carImage}
+                  alt={teamName}
+                  className="absolute top-1/2 h-[76px] -translate-y-1/2 -translate-x-1/2 object-contain drop-shadow-2xl transition-[left] duration-1000 ease-out"
                   style={{
-                    left: `calc(${percent}% - 8px)`
+                    left: `clamp(4%, ${percent}%, 97%)`
                   }}
                 />
               )}
@@ -351,6 +427,13 @@ function CloserScreenTwo({ campaignProgress }) {
           </div>
         );
       })}
+
+      {/* Aviso temporário para verificar dados */}
+      {ranking.length === 0 && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-black/70 border border-white/20 rounded-2xl px-8 py-5 text-white text-2xl font-bold">
+          Aguardando dados da campanha...
+        </div>
+      )}
     </div>
   );
 }
@@ -360,12 +443,45 @@ function CloserScreenTwo({ campaignProgress }) {
  * Era a antiga tela 6.
  */
 function CloserScreenThree({ campaignProgress }) {
+  const ranking =
+    campaignProgress?.ranking ||
+    campaignProgress?.teams ||
+    [];
+
+  function getTeamMiles(item) {
+    return Number(
+      item?.miles ||
+      item?.points ||
+      item?.score ||
+      item?.totalMiles ||
+      0
+    );
+  }
+
+  /*
+   * Soma diretamente os três times.
+   */
+  const calculatedTotalMiles = ranking
+    .slice(0, 3)
+    .reduce(
+      (sum, team) => sum + getTeamMiles(team),
+      0
+    );
+
+  /*
+   * Prioriza o total vindo do backend.
+   * Caso não venha, usa a soma dos três times.
+   */
   const totalMiles = Number(
-    campaignProgress?.totalMiles || 0
+    campaignProgress?.totalMiles ??
+    campaignProgress?.total ??
+    campaignProgress?.totalPoints ??
+    calculatedTotalMiles
   );
 
   const totalMilesFormatted =
-    campaignProgress?.totalMilesFormatted || '0';
+    campaignProgress?.totalMilesFormatted ||
+    new Intl.NumberFormat('pt-BR').format(totalMiles);
 
   let background = '/campaign-tv/screen-6.png';
 
@@ -393,18 +509,20 @@ function CloserScreenThree({ campaignProgress }) {
         backgroundPosition: 'center'
       }}
     >
-      <div className="absolute top-[31%] left-[12%] w-full text-center">
-        <div className="text-white font-black text-[44px] drop-shadow-[0_0_18px_rgba(255,255,255,0.9)]">
+      {/* Total das milhas */}
+      <div className="absolute top-[30.5%] left-0 w-full text-center">
+        <div className="text-white font-black text-[56px] leading-none drop-shadow-[0_0_20px_rgba(255,255,255,0.9)]">
           {totalMilesFormatted}
         </div>
       </div>
 
-      <div className="absolute top-[42.8%] left-[5.5%] w-[89%]">
-        <div className="relative h-[22px] rounded-full overflow-hidden">
-          <div className="absolute inset-0 rounded-full bg-white/10 border border-yellow-400/80" />
+      {/* Barra geral */}
+      <div className="absolute top-[42.8%] left-[4.3%] w-[91.4%]">
+        <div className="relative h-[26px] rounded-full overflow-hidden">
+          <div className="absolute inset-0 rounded-full bg-white/5 border-[2px] border-yellow-400/90" />
 
           <div
-            className="absolute left-0 top-0 h-full rounded-full bg-white shadow-[0_0_18px_rgba(255,255,255,0.8)] transition-all duration-1000"
+            className="absolute left-0 top-0 h-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)] transition-[width] duration-1000 ease-out"
             style={{
               width: `${percent}%`
             }}
