@@ -9183,6 +9183,50 @@ app.get('/api/test/nutshell/activity-detail', async (req, res) => {
   }
 });
 
+app.get(
+  '/api/test/nutshell/search-road-to-glory',
+  async (req, res) => {
+    try {
+      const campaignTag =
+        'Road to the Glory - Junho';
+
+      const response = await axios.post(
+        'https://app.nutshell.com/api/v1/json',
+        {
+          method: 'searchLeads',
+          params: {
+            string: campaignTag,
+            limit: 100
+          },
+          id: 1
+        },
+        {
+          auth: {
+            username: NUTSHELL_EMAIL,
+            password: NUTSHELL_API_KEY
+          }
+        }
+      );
+
+      res.json({
+        sucesso: true,
+        campaignTag,
+        total:
+          response.data.result?.length || 0,
+        result:
+          response.data.result || []
+      });
+    } catch (error) {
+      res.status(500).json({
+        sucesso: false,
+        erro:
+          error.response?.data ||
+          error.message
+      });
+    }
+  }
+);
+
 app.get('/api/sync/nutshell/road-to-glory-activities', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 100;
