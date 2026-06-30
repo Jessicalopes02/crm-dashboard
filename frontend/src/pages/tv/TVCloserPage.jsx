@@ -487,18 +487,18 @@ function CloserScreenThree({ campaignProgress }) {
 
   let background = '/campaign-tv/screen-6.png';
 
-  if (totalMiles >= 70000) {
-    background = '/campaign-tv/screen-6-5.png';
-  } else if (totalMiles >= 60000) {
-    background = '/campaign-tv/screen-6-4.png';
-  } else if (totalMiles >= 10000) {
-    background = '/campaign-tv/screen-6-3.png';
-  } else if (totalMiles >= 8000) {
-    background = '/campaign-tv/screen-6-2.png';
+  if (totalMiles >= 10000) {
+    background = '/campaign-tv/Slide 6.5.png';
+  } else if (totalMiles >= 5000) {
+    background = '/campaign-tv/Slide 6.4.png';
+  } else if (totalMiles >= 2500) {
+    background = '/campaign-tv/Slide 6.3.png';
+  } else if (totalMiles >= 1800) {
+    background = '/campaign-tv/Slide 6.2.png';
   }
 
   const percent = Math.min(
-    Math.max((totalMiles / 70000) * 100, 0),
+    Math.max((totalMiles / 10000) * 100, 0),
     100
   );
 
