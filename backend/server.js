@@ -8329,34 +8329,24 @@ async function getRoadToGloryProgress(req, res) {
     };
 
     const isMeetingActivity = (activity) => {
-      const activityText = normalizeName([
-        activity?.name,
-        activity?.activityType?.name,
-        activity?.type?.name,
-        activity?.description,
-        activity?.logNote?.note
-      ].filter(Boolean).join(' '));
+  const activityName = normalizeName(
+    activity?.name ||
+    activity?.activityType?.name ||
+    ''
+  );
 
-      const hasMeetingWord =
-        activityText.includes('reuniao');
+  const isScheduledMeeting =
+    activityName.includes('reuniao agendada') ||
+    activityName.includes('reuniao reagendada') ||
+    activityName.includes('meeting agendado') ||
+    activityName.includes('scheduled meeting');
 
-      const isScheduledMeeting =
-        activityText.includes('agendada') ||
-        activityText.includes('reagendada') ||
-        activityText.includes('marcada') ||
-        activityText.includes('agenda') ||
-        activityText.includes('meeting');
+  const isCancelled =
+    activityName.includes('cancelada') ||
+    activityName.includes('cancelado');
 
-      const isCancelled =
-        activityText.includes('cancelada') ||
-        activityText.includes('cancelado');
-
-      return (
-        hasMeetingWord &&
-        isScheduledMeeting &&
-        !isCancelled
-      );
-    };
+  return isScheduledMeeting && !isCancelled;
+};
 
     const hasMeetingStage = (lead) => {
       const milestoneName = normalizeName(
@@ -9455,21 +9445,25 @@ app.get(
           .toLowerCase();
 
       const isMeetingActivity = (activity) => {
-        const text = normalizeText([
-          activity?.name,
-          activity?.activityType?.name,
-          activity?.description,
-          activity?.logNote?.note
-        ]
-          .filter(Boolean)
-          .join(' '));
 
-        return (
-          text.includes('reuniao') ||
-          text.includes('meeting')
-        );
-      };
+  const activityName = normalizeText(
+    activity?.name ||
+    activity?.activityType?.name ||
+    ''
+  );
 
+  const isScheduledMeeting =
+    activityName.includes('reuniao agendada') ||
+    activityName.includes('reuniao reagendada') ||
+    activityName.includes('meeting agendado') ||
+    activityName.includes('scheduled meeting');
+
+  const isCancelled =
+    activityName.includes('cancelada') ||
+    activityName.includes('cancelado');
+
+  return isScheduledMeeting && !isCancelled;
+};
       const getActivityUser = (activity) => {
         return (
           activity?.user?.name ||
@@ -9482,14 +9476,15 @@ app.get(
       };
 
       const getActivityDate = (activity) => {
-        return (
-          activity?.startTime ||
-          activity?.createdTime ||
-          activity?.modifiedTime ||
-          activity?.endTime ||
-          null
-        );
-      };
+  
+  return (
+    activity?.createdTime ||
+    activity?.modifiedTime ||
+    activity?.startTime ||
+    activity?.dueTime ||
+    null
+  );
+};
 
       for (const campaignLead of campaignLeads) {
         checkedLeads++;
@@ -9802,6 +9797,105 @@ app.get('/api/audit/road-to-glory-activities', async (req, res) => {
   });
 });
 
+app.get(
+  '/api/audit/road-to-glory-activity-users',
+  async (req, res) => {
+    try {
+      const leads = await Lead.find({
+        tags: {
+          $in: [
+            'Road to the Glory - Junho'
+          ]
+        }
+      })
+        .select(
+          'nutshell_id name assignee.name activities'
+        )
+        .lean();
+
+      const users = {};
+      const meetings = [];
+
+      const normalizeText = (value) =>
+        String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
+
+      for (const lead of leads) {
+        const activities =
+          Array.isArray(lead.activities)
+            ? lead.activities
+            : [];
+
+        for (const activity of activities) {
+          const activityName =
+            activity?.name ||
+            activity?.activityType?.name ||
+            '';
+
+          const normalizedName =
+            normalizeText(activityName);
+
+          const isMeeting =
+            normalizedName.includes(
+              'reuniao agendada'
+            ) ||
+            normalizedName.includes(
+              'reuniao reagendada'
+            ) ||
+            normalizedName.includes(
+              'scheduled meeting'
+            );
+
+          if (!isMeeting) {
+            continue;
+          }
+
+          const user =
+            activity?.user?.name ||
+            activity?.logNote?.user?.name ||
+            activity?.assignee?.name ||
+            activity?.owner?.name ||
+            lead.assignee?.name ||
+            'Sem usuário';
+
+          users[user] =
+            (users[user] || 0) + 1;
+
+          meetings.push({
+            leadId: lead.nutshell_id,
+            leadName: lead.name,
+            activityId: activity.id,
+            activityName,
+            user,
+            createdTime:
+              activity.createdTime || null,
+            startTime:
+              activity.startTime || null,
+            status:
+              activity.status
+          });
+        }
+      }
+
+      res.json({
+        sucesso: true,
+        totalMeetingActivities:
+          meetings.length,
+        users,
+        meetings
+      });
+    } catch (error) {
+      res.status(500).json({
+        sucesso: false,
+        erro: error.message
+      });
+    }
+  }
+);
 
 app.get('/api/test/nutshell/activities', async (req, res) => {
   try {
