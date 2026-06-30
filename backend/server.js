@@ -8814,6 +8814,218 @@ app.get('/api/audit/road-to-glory-points', async (req, res) => {
   }
 });
 
+app.get(
+  '/api/sync/nutshell/road-to-glory-reconcile',
+  async (req, res) => {
+    try {
+      const dryRun =
+        String(req.query.dryRun || 'true')
+          .toLowerCase() !== 'false';
+
+      const campaignLeads = await Lead.find({
+        tags: ROAD_TO_GLORY_TAG
+      })
+        .select({
+          nutshell_id: 1,
+          name: 1,
+          assignee: 1,
+          tags: 1
+        })
+        .lean();
+
+      let checked = 0;
+      let valid = 0;
+      let stale = 0;
+      let cleaned = 0;
+      let errors = 0;
+
+      const details = [];
+
+      for (const lead of campaignLeads) {
+        checked++;
+
+        try {
+          const response = await axios.post(
+            'https://app.nutshell.com/api/v1/json',
+            {
+              method: 'getLead',
+              params: {
+                leadId: lead.nutshell_id
+              },
+              id: 1
+            },
+            {
+              auth: {
+                username: NUTSHELL_EMAIL,
+                password: NUTSHELL_API_KEY
+              }
+            }
+          );
+
+          const nutshellLead =
+            response.data?.result || null;
+
+          const stillExists =
+            Boolean(nutshellLead);
+
+          const stillHasTag =
+            stillExists &&
+            hasRoadToGloryTag(
+              nutshellLead.tags || []
+            );
+
+          if (stillExists && stillHasTag) {
+            valid++;
+
+            details.push({
+              nutshell_id: lead.nutshell_id,
+              name: lead.name,
+              assignee:
+                lead.assignee?.name || null,
+              status: 'valid'
+            });
+
+            continue;
+          }
+
+          stale++;
+
+          details.push({
+            nutshell_id: lead.nutshell_id,
+            name: lead.name,
+            assignee:
+              lead.assignee?.name || null,
+            status: stillExists
+              ? 'tag_removed_in_nutshell'
+              : 'lead_not_found_in_nutshell',
+            action: dryRun
+              ? 'would_remove_campaign_tag'
+              : 'campaign_tag_removed'
+          });
+
+          if (!dryRun) {
+            const updateResult =
+              await Lead.updateOne(
+                {
+                  nutshell_id:
+                    lead.nutshell_id
+                },
+                {
+                  $pull: {
+                    tags:
+                      ROAD_TO_GLORY_TAG
+                  },
+
+                  $set: {
+                    activities: [],
+                    campaign_reconciled_at:
+                      new Date()
+                  },
+
+                  $unset: {
+                    activities_period: '',
+                    activities_synced_at: ''
+                  }
+                }
+              );
+
+            if (
+              updateResult.modifiedCount > 0
+            ) {
+              cleaned++;
+            }
+          }
+        } catch (leadError) {
+          /*
+           * Quando uma lead foi apagada, o Nutshell
+           * pode responder com erro em vez de result null.
+           * Nesse caso consideramos a referência obsoleta.
+           */
+
+          stale++;
+
+          details.push({
+            nutshell_id: lead.nutshell_id,
+            name: lead.name,
+            assignee:
+              lead.assignee?.name || null,
+            status:
+              'nutshell_request_failed',
+            nutshellError:
+              leadError.response?.data ||
+              leadError.message,
+            action: dryRun
+              ? 'would_remove_campaign_tag'
+              : 'campaign_tag_removed'
+          });
+
+          if (!dryRun) {
+            const updateResult =
+              await Lead.updateOne(
+                {
+                  nutshell_id:
+                    lead.nutshell_id
+                },
+                {
+                  $pull: {
+                    tags:
+                      ROAD_TO_GLORY_TAG
+                  },
+
+                  $set: {
+                    activities: [],
+                    campaign_reconciled_at:
+                      new Date()
+                  },
+
+                  $unset: {
+                    activities_period: '',
+                    activities_synced_at: ''
+                  }
+                }
+              );
+
+            if (
+              updateResult.modifiedCount > 0
+            ) {
+              cleaned++;
+            }
+          }
+
+          errors++;
+        }
+
+        await sleep(150);
+      }
+
+      res.json({
+        sucesso: true,
+        dryRun,
+        tag: ROAD_TO_GLORY_TAG,
+        checked,
+        valid,
+        stale,
+        cleaned,
+        errors,
+        details
+      });
+    } catch (error) {
+      console.error(
+        'ERRO ROAD TO GLORY RECONCILE:',
+        error.response?.data ||
+          error.message
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro:
+          error.response?.data ||
+          error.message
+      });
+    }
+  }
+);
+
 app.get('/api/test/nutshell/activity-detail', async (req, res) => {
   try {
     const activityId = Number(req.query.activityId);
