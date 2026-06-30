@@ -8335,9 +8335,10 @@ async function getRoadToGloryProgress(req, res) {
     ''
   );
 
-  const isScheduledMeeting =
+  const isMeeting =
     activityName.includes('reuniao agendada') ||
     activityName.includes('reuniao reagendada') ||
+    activityName.includes('reuniao realizada') ||
     activityName.includes('meeting agendado') ||
     activityName.includes('scheduled meeting');
 
@@ -8345,7 +8346,7 @@ async function getRoadToGloryProgress(req, res) {
     activityName.includes('cancelada') ||
     activityName.includes('cancelado');
 
-  return isScheduledMeeting && !isCancelled;
+  return isMeeting && !isCancelled;
 };
 
     const hasMeetingStage = (lead) => {
@@ -9445,16 +9446,16 @@ app.get(
           .toLowerCase();
 
       const isMeetingActivity = (activity) => {
-
   const activityName = normalizeText(
     activity?.name ||
     activity?.activityType?.name ||
     ''
   );
 
-  const isScheduledMeeting =
+  const isMeeting =
     activityName.includes('reuniao agendada') ||
     activityName.includes('reuniao reagendada') ||
+    activityName.includes('reuniao realizada') ||
     activityName.includes('meeting agendado') ||
     activityName.includes('scheduled meeting');
 
@@ -9462,7 +9463,7 @@ app.get(
     activityName.includes('cancelada') ||
     activityName.includes('cancelado');
 
-  return isScheduledMeeting && !isCancelled;
+  return isMeeting && !isCancelled;
 };
       const getActivityUser = (activity) => {
         return (
