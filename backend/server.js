@@ -8211,8 +8211,6 @@ async function getRoadToGloryProgress(req, res) {
 
     const teamByUser = {};
 
-    const teamByUser = {};
-
 Object.entries(teams).forEach(([teamKey, users]) => {
   users.forEach((user) => {
     teamByUser[normalizeName(user)] = teamKey;
