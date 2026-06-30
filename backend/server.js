@@ -8687,15 +8687,10 @@ app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
         {
           method: 'findLeads',
           params: {
-            query: {
-              createdTime: {
-                from: '2026-06-26',
-                to: '2026-07-01'
-              }
-            },
+            query: 'Road to the Glory - Junho',
             limit,
             page
-          },
+        },
           id: 1
         },
         {
