@@ -8171,7 +8171,7 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
     const teams = {
       redbull: ['Alba Danielly Rezende Lima', 'Fabiane Carvalho Nascimento', 'Gisele Santos Gama'],
       mercedes: ['Fábio Souza', 'Edson da Silva Bomfim Júnior', 'Guilherme Velloso', 'Leticia Barbosa'],
-      ferrari: ['Giovanna Fernandes', 'Pedro Scarillo', 'Luma Farias Silva Santos', 'Luiza Carvalho']
+      ferrari: ['Giovanna Fernandes', 'Pedro Scarillo', 'Luma Farias', 'Luiza Carvalho']
     };
 
     const teamByUser = {};
@@ -8221,10 +8221,33 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
     const details = [];
 
     for (const lead of leads) {
-      const assigneeName = normalizeName(lead.assignee?.name);
-      const team = teamByUser[assigneeName];
+      const possibleUsers = [
+  lead.owner?.name,
+  lead.assignee?.name,
+  lead.rawData?.owner?.name,
+  lead.rawData?.assignee?.name
+].filter(Boolean);
 
-if (!team) continue;
+const campaignUser = possibleUsers.find((name) =>
+  teamByUser[normalizeName(name)]
+);
+
+const team = campaignUser
+  ? teamByUser[normalizeName(campaignUser)]
+  : null;
+
+if (!team) {
+  details.push({
+    leadId: lead.nutshell_id,
+    leadName: lead.name,
+    points: 0,
+    reason: 'Nenhum integrante das equipes encontrado',
+    assignee: lead.assignee?.name || null,
+    owner: lead.owner?.name || null
+  });
+
+  continue;
+}
 
  
 
