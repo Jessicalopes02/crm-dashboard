@@ -9406,136 +9406,383 @@ app.get(
   }
 );
 
-app.get('/api/sync/nutshell/road-to-glory-activities', async (req, res) => {
-  try {
-    const limit = Number(req.query.limit) || 100;
-    const pages = Number(req.query.pages) || 20;
-
-    const campaignLeads = await Lead.find({
-      tags: {
-        $in: [
-        
-          'Road to the Glory - Junho'
-        ]
-      }
-    })
-      .select('nutshell_id name')
-      .lean();
-
-    const leadIds = new Set(
-      campaignLeads.map((lead) => Number(lead.nutshell_id))
-    );
-
-    const activitiesByLead = {};
-    let checkedActivities = 0;
-    let matchedActivities = 0;
-
-    for (let page = 1; page <= pages; page++) {
-  console.log(`Buscando atividades página ${page}...`);
-
-  const response = await axios.post(
-    'https://app.nutshell.com/api/v1/json',
-    {
-      method: 'findActivities',
-      params: {
-        query: {},
-        limit,
-        page
-      },
-      id: 1
-    },
-    {
-      auth: {
-        username: NUTSHELL_EMAIL,
-        password: NUTSHELL_API_KEY
-      }
-    }
-  );
-
-  const activities = response.data.result || [];
-
-  if (activities.length === 0) break;
-
-  for (const activity of activities) {
-    checkedActivities++;
-
-    const detailResponse = await axios.post(
-      'https://app.nutshell.com/api/v1/json',
-      {
-        method: 'getActivity',
-        params: {
-          activityId: activity.id
-        },
-        id: 1
-      },
-      {
-        auth: {
-          username: NUTSHELL_EMAIL,
-          password: NUTSHELL_API_KEY
-        }
-      }
-    );
-
-    const activityDetail = detailResponse.data.result;
-
-const leadId = Number(activityDetail?.lead?.id);
-
-if (!leadIds.has(leadId)) continue;
-
-const activityName = normalizeName(
-  activityDetail?.name ||
-  activityDetail?.activityType?.name ||
-  ''
-);
-
-if (!activityName.includes('reuniao')) continue;
-
-if (!activitiesByLead[leadId]) {
-      activitiesByLead[leadId] = [];
-    }
-
-    activitiesByLead[leadId].push(activityDetail);
-    matchedActivities++;
-
-    await new Promise((resolve) => setTimeout(resolve, 100));
-  }
-
-  await new Promise((resolve) => setTimeout(resolve, 150));
-}
-
-    let updatedLeads = 0;
-
-    for (const [nutshellId, activities] of Object.entries(activitiesByLead)) {
-      await Lead.updateOne(
-        { nutshell_id: Number(nutshellId) },
-        {
-          $set: {
-            activities,
-            activities_synced_at: new Date()
-          }
-        }
+app.get(
+  '/api/sync/nutshell/road-to-glory-activities',
+  async (req, res) => {
+    try {
+      const limit = Math.min(
+        Math.max(Number(req.query.limit) || 100, 1),
+        100
       );
 
-      updatedLeads++;
+      const pages = Math.min(
+        Math.max(Number(req.query.pages) || 20, 1),
+        100
+      );
+
+      const campaignTag =
+        'Road to the Glory - Junho';
+
+      const campaignLeads = await Lead.find({
+        tags: {
+          $in: [campaignTag]
+        }
+      })
+        .select(
+          'nutshell_id name activities'
+        )
+        .lean();
+
+      const leadIds = new Set(
+        campaignLeads.map((lead) =>
+          Number(lead.nutshell_id)
+        )
+      );
+
+      /*
+       * Começa com as atividades já existentes.
+       * Assim uma sincronização não apaga
+       * atividades salvas anteriormente.
+       */
+      const activitiesByLead = {};
+
+      campaignLeads.forEach((lead) => {
+        const leadId =
+          Number(lead.nutshell_id);
+
+        activitiesByLead[leadId] =
+          Array.isArray(lead.activities)
+            ? [...lead.activities]
+            : [];
+      });
+
+      let checkedActivities = 0;
+      let detailedActivities = 0;
+      let matchedActivities = 0;
+      let updatedLeads = 0;
+      let errors = 0;
+      let pagesProcessed = 0;
+
+      const matchedDetails = [];
+      const unlinkedSamples = [];
+      const errorDetails = [];
+
+      for (
+        let page = 1;
+        page <= pages;
+        page++
+      ) {
+        console.log(
+          `[ROAD ACTIVITIES] Buscando página ${page}...`
+        );
+
+        const response = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'findActivities',
+            params: {
+              query: {},
+              limit,
+              page
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username:
+                NUTSHELL_EMAIL,
+              password:
+                NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        if (response.data?.error) {
+          throw response.data;
+        }
+
+        const activities =
+          Array.isArray(
+            response.data?.result
+          )
+            ? response.data.result
+            : [];
+
+        if (activities.length === 0) {
+          break;
+        }
+
+        pagesProcessed++;
+
+        for (const activity of activities) {
+          checkedActivities++;
+
+          try {
+            const detailResponse =
+              await axios.post(
+                'https://app.nutshell.com/api/v1/json',
+                {
+                  method: 'getActivity',
+                  params: {
+                    activityId:
+                      activity.id
+                  },
+                  id: 1
+                },
+                {
+                  auth: {
+                    username:
+                      NUTSHELL_EMAIL,
+                    password:
+                      NUTSHELL_API_KEY
+                  }
+                }
+              );
+
+            const activityDetail =
+              detailResponse.data?.result;
+
+            if (!activityDetail) {
+              continue;
+            }
+
+            detailedActivities++;
+
+            /*
+             * Procura o vínculo da atividade
+             * com a lead em vários campos.
+             */
+            const possibleLeadIds = [
+              activityDetail?.lead?.id,
+              activityDetail?.relatedLead?.id,
+              activityDetail?.entity?.id,
+              activityDetail?.leadId,
+              activityDetail?.logNote?.lead?.id,
+              activityDetail?.rawData?.lead?.id,
+              activityDetail?.relatedEntity?.id,
+              activityDetail?.record?.id
+            ]
+              .map((value) =>
+                Number(value)
+              )
+              .filter(
+                (value) =>
+                  Number.isFinite(value) &&
+                  value > 0
+              );
+
+            const leadId =
+              possibleLeadIds.find((id) =>
+                leadIds.has(id)
+              );
+
+            if (!leadId) {
+              if (
+                unlinkedSamples.length < 20
+              ) {
+                unlinkedSamples.push({
+                  activityId:
+                    activityDetail.id,
+                  name:
+                    activityDetail.name ||
+                    activityDetail
+                      .activityType?.name ||
+                    null,
+                  possibleLeadIds,
+                  lead:
+                    activityDetail.lead ||
+                    null,
+                  relatedLead:
+                    activityDetail
+                      .relatedLead ||
+                    null,
+                  entity:
+                    activityDetail.entity ||
+                    null,
+                  logNote:
+                    activityDetail.logNote ||
+                    null
+                });
+              }
+
+              continue;
+            }
+
+            const currentActivities =
+              activitiesByLead[leadId] || [];
+
+            const activityId =
+              Number(activityDetail.id);
+
+            const existingIndex =
+              currentActivities.findIndex(
+                (savedActivity) =>
+                  Number(savedActivity?.id) ===
+                  activityId
+              );
+
+            if (existingIndex >= 0) {
+              currentActivities[
+                existingIndex
+              ] = activityDetail;
+            } else {
+              currentActivities.push(
+                activityDetail
+              );
+            }
+
+            activitiesByLead[leadId] =
+              currentActivities;
+
+            matchedActivities++;
+
+            if (
+              matchedDetails.length < 100
+            ) {
+              matchedDetails.push({
+                activityId:
+                  activityDetail.id,
+
+                leadId,
+
+                activityName:
+                  activityDetail.name ||
+                  activityDetail
+                    .activityType?.name ||
+                  null,
+
+                startTime:
+                  activityDetail.startTime ||
+                  null,
+
+                createdTime:
+                  activityDetail.createdTime ||
+                  null,
+
+                modifiedTime:
+                  activityDetail.modifiedTime ||
+                  null,
+
+                user:
+                  activityDetail
+                    ?.logNote?.user?.name ||
+                  activityDetail
+                    ?.user?.name ||
+                  activityDetail
+                    ?.assignee?.name ||
+                  activityDetail
+                    ?.owner?.name ||
+                  null
+              });
+            }
+
+            await new Promise(
+              (resolve) =>
+                setTimeout(resolve, 80)
+            );
+          } catch (activityError) {
+            errors++;
+
+            if (
+              errorDetails.length < 20
+            ) {
+              errorDetails.push({
+                activityId:
+                  activity.id,
+                error:
+                  activityError
+                    .response?.data ||
+                  activityError.message
+              });
+            }
+          }
+        }
+
+        if (activities.length < limit) {
+          break;
+        }
+
+        await new Promise(
+          (resolve) =>
+            setTimeout(resolve, 150)
+        );
+      }
+
+      /*
+       * Atualiza todas as leads da campanha,
+       * preservando as atividades antigas.
+       */
+      for (const lead of campaignLeads) {
+        const leadId =
+          Number(lead.nutshell_id);
+
+        const savedActivities =
+          activitiesByLead[leadId] || [];
+
+        await Lead.updateOne(
+          {
+            nutshell_id: leadId
+          },
+          {
+            $set: {
+              activities:
+                savedActivities,
+
+              activities_synced_at:
+                new Date()
+            }
+          }
+        );
+
+        updatedLeads++;
+      }
+
+      res.json({
+        sucesso: true,
+
+        routeVersion:
+          'road-activities-sync-v3',
+
+        campaignTag,
+
+        campaignLeads:
+          campaignLeads.length,
+
+        pagesProcessed,
+        checkedActivities,
+        detailedActivities,
+        matchedActivities,
+        updatedLeads,
+        errors,
+
+        matchedDetails,
+        unlinkedSamples,
+        errorDetails
+      });
+    } catch (error) {
+      const apiError =
+        error.response?.data ||
+        error;
+
+      console.error(
+        'ERRO SYNC ROAD ACTIVITIES:',
+        apiError
+      );
+
+      res.status(500).json({
+        sucesso: false,
+
+        routeVersion:
+          'road-activities-sync-v3',
+
+        erro:
+          apiError?.error ||
+          apiError?.message ||
+          apiError
+      });
     }
-
-    res.json({
-      sucesso: true,
-      campaignLeads: campaignLeads.length,
-      checkedActivities,
-      matchedActivities,
-      updatedLeads
-    });
-
-  } catch (error) {
-    console.error('ERRO SYNC ROAD ACTIVITIES:', error.response?.data || error.message);
-
-    res.status(500).json({
-      sucesso: false,
-      erro: error.response?.data || error.message
-    });
   }
-});
+);
 
 app.get('/api/audit/road-to-glory-activities', async (req, res) => {
   const leads = await Lead.find({
