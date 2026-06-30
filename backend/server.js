@@ -8707,6 +8707,19 @@ Object.entries(teams).forEach(([teamKey, users]) => {
       }
     }
 
+    const manualAdjustments = {
+  ferrari: 845,
+  mercedes: 480,
+  redbull:425
+};
+
+// aplica ajuste ANTES do ranking
+Object.keys(result).forEach((team) => {
+  result[team].miles =
+    (result[team].miles || 0) +
+    (manualAdjustments[team] || 0);
+});
+
     const ranking = Object.values(result)
       .sort(
         (first, second) =>
