@@ -5793,18 +5793,32 @@ app.get(
   '/api/sync/nutshell/road-to-glory',
   async (req, res) => {
     try {
+      const campaignTag =
+        'Road to the Glory - Junho';
+
+      const startDate =
+        req.query.startDate ||
+        '2026-06-26';
+
+      const endDate =
+        req.query.endDate ||
+        '2026-06-30';
+
       const limit = Math.min(
-        Math.max(Number(req.query.limit) || 100, 1),
+        Math.max(
+          Number(req.query.limit) || 100,
+          1
+        ),
         500
       );
 
       const maxPages = Math.min(
-        Math.max(Number(req.query.maxPages) || 10, 1),
-        50
+        Math.max(
+          Number(req.query.maxPages) || 20,
+          1
+        ),
+        100
       );
-
-      const campaignTag =
-        'Road to the Glory - Junho';
 
       let page = 1;
       let checked = 0;
@@ -5816,7 +5830,7 @@ app.get(
 
       while (page <= maxPages) {
         console.log(
-          `[ROAD TO GLORY] Buscando página ${page}`
+          `[ROAD TO GLORY] Página ${page}`
         );
 
         const nutshellResponse =
@@ -5825,11 +5839,14 @@ app.get(
             {
               method: 'findLeads',
               params: {
-                query: {},
+                query: {
+                  createdTime: {
+                    from: startDate,
+                    to: endDate
+                  }
+                },
                 limit,
-                page,
-                sort: 'modifiedTime',
-                direction: 'DESC'
+                page
               },
               id: 1
             },
@@ -5881,21 +5898,19 @@ app.get(
               continue;
             }
 
-            const tags = Array.isArray(
-              fullLead.tags
-            )
-              ? fullLead.tags
-              : [];
+            const tags =
+              Array.isArray(fullLead.tags)
+                ? fullLead.tags
+                : [];
 
             const hasCampaignTag =
-              tags.some((tag) => {
-                return (
+              tags.some(
+                (tag) =>
                   normalizeName(tag) ===
                   normalizeName(
                     campaignTag
                   )
-                );
-              });
+              );
 
             if (!hasCampaignTag) {
               continue;
@@ -5904,21 +5919,9 @@ app.get(
             matched++;
 
             /*
-             * Não substitui atividades já
-             * sincronizadas por array vazio.
+             * Evita substituir atividades
+             * já salvas por array vazio.
              */
-            const existingLead =
-              await Lead.findOne({
-                nutshell_id:
-                  fullLead.id
-              })
-                .select({
-                  activities: 1,
-                  activities_period: 1,
-                  activities_synced_at: 1
-                })
-                .lean();
-
             if (
               !Array.isArray(
                 fullLead.activities
@@ -5930,37 +5933,6 @@ app.get(
 
             await saveFullLead(fullLead);
 
-            /*
-             * Mantém as atividades anteriores
-             * caso o getLead não as tenha enviado.
-             */
-            if (
-              existingLead &&
-              Array.isArray(
-                existingLead.activities
-              ) &&
-              existingLead.activities.length > 0
-            ) {
-              await Lead.updateOne(
-                {
-                  nutshell_id:
-                    fullLead.id
-                },
-                {
-                  $set: {
-                    activities:
-                      existingLead.activities,
-
-                    activities_period:
-                      existingLead.activities_period,
-
-                    activities_synced_at:
-                      existingLead.activities_synced_at
-                  }
-                }
-              );
-            }
-
             synced++;
 
             details.push({
@@ -5969,8 +5941,11 @@ app.get(
               name:
                 fullLead.name,
               assignee:
-                fullLead.assignee
-                  ?.name || null,
+                fullLead.assignee?.name ||
+                null,
+              createdTime:
+                fullLead.createdTime ||
+                null,
               tags,
               synced: true
             });
@@ -5986,11 +5961,14 @@ app.get(
                 lead.name,
               synced: false,
               error:
-                leadError.response
-                  ?.data ||
+                leadError.response?.data ||
                 leadError.message
             });
           }
+        }
+
+        if (leads.length < limit) {
+          break;
         }
 
         page++;
@@ -6015,7 +5993,7 @@ app.get(
             modifiedTime: 1
           })
           .sort({
-            modifiedTime: -1
+            createdTime: -1
           })
           .lean();
 
@@ -6025,14 +6003,11 @@ app.get(
         campaignTag,
 
         search: {
-          direction:
-            'page_1_forward',
-          sort:
-            'modifiedTime DESC',
+          startDate,
+          endDate,
           limit,
           maxPages,
-          pagesProcessed:
-            page - 1
+          pagesProcessed: page
         },
 
         checked,
@@ -6043,7 +6018,6 @@ app.get(
         mongoAfterSync: {
           total:
             mongoCampaignLeads.length,
-
           leads:
             mongoCampaignLeads
         },
