@@ -5788,44 +5788,7 @@ app.get('/api/audit/nutshell-compare', async (req, res) => {
   }
 });
 
-
 app.get(
-  '/api/sync/nutshell/road-to-glory',
-  async (req, res) => {
-    try {
-      const campaignTag =
-        'Road to the Glory - Junho';
-
-      const limit = Math.min(
-        Math.max(
-          Number(req.query.limit) || 100,
-          1
-        ),
-        500
-      );
-
-      const maxPages = Math.min(
-        Math.max(
-          Number(req.query.maxPages) || 5,
-          1
-        ),
-        50
-      );
-
-      let page = 1;
-      let checked = 0;
-      let matched = 0;
-      let synced = 0;
-      let errors = 0;
-
-      const details = [];
-
-      while (page <= maxPages) {
-        console.log(
-          `[ROAD TO GLORY] Buscando página ${page}`
-        );
-
-        app.get(
   '/api/sync/nutshell/road-to-glory',
   async (req, res) => {
     try {
@@ -5921,10 +5884,6 @@ app.get(
 
             matched++;
 
-            /*
-             * Evita apagar atividades que
-             * já estejam armazenadas.
-             */
             if (
               !Array.isArray(fullLead.activities) ||
               fullLead.activities.length === 0
@@ -5996,6 +5955,7 @@ app.get(
 
       res.json({
         sucesso: true,
+
         routeVersion:
           'road-to-glory-tag-filter-v1',
 
@@ -6036,8 +5996,10 @@ app.get(
 
       res.status(500).json({
         sucesso: false,
+
         routeVersion:
           'road-to-glory-tag-filter-v1',
+
         erro:
           apiError?.error ||
           apiError?.message ||
@@ -6047,180 +6009,6 @@ app.get(
   }
 );
 
-        const leads =
-          response.data.result || [];
-
-        if (leads.length === 0) {
-          break;
-        }
-
-        for (const fullLead of leads) {
-          checked++;
-
-          try {
-            const tags =
-              Array.isArray(fullLead.tags)
-                ? fullLead.tags
-                : [];
-
-            const hasCampaignTag =
-              tags.some(
-                (tag) =>
-                  normalizeName(tag) ===
-                  normalizeName(campaignTag)
-              );
-
-            if (!hasCampaignTag) {
-              continue;
-            }
-
-            matched++;
-
-            /*
-             * Evita apagar atividades que já
-             * estejam salvas no MongoDB.
-             */
-            if (
-              !Array.isArray(
-                fullLead.activities
-              ) ||
-              fullLead.activities.length === 0
-            ) {
-              delete fullLead.activities;
-            }
-
-            await saveFullLead(fullLead);
-
-            synced++;
-
-            details.push({
-              nutshell_id:
-                fullLead.id,
-
-              name:
-                fullLead.name,
-
-              assignee:
-                fullLead.assignee?.name ||
-                null,
-
-              createdTime:
-                fullLead.createdTime ||
-                null,
-
-              modifiedTime:
-                fullLead.modifiedTime ||
-                null,
-
-              tags,
-
-              synced: true
-            });
-          } catch (leadError) {
-            errors++;
-
-            details.push({
-              nutshell_id:
-                fullLead.id,
-
-              name:
-                fullLead.name,
-
-              synced: false,
-
-              error:
-                leadError.response?.data ||
-                leadError.message
-            });
-          }
-        }
-
-        if (leads.length < limit) {
-          break;
-        }
-
-        page++;
-
-        await sleep(150);
-      }
-
-      const mongoCampaignLeads =
-        await Lead.find({
-          tags: {
-            $elemMatch: {
-              $regex:
-                '^Road to the Glory - Junho$',
-              $options: 'i'
-            }
-          }
-        })
-          .select({
-            nutshell_id: 1,
-            name: 1,
-            assignee: 1,
-            tags: 1,
-            createdTime: 1,
-            modifiedTime: 1
-          })
-          .sort({
-            createdTime: -1
-          })
-          .lean();
-
-      res.json({
-        sucesso: true,
-
-        routeVersion:
-          'road-to-glory-find-desc-v1',
-
-        campaignTag,
-
-        search: {
-          method: 'findLeads',
-          orderBy: 'id',
-          orderDirection: 'DESC',
-          stubResponses: false,
-          limit,
-          maxPages,
-          pagesProcessed:
-            Math.min(page, maxPages)
-        },
-
-        checked,
-        matched,
-        synced,
-        errors,
-
-        mongoAfterSync: {
-          total:
-            mongoCampaignLeads.length,
-
-          leads:
-            mongoCampaignLeads
-        },
-
-        details
-      });
-    } catch (error) {
-      console.error(
-        'ERRO SYNC ROAD TO GLORY:',
-        error.response?.data ||
-          error.message
-      );
-
-      res.status(500).json({
-        sucesso: false,
-
-        routeVersion:
-          'road-to-glory-find-desc-v1',
-
-        erro:
-          error.response?.data ||
-          error.message
-      });
-    }
-  }
-);
 
 
 app.get('/api/sync/nutshell/road-to-glory-meetings', async (req, res) => {
