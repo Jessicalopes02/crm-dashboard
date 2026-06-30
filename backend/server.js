@@ -3718,6 +3718,102 @@ async function getNutshellLastPage(limit = 20) {
 // FUNÇÕES AUXILIARES
 // ========================================
 
+const ROAD_TO_GLORY_TAG = 'Road to the Glory - Junho';
+
+function createMonthRange(period = '2026-06') {
+  const match = String(period).match(/^(\d{4})-(\d{2})$/);
+
+  if (!match) {
+    throw new Error(
+      'Período inválido. Utilize o formato YYYY-MM.'
+    );
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+
+  const start = new Date(
+    year,
+    month - 1,
+    1,
+    0,
+    0,
+    0,
+    0
+  );
+
+  const end = new Date(
+    year,
+    month,
+    0,
+    23,
+    59,
+    59,
+    999
+  );
+
+  return {
+    period,
+    start,
+    end
+  };
+}
+
+function getActivityDate(activity) {
+  const rawDate =
+    activity?.startTime ||
+    activity?.endTime ||
+    activity?.createdTime ||
+    activity?.modifiedTime ||
+    null;
+
+  if (!rawDate) {
+    return null;
+  }
+
+  const date = new Date(rawDate);
+
+  return Number.isNaN(date.getTime())
+    ? null
+    : date;
+}
+
+function normalizeName(text) {
+  return String(text || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function isMeetingActivity(activity) {
+  const activityName = normalizeName(
+    activity?.name ||
+    activity?.activityType?.name ||
+    ''
+  );
+
+  return (
+    activityName.includes('reuniao efetiva') ||
+    activityName.includes('reuniao agendada') ||
+    activityName.includes('reuniao reagendada') ||
+    activityName.includes('reuniao realizada')
+  );
+}
+
+function hasRoadToGloryTag(tags = []) {
+  if (!Array.isArray(tags)) {
+    return false;
+  }
+
+  return tags.some(
+    (tag) =>
+      normalizeName(tag) ===
+      normalizeName(ROAD_TO_GLORY_TAG)
+  );
+}
+
 async function saveSummaryLead(lead) {
   const existingLead = await Lead.findOne({ nutshell_id: lead.id });
 
@@ -3816,7 +3912,10 @@ async function saveFullLead(fullLead) {
       products: fullLead.products || [],
       sources: fullLead.sources || [],
       tags: fullLead.tags || [],
-      activities: fullLead.activities || [],
+      activities:
+        fullLead.activities !== undefined
+          ? fullLead.activities
+          : existingLead?.activities || [],
       customFields: fullLead.customFields || {},
       processes: fullLead.processes || [],
       createdTime: fullLead.createdTime,
@@ -8747,13 +8846,6 @@ app.get('/api/test/nutshell/activity-detail', async (req, res) => {
     });
   }
 });
-
-function normalizeName(text) {
-  return String(text || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase();
-}
 
 app.get('/api/sync/nutshell/road-to-glory-activities', async (req, res) => {
   try {
