@@ -8155,13 +8155,16 @@ app.get('/api/audit/goals-achievement-detail', async (req, res) => {
   }
 });
 
-app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
+async function getRoadToGloryProgress(req, res) {
   try {
     const start = new Date('2026-06-26T03:00:00.000Z');
     const end = new Date('2026-07-01T02:59:59.999Z');
 
-    const normalizeName = (name) =>
-      String(name || '')
+    const limitMiles = 6000;
+    const campaignTag = 'Road to the Glory - Junho';
+
+    const normalizeName = (value) =>
+      String(value || '')
         .normalize('NFD')
         .replace(/[\u0300-\u036f]/g, '')
         .replace(/\s+/g, ' ')
@@ -8169,479 +8172,649 @@ app.get('/api/campaigns/road-to-glory/progress', async (req, res) => {
         .toLowerCase();
 
     const teams = {
-      redbull: ['Alba Danielly Rezende Lima', 'Fabiane Carvalho Nascimento', 'Gisele Santos Gama'],
-      mercedes: ['Fábio Souza', 'Edson da Silva Bomfim Júnior', 'Guilherme Velloso', 'Leticia Barbosa'],
-      ferrari: ['Giovanna Fernandes', 'Pedro Scarillo', 'Luma Farias', 'Luiza Carvalho']
+      redbull: [
+        'Alba Danielly Rezende Lima',
+        'Fabiane Carvalho Nascimento',
+        'Gisele Santos Gama'
+      ],
+
+      mercedes: [
+        'Fábio Souza',
+        'Fabio Souza',
+        'Edson da Silva Bomfim Júnior',
+        'Edson da Silva Bomfim Junior',
+        'Guilherme Velloso',
+        'Leticia Barbosa',
+        'Letícia Barbosa'
+      ],
+
+      ferrari: [
+        'Giovanna Fernandes',
+        'Pedro Scarillo',
+        'Luma Farias Silva Santos',
+        'Luma Farias',
+        'Luiza Carvalho'
+      ]
+    };
+
+    const result = {
+      redbull: {
+        team: 'Red Bull',
+        miles: 0
+      },
+
+      mercedes: {
+        team: 'Mercedes',
+        miles: 0
+      },
+
+      ferrari: {
+        team: 'Ferrari',
+        miles: 0
+      }
     };
 
     const teamByUser = {};
 
-    Object.entries(teams).forEach(([team, users]) => {
+    Object.entries(teams).forEach(([teamKey, users]) => {
       users.forEach((user) => {
-        teamByUser[normalizeName(user)] = team;
+        teamByUser[normalizeName(user)] = teamKey;
       });
     });
 
-    const leads = await Lead.find({
-  $and: [
-    {
-      $or: [
-        {
-          tags: {
-            $elemMatch: {
-              $regex: 'Road to the Glory - Junho',
-              $options: 'i'
-            }
-          }
-        },
-        {
-          tags: {
-            $regex: 'Road to the Glory - Junho',
-            $options: 'i'
-          }
-        }
-      ]
-    },
-    {
-      $or: [
-        { createdTime: { $gte: start, $lte: end } },
-        { modifiedTime: { $gte: start, $lte: end } },
-        { closedTime: { $gte: start, $lte: end } }
-      ]
-    }
-  ]
-}).lean();
+    const isInsidePeriod = (dateValue) => {
+      if (!dateValue) return false;
 
-    const result = {
-      redbull: { team: 'Red Bull', miles: 0 },
-      mercedes: { team: 'Mercedes', miles: 0 },
-      ferrari: { team: 'Ferrari', miles: 0 }
+      const date = new Date(dateValue);
+
+      return (
+        !Number.isNaN(date.getTime()) &&
+        date >= start &&
+        date <= end
+      );
     };
 
-    const details = [];
+    /*
+     * Compara o dia no horário de Brasília.
+     * Evita uma atividade à noite cair no dia
+     * seguinte por causa do UTC.
+     */
+    const getBrazilDateKey = (dateValue) => {
+      if (!dateValue) return null;
 
-    for (const lead of leads) {
-      const possibleUsers = [
-  lead.owner?.name,
-  lead.assignee?.name,
-  lead.rawData?.owner?.name,
-  lead.rawData?.assignee?.name
-].filter(Boolean);
+      const date = new Date(dateValue);
 
-const campaignUser = possibleUsers.find((name) =>
-  teamByUser[normalizeName(name)]
-);
-
-const team = campaignUser
-  ? teamByUser[normalizeName(campaignUser)]
-  : null;
-
-if (!team) {
-  details.push({
-    leadId: lead.nutshell_id,
-    leadName: lead.name,
-    points: 0,
-    reason: 'Nenhum integrante das equipes encontrado',
-    assignee: lead.assignee?.name || null,
-    owner: lead.owner?.name || null
-  });
-
-  continue;
-}
-
- 
-
-const milestoneName = normalizeName(lead.milestone?.name || '');
-const stageSetName = normalizeName(lead.stageset?.name || '');
-
-const hasMayRoadTag =
-  Array.isArray(lead.tags) &&
-  lead.tags.some((tag) =>
-    normalizeName(tag).includes('road to the glory')
-  );
-
-const isNewLeadPipeline =
-  stageSetName.includes('sdr') ||
-  stageSetName.includes('novos negocios');
-
-const isMeeting =
-  milestoneName.includes('reuniao agendada');
-
-const isProjection =
-  milestoneName.includes('projecao de custos');
-
-const isOffer =
-  milestoneName.includes('oferta gerenciamento') ||
-  milestoneName.includes('consultoria');
-
-if (!team) continue;
-
-const isQualifiedStage =
-  milestoneName.includes('reuniao') ||
-  milestoneName.includes('projecao') ||
-  milestoneName.includes('oferta') ||
-  milestoneName.includes('proposta') ||
-  milestoneName.includes('gerenciamento') ||
-  milestoneName.includes('consultoria') ||
-  milestoneName.includes('custos') ||
-  milestoneName.includes('aceita') ||
-  milestoneName.includes('won');
-  isMeeting ||
-  isProjection ||
-  isOffer;
-
-const validMeetingActivities = [
-  'reuniao efetiva',
-  'reuniao agendada',
-  'reuniao reagendada'
-];
-
-const hasMeetingActivity =
-  Array.isArray(lead.activities) &&
-  lead.activities.some((activity) => {
-    const activityName = normalizeName(
-      activity?.name ||
-      activity?.activityType?.name ||
-      ''
-    );
-
-    const activityDate = activity?.startTime
-      ? new Date(activity.startTime)
-      : null;
-
-    const inPeriod =
-      activityDate &&
-      activityDate >= start &&
-      activityDate <= end;
-
-    return (
-      inPeriod &&
-      validMeetingActivities.some((item) =>
-        activityName.includes(item)
-      )
-    );
-  });
-
-
-      const commercialProcess = Array.isArray(lead.processes)
-  ? lead.processes.find((process) =>
-      normalizeName(process.name).includes('processo comercial') ||
-      normalizeName(process.name).includes('novos negocios')
-    )
-  : null;
-
-const openDate = commercialProcess?.startedTime
-  ? new Date(commercialProcess.startedTime)
-  : lead.createdTime
-    ? new Date(lead.createdTime)
-    : null;
-
-      const created = lead.createdTime ? new Date(lead.createdTime) : null;
-      const modified = lead.modifiedTime ? new Date(lead.modifiedTime) : null;
-      const closed = lead.closedTime ? new Date(lead.closedTime) : null;
-      const processStarted = Array.isArray(lead.processes)
-       ? lead.processes
-      .map((process) => process.startedTime ? new Date(process.startedTime) : null)
-      .filter(Boolean)
-      .sort((a, b) => b - a)[0]
-      : null;
-
-    
-      const createdInPeriod = openDate && openDate >= start && openDate <= end;
-      const modifiedInPeriod = modified && modified >= start && modified <= end;
-      const closedInPeriod = closed && closed >= start && closed <= end;
-
-      const sameCreatedModifiedDay =
-        created &&
-        modified &&
-        openDate.toISOString().slice(0, 10) === modified.toISOString().slice(0, 10);
-
-      const sameCreatedClosedDay =
-        created &&
-        closed &&
-        openDate.toISOString().slice(0, 10) === closed.toISOString().slice(0, 10);
-
-      if (
-  createdInPeriod &&
-  modifiedInPeriod &&
-  sameCreatedModifiedDay &&
-  isMeeting
-) {
-  result[team].miles += 100;
-  
-}
-
-if (hasMayRoadTag && isNewLeadPipeline) {
-  result[team].miles += 10;
-}
-
-if (hasMayRoadTag && isQualifiedStage) {
-  result[team].miles += 50;
-}
-      if (
-        createdInPeriod &&
-        closedInPeriod &&
-        sameCreatedClosedDay &&
-        lead.status === 10
-      ) {
-        result[team].miles += 200;
-      
+      if (Number.isNaN(date.getTime())) {
+        return null;
       }
 
-      if (lead.status === 10 && closedInPeriod) {
-        let canCountWonValue = true;
+      return new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'America/Sao_Paulo',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      }).format(date);
+    };
 
-        if (normalizeName(lead.assignee?.name) === normalizeName('Gabriel Lopes')) {
-          canCountWonValue = (lead.products || []).some((product) =>
-            normalizeName(product.name).includes(normalizeName('Gerenciamento de Importação'))
+    const isSameBrazilDay = (dateA, dateB) => {
+      const first = getBrazilDateKey(dateA);
+      const second = getBrazilDateKey(dateB);
+
+      return Boolean(
+        first &&
+        second &&
+        first === second
+      );
+    };
+
+    const getTeamFromNames = (names = []) => {
+      for (const name of names) {
+        const normalized = normalizeName(name);
+
+        if (teamByUser[normalized]) {
+          return {
+            teamKey: teamByUser[normalized],
+            userName: name
+          };
+        }
+      }
+
+      return {
+        teamKey: null,
+        userName: null
+      };
+    };
+
+    const getLeadUser = (lead) => {
+      return getTeamFromNames([
+        lead.owner?.name,
+        lead.rawData?.owner?.name,
+        lead.assignee?.name,
+        lead.rawData?.assignee?.name,
+        lead.creator?.name,
+        lead.rawData?.creator?.name,
+        lead.createdBy?.name,
+        lead.rawData?.createdBy?.name
+      ]);
+    };
+
+    const getActivityDate = (activity) => {
+      return (
+        activity?.startTime ||
+        activity?.dueTime ||
+        activity?.createdTime ||
+        activity?.modifiedTime ||
+        activity?.logNote?.date ||
+        activity?.logNote?.createdTime ||
+        null
+      );
+    };
+
+    const getActivityUser = (activity, lead) => {
+      const activityUser = getTeamFromNames([
+        activity?.user?.name,
+        activity?.assignee?.name,
+        activity?.owner?.name,
+        activity?.createdBy?.name,
+        activity?.logNote?.user?.name,
+        activity?.rawData?.user?.name,
+        activity?.rawData?.logNote?.user?.name
+      ]);
+
+      if (activityUser.teamKey) {
+        return activityUser;
+      }
+
+      return getLeadUser(lead);
+    };
+
+    const isMeetingActivity = (activity) => {
+      const activityText = normalizeName([
+        activity?.name,
+        activity?.activityType?.name,
+        activity?.type?.name,
+        activity?.description,
+        activity?.logNote?.note
+      ].filter(Boolean).join(' '));
+
+      const hasMeetingWord =
+        activityText.includes('reuniao');
+
+      const isScheduledMeeting =
+        activityText.includes('agendada') ||
+        activityText.includes('reagendada') ||
+        activityText.includes('marcada') ||
+        activityText.includes('agenda') ||
+        activityText.includes('meeting');
+
+      const isCancelled =
+        activityText.includes('cancelada') ||
+        activityText.includes('cancelado');
+
+      return (
+        hasMeetingWord &&
+        isScheduledMeeting &&
+        !isCancelled
+      );
+    };
+
+    const hasMeetingStage = (lead) => {
+      const milestoneName = normalizeName(
+        lead.milestone?.name ||
+        lead.rawData?.milestone?.name ||
+        ''
+      );
+
+      return (
+        milestoneName.includes('reuniao agendada') ||
+        milestoneName.includes('reuniao reagendada')
+      );
+    };
+
+    const hasExactCampaignTag = (lead) => {
+      return (
+        Array.isArray(lead.tags) &&
+        lead.tags.some(
+          (tag) =>
+            normalizeName(tag) ===
+            normalizeName(campaignTag)
+        )
+      );
+    };
+
+    /*
+     * Não restringimos somente por createdTime,
+     * porque reunião de lead antiga também conta.
+     */
+    const leads = await Lead.find({
+      tags: {
+        $elemMatch: {
+          $regex: '^Road to the Glory - Junho$',
+          $options: 'i'
+        }
+      }
+    }).lean();
+
+    const details = [];
+    const ignored = [];
+
+    for (const lead of leads) {
+      if (!hasExactCampaignTag(lead)) {
+        continue;
+      }
+
+      const createdDate =
+        lead.createdTime ||
+        lead.rawData?.createdTime ||
+        null;
+
+      const closedDate =
+        lead.closedTime ||
+        lead.rawData?.closedTime ||
+        null;
+
+      const isNewLead =
+        isInsidePeriod(createdDate);
+
+      const leadUser = getLeadUser(lead);
+
+      const activities = Array.isArray(lead.activities)
+        ? lead.activities
+        : [];
+
+      /*
+       * Somente reuniões agendadas dentro
+       * do período da campanha.
+       */
+      const meetingActivities = activities.filter(
+        (activity) => {
+          const activityDate =
+            getActivityDate(activity);
+
+          return (
+            isMeetingActivity(activity) &&
+            isInsidePeriod(activityDate)
           );
         }
+      );
 
-        if (canCountWonValue) {
-          result[team].miles += Math.floor(Number(lead.value?.amount || 0) / 100);
+      /*
+       * Não deixa a mesma atividade contar
+       * mais de uma vez.
+       */
+      const uniqueMeetingActivities = [];
+      const meetingActivityKeys = new Set();
+
+      meetingActivities.forEach((activity, index) => {
+        const activityDate =
+          getActivityDate(activity);
+
+        const key =
+          activity.id ||
+          activity._id ||
+          [
+            normalizeName(
+              activity.name ||
+              activity.activityType?.name
+            ),
+            activityDate,
+            index
+          ].join('|');
+
+        if (!meetingActivityKeys.has(String(key))) {
+          meetingActivityKeys.add(String(key));
+          uniqueMeetingActivities.push(activity);
+        }
+      });
+
+      const meetingEvents = [];
+
+      uniqueMeetingActivities.forEach((activity) => {
+        const activityDate =
+          getActivityDate(activity);
+
+        const activityUser =
+          getActivityUser(activity, lead);
+
+        if (!activityUser.teamKey) {
+          ignored.push({
+            leadId: lead.nutshell_id,
+            leadName: lead.name,
+            event: 'meeting_activity',
+            activityName:
+              activity.name ||
+              activity.activityType?.name ||
+              null,
+            activityDate,
+            reason:
+              'Não foi possível identificar a equipe do usuário da atividade',
+            activityUser:
+              activity.user?.name ||
+              activity.logNote?.user?.name ||
+              null,
+            owner: lead.owner?.name || null,
+            assignee:
+              lead.assignee?.name || null
+          });
+
+          return;
+        }
+
+        meetingEvents.push({
+          source: 'activity',
+          date: activityDate,
+          teamKey: activityUser.teamKey,
+          userName: activityUser.userName,
+          activityId:
+            activity.id ||
+            activity._id ||
+            null,
+          activityName:
+            activity.name ||
+            activity.activityType?.name ||
+            null
+        });
+      });
+
+      /*
+       * Se nenhuma atividade de reunião foi
+       * encontrada, usa o stage Reunião Agendada.
+       */
+      if (
+        meetingEvents.length === 0 &&
+        hasMeetingStage(lead)
+      ) {
+        const stageDate =
+          lead.milestone?.modifiedTime ||
+          lead.rawData?.milestone?.modifiedTime ||
+          lead.modifiedTime ||
+          lead.rawData?.modifiedTime ||
+          null;
+
+        if (
+          isInsidePeriod(stageDate) &&
+          leadUser.teamKey
+        ) {
+          meetingEvents.push({
+            source: 'stage',
+            date: stageDate,
+            teamKey: leadUser.teamKey,
+            userName: leadUser.userName,
+            activityId: null,
+            activityName:
+              lead.milestone?.name ||
+              lead.rawData?.milestone?.name ||
+              'Reunião Agendada'
+          });
+        }
+      }
+
+      const sameDayMeeting = meetingEvents.find(
+        (meeting) =>
+          isNewLead &&
+          isSameBrazilDay(
+            createdDate,
+            meeting.date
+          )
+      );
+
+      /*
+       * REGRA 1:
+       * Lead nova + reunião no mesmo dia = 100.
+       * Nesse caso não soma 10 + 50.
+       */
+      if (sameDayMeeting) {
+        result[sameDayMeeting.teamKey].miles += 100;
+
+        details.push({
+          leadId: lead.nutshell_id,
+          leadName: lead.name,
+          event:
+            'new_lead_meeting_same_day',
+          miles: 100,
+          team:
+            result[sameDayMeeting.teamKey].team,
+          user:
+            sameDayMeeting.userName,
+          source:
+            sameDayMeeting.source,
+          createdDate,
+          meetingDate:
+            sameDayMeeting.date
+        });
+      } else {
+        /*
+         * REGRA 2:
+         * Lead nova = 10.
+         */
+        if (isNewLead) {
+          if (leadUser.teamKey) {
+            result[leadUser.teamKey].miles += 10;
+
+            details.push({
+              leadId: lead.nutshell_id,
+              leadName: lead.name,
+              event: 'new_lead',
+              miles: 10,
+              team:
+                result[leadUser.teamKey].team,
+              user:
+                leadUser.userName,
+              createdDate
+            });
+          } else {
+            ignored.push({
+              leadId: lead.nutshell_id,
+              leadName: lead.name,
+              event: 'new_lead',
+              reason:
+                'Lead nova sem usuário associado a uma equipe',
+              owner:
+                lead.owner?.name || null,
+              assignee:
+                lead.assignee?.name || null
+            });
+          }
+        }
+
+        /*
+         * REGRA 3:
+         * Cada reunião agendada = 50.
+         *
+         * Mesmo uma lead antiga pode pontuar.
+         */
+        meetingEvents.forEach((meeting) => {
+          result[meeting.teamKey].miles += 50;
+
+          details.push({
+            leadId: lead.nutshell_id,
+            leadName: lead.name,
+            event: 'scheduled_meeting',
+            miles: 50,
+            team:
+              result[meeting.teamKey].team,
+            user:
+              meeting.userName,
+            source:
+              meeting.source,
+            meetingDate:
+              meeting.date,
+            activityName:
+              meeting.activityName
+          });
+        });
+      }
+
+      const isWon =
+        Number(lead.status) === 10;
+
+      const closedInPeriod =
+        isInsidePeriod(closedDate);
+
+      /*
+       * REGRA 4:
+       * Lead nova fechada no mesmo dia = +200.
+       */
+      if (
+        isWon &&
+        isNewLead &&
+        closedInPeriod &&
+        isSameBrazilDay(
+          createdDate,
+          closedDate
+        )
+      ) {
+        if (leadUser.teamKey) {
+          result[leadUser.teamKey].miles += 200;
+
+          details.push({
+            leadId: lead.nutshell_id,
+            leadName: lead.name,
+            event: 'new_lead_won_same_day',
+            miles: 200,
+            team:
+              result[leadUser.teamKey].team,
+            user:
+              leadUser.userName,
+            createdDate,
+            closedDate
+          });
+        }
+      }
+
+      /*
+       * REGRA 5:
+       * 1 milha por cada R$ 100 vendidos.
+       */
+      if (
+        isWon &&
+        closedInPeriod
+      ) {
+        const amount = Number(
+          lead.value?.amount ||
+          lead.rawData?.value?.amount ||
+          0
+        );
+
+        const saleMiles =
+          Math.floor(amount / 100);
+
+        if (
+          saleMiles > 0 &&
+          leadUser.teamKey
+        ) {
+          result[leadUser.teamKey].miles +=
+            saleMiles;
+
+          details.push({
+            leadId: lead.nutshell_id,
+            leadName: lead.name,
+            event: 'sale_value',
+            miles: saleMiles,
+            amount,
+            team:
+              result[leadUser.teamKey].team,
+            user:
+              leadUser.userName,
+            closedDate
+          });
         }
       }
     }
 
-  
     const ranking = Object.values(result)
-      .sort((a, b) => b.miles - a.miles)
+      .sort(
+        (first, second) =>
+          second.miles - first.miles
+      )
       .map((item, index) => ({
         ...item,
         position: index + 1,
-        percent: Math.min((item.miles / 6000) * 100, 100),
-        milesFormatted: item.miles.toLocaleString('pt-BR')
+        percent: Math.min(
+          (item.miles / limitMiles) * 100,
+          100
+        ),
+        milesFormatted:
+          item.miles.toLocaleString('pt-BR')
       }));
 
-    const podium = {
-      first: ranking[0],
-      second: ranking[1],
-      third: ranking[2]
-    };
-
     const totalMiles = ranking.reduce(
-      (sum, item) => sum + Number(item.miles || 0),
+      (sum, item) =>
+        sum + Number(item.miles || 0),
       0
     );
 
     res.json({
       sucesso: true,
-      limit: 6000,
-      totalMiles,
-      totalMilesFormatted: totalMiles.toLocaleString('pt-BR'),
-      podium,
-      ranking,
-      details
-    });
+      routeVersion:
+        'road-to-glory-unified-v1',
 
-  } catch (error) {
-    console.error('ERRO ROAD TO GLORY:', error);
+      period: {
+        start,
+        end,
+        timezone:
+          'America/Sao_Paulo'
+      },
 
-    res.status(500).json({
-      sucesso: false,
-      erro: error.message
-    });
-  }
-});
+      rules: {
+        sale:
+          '1 milha a cada R$ 100',
+        newLead: 10,
+        scheduledMeeting: 50,
+        newLeadMeetingSameDay: 100,
+        newLeadWonSameDayBonus: 200
+      },
 
-app.get('/api/campaigns/road-to-glory/progress-v2', async (req, res) => {
-  try {
-    const start = new Date('2026-06-26T03:00:00.000Z');
-    const end = new Date('2026-07-01T02:59:59.999Z');
-    const limitMiles = 6000;
-
-    const normalizeName = (name) =>
-      String(name || '')
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g, '')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .toLowerCase();
-
-    const teams = {
-      redbull: ['Alba Danielly Rezende Lima', 'Fabiane Carvalho Nascimento', 'Gisele Santos Gama'],
-      mercedes: ['Fábio Souza', 'Edson da Silva Bomfim Júnior', 'Guilherme Velloso', 'Leticia Barbosa'],
-      ferrari: ['Giovanna Fernandes', 'Pedro Scarillo', 'Luma Farias Silva Santos', 'Luma Farias']
-    };
-
-    const result = {
-      redbull: { team: 'Red Bull', miles: 0 },
-      mercedes: { team: 'Mercedes', miles: 0 },
-      ferrari: { team: 'Ferrari', miles: 0 }
-    };
-
-    const teamByUser = {};
-    Object.entries(teams).forEach(([team, users]) => {
-      users.forEach((user) => {
-        teamByUser[normalizeName(user)] = team;
-      });
-    });
-
-    const leads = await Lead.find({
-      tags: {
-        $in: [
-          
-          'Road to the Glory - Junho'
-        ]
-      }
-    }).lean();
-
-    for (const lead of leads) {
-      const team = teamByUser[normalizeName(lead.assignee?.name)];
-      if (!team) continue;
-
-      const milestoneName = normalizeName(lead.milestone?.name || '');
-      const stageSetName = normalizeName(lead.stageset?.name || '');
-
-      const hasRoadTag = Array.isArray(lead.tags) && lead.tags.some((tag) =>
-        normalizeName(tag).includes('road to the glory')
-      );
-
-      if (!hasRoadTag) continue;
-
-      const isNewLeadPipeline =
-        stageSetName.includes('sdr') ||
-        stageSetName.includes('novos negocios');
-
-      const isQualifiedStage =
-        milestoneName.includes('reuniao') ||
-        milestoneName.includes('projecao') ||
-        milestoneName.includes('custos') ||
-        milestoneName.includes('oferta') ||
-        milestoneName.includes('proposta') ||
-        milestoneName.includes('gerenciamento') ||
-        milestoneName.includes('consultoria') ||
-        milestoneName.includes('aceita') ||
-        milestoneName.includes('won');
-
-      const meetingActivityInPeriod =
-        Array.isArray(lead.activities) &&
-        lead.activities.some((activity) => {
-          const activityName = normalizeName(
-            activity?.name ||
-            activity?.activityType?.name ||
-            ''
-          );
-
-          const activityDate = activity?.startTime
-            ? new Date(activity.startTime)
-            : null;
-
-          return (
-            activityName.includes('reuniao') &&
-            activityDate &&
-            activityDate >= start &&
-            activityDate <= end
-          );
-        });
-
-        
-      const commercialProcess = Array.isArray(lead.processes)
-        ? lead.processes.find((process) =>
-            normalizeName(process.name).includes('processo comercial') ||
-            normalizeName(process.name).includes('novos negocios') ||
-            normalizeName(process.name).includes('sdr')
-          )
-        : null;
-
-      const openDate = commercialProcess?.startedTime
-        ? new Date(commercialProcess.startedTime)
-        : lead.createdTime
-          ? new Date(lead.createdTime)
-          : null;
-
-      const meetingSameOpenDate =
-  Array.isArray(lead.activities) &&
-  lead.activities.some((activity) => {
-    const activityName = normalizeName(
-      activity?.name ||
-      activity?.activityType?.name ||
-      ''
-    );
-
-    const activityDate = activity?.startTime
-      ? new Date(activity.startTime)
-      : null;
-
-    return (
-      activityName.includes('reuniao') &&
-      openDate &&
-      activityDate &&
-      openDate.toISOString().slice(0, 10) ===
-        activityDate.toISOString().slice(0, 10)
-    );
-  });
-      const modified = lead.modifiedTime ? new Date(lead.modifiedTime) : null;
-      const closed = lead.closedTime ? new Date(lead.closedTime) : null;
-
-      const openInPeriod = openDate && openDate >= start && openDate <= end;
-      const modifiedInPeriod = modified && modified >= start && modified <= end;
-      const closedInPeriod = closed && closed >= start && closed <= end;
-
-      const sameOpenModifiedDay =
-        openDate &&
-        modified &&
-        openDate.toISOString().slice(0, 10) === modified.toISOString().slice(0, 10);
-
-      const sameOpenClosedDay =
-        openDate &&
-        closed &&
-        openDate.toISOString().slice(0, 10) === closed.toISOString().slice(0, 10);
-
-      if (isNewLeadPipeline) {
-        result[team].miles += 10;
-      }
-
-      if (isQualifiedStage || meetingActivityInPeriod) {
-        result[team].miles += 50;
-      }
-
-      if (
-        hasRoadTag &&
-        openInPeriod &&
-        meetingSameOpenDate
-      ) {
-        result[team].miles += 100;
-      }
-
-      if (openInPeriod && closedInPeriod && sameOpenClosedDay && lead.status === 10) {
-        result[team].miles += 200;
-      }
-
-      if (lead.status === 10 && closedInPeriod) {
-        result[team].miles += Math.floor(Number(lead.value?.amount || 0) / 100);
-      }
-    }
-
-    const ranking = Object.values(result)
-      .sort((a, b) => b.miles - a.miles)
-      .map((item, index) => ({
-        ...item,
-        position: index + 1,
-        percent: Math.min((item.miles / limitMiles) * 100, 100),
-        milesFormatted: item.miles.toLocaleString('pt-BR')
-      }));
-
-    res.json({
-      sucesso: true,
       limit: limitMiles,
-      totalMiles: ranking.reduce((sum, item) => sum + item.miles, 0),
-      totalMilesFormatted: ranking.reduce((sum, item) => sum + item.miles, 0).toLocaleString('pt-BR'),
+      totalMiles,
+      totalMilesFormatted:
+        totalMiles.toLocaleString('pt-BR'),
+
       podium: {
         first: ranking[0],
         second: ranking[1],
         third: ranking[2]
       },
-      ranking
-    });
 
+      ranking,
+
+      summary: {
+        campaignLeads: leads.length,
+        scoredEvents: details.length,
+        ignoredEvents: ignored.length
+      },
+
+      details,
+      ignored
+    });
   } catch (error) {
+    console.error(
+      'ERRO ROAD TO GLORY:',
+      error
+    );
+
     res.status(500).json({
       sucesso: false,
+      routeVersion:
+        'road-to-glory-unified-v1',
       erro: error.message
     });
   }
-});
+}
+
+/*
+ * As duas URLs utilizam exatamente
+ * a mesma função e retornam os mesmos pontos.
+ */
+app.get(
+  '/api/campaigns/road-to-glory/progress',
+  getRoadToGloryProgress
+);
+
+app.get(
+  '/api/campaigns/road-to-glory/progress-v2',
+  getRoadToGloryProgress
+);
 
 
 app.get('/api/audit/road-to-glory-summary', async (req, res) => {
