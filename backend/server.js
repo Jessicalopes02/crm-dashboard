@@ -9410,18 +9410,21 @@ app.get(
   '/api/sync/nutshell/road-to-glory-activities',
   async (req, res) => {
     try {
+      const campaignTag =
+        'Road to the Glory - Junho';
+
       const limit = Math.min(
         Math.max(Number(req.query.limit) || 100, 1),
         100
       );
 
-      const pages = Math.min(
-        Math.max(Number(req.query.pages) || 20, 1),
-        100
+      const maxPagesPerLead = Math.min(
+        Math.max(
+          Number(req.query.pagesPerLead) || 5,
+          1
+        ),
+        20
       );
-
-      const campaignTag =
-        'Road to the Glory - Junho';
 
       const campaignLeads = await Lead.find({
         tags: {
@@ -9433,330 +9436,323 @@ app.get(
         )
         .lean();
 
-      const leadIds = new Set(
-        campaignLeads.map((lead) =>
-          Number(lead.nutshell_id)
-        )
-      );
-
-      /*
-       * Começa com as atividades já existentes.
-       * Assim uma sincronização não apaga
-       * atividades salvas anteriormente.
-       */
-      const activitiesByLead = {};
-
-      campaignLeads.forEach((lead) => {
-        const leadId =
-          Number(lead.nutshell_id);
-
-        activitiesByLead[leadId] =
-          Array.isArray(lead.activities)
-            ? [...lead.activities]
-            : [];
-      });
-
-      let checkedActivities = 0;
-      let detailedActivities = 0;
-      let matchedActivities = 0;
+      let checkedLeads = 0;
+      let leadsWithActivities = 0;
+      let totalActivities = 0;
+      let meetingActivities = 0;
       let updatedLeads = 0;
       let errors = 0;
-      let pagesProcessed = 0;
 
-      const matchedDetails = [];
-      const unlinkedSamples = [];
+      const details = [];
       const errorDetails = [];
 
-      for (
-        let page = 1;
-        page <= pages;
-        page++
-      ) {
-        console.log(
-          `[ROAD ACTIVITIES] Buscando página ${page}...`
-        );
+      const normalizeText = (value) =>
+        String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .replace(/\s+/g, ' ')
+          .trim()
+          .toLowerCase();
 
-        const response = await axios.post(
-          'https://app.nutshell.com/api/v1/json',
-          {
-            method: 'findActivities',
-            params: {
-              query: {},
-              limit,
-              page
-            },
-            id: 1
-          },
-          {
-            auth: {
-              username:
-                NUTSHELL_EMAIL,
-              password:
-                NUTSHELL_API_KEY
+      const isMeetingActivity = (activity) => {
+        const text = normalizeText([
+          activity?.name,
+          activity?.activityType?.name,
+          activity?.description,
+          activity?.logNote?.note
+        ]
+          .filter(Boolean)
+          .join(' '));
+
+        return (
+          text.includes('reuniao') ||
+          text.includes('meeting')
+        );
+      };
+
+      const getActivityUser = (activity) => {
+        return (
+          activity?.user?.name ||
+          activity?.logNote?.user?.name ||
+          activity?.assignee?.name ||
+          activity?.owner?.name ||
+          activity?.createdBy?.name ||
+          null
+        );
+      };
+
+      const getActivityDate = (activity) => {
+        return (
+          activity?.startTime ||
+          activity?.createdTime ||
+          activity?.modifiedTime ||
+          activity?.endTime ||
+          null
+        );
+      };
+
+      for (const campaignLead of campaignLeads) {
+        checkedLeads++;
+
+        const nutshellId =
+          Number(campaignLead.nutshell_id);
+
+        if (!nutshellId) {
+          errors++;
+
+          errorDetails.push({
+            leadName:
+              campaignLead.name,
+            error:
+              'Lead sem nutshell_id'
+          });
+
+          continue;
+        }
+
+        try {
+          const activitiesById = new Map();
+
+          /*
+           * Preserva atividades que já estejam
+           * salvas no MongoDB.
+           */
+          const existingActivities =
+            Array.isArray(
+              campaignLead.activities
+            )
+              ? campaignLead.activities
+              : [];
+
+          existingActivities.forEach(
+            (activity) => {
+              if (activity?.id) {
+                activitiesById.set(
+                  String(activity.id),
+                  activity
+                );
+              }
             }
-          }
-        );
+          );
 
-        if (response.data?.error) {
-          throw response.data;
-        }
+          let pagesProcessed = 0;
+          let activitiesFoundForLead = 0;
 
-        const activities =
-          Array.isArray(
-            response.data?.result
-          )
-            ? response.data.result
-            : [];
-
-        if (activities.length === 0) {
-          break;
-        }
-
-        pagesProcessed++;
-
-        for (const activity of activities) {
-          checkedActivities++;
-
-          try {
-            const detailResponse =
+          for (
+            let page = 1;
+            page <= maxPagesPerLead;
+            page++
+          ) {
+            const response =
               await axios.post(
                 'https://app.nutshell.com/api/v1/json',
                 {
-                  method: 'getActivity',
+                  method: 'findActivities',
+
                   params: {
-                    activityId:
-                      activity.id
+                    /*
+                     * Usa o ID interno da lead,
+                     * por exemplo 103338.
+                     */
+                    query: {
+                      leadId: nutshellId
+                    },
+
+                    limit,
+                    page,
+
+                    /*
+                     * Solicita os objetos completos.
+                     * Assim não precisamos chamar
+                     * getActivity separadamente.
+                     */
+                    stubResponses: false
                   },
+
                   id: 1
                 },
                 {
                   auth: {
                     username:
                       NUTSHELL_EMAIL,
+
                     password:
                       NUTSHELL_API_KEY
                   }
                 }
               );
 
-            const activityDetail =
-              detailResponse.data?.result;
-
-            if (!activityDetail) {
-              continue;
+            if (response.data?.error) {
+              throw response.data;
             }
 
-            detailedActivities++;
-
-            /*
-             * Procura o vínculo da atividade
-             * com a lead em vários campos.
-             */
-            const possibleLeadIds = [
-              activityDetail?.lead?.id,
-              activityDetail?.relatedLead?.id,
-              activityDetail?.entity?.id,
-              activityDetail?.leadId,
-              activityDetail?.logNote?.lead?.id,
-              activityDetail?.rawData?.lead?.id,
-              activityDetail?.relatedEntity?.id,
-              activityDetail?.record?.id
-            ]
-              .map((value) =>
-                Number(value)
+            const activities =
+              Array.isArray(
+                response.data?.result
               )
-              .filter(
-                (value) =>
-                  Number.isFinite(value) &&
-                  value > 0
-              );
+                ? response.data.result
+                : [];
 
-            const leadId =
-              possibleLeadIds.find((id) =>
-                leadIds.has(id)
-              );
+            if (activities.length === 0) {
+              break;
+            }
 
-            if (!leadId) {
-              if (
-                unlinkedSamples.length < 20
-              ) {
-                unlinkedSamples.push({
-                  activityId:
-                    activityDetail.id,
-                  name:
-                    activityDetail.name ||
-                    activityDetail
-                      .activityType?.name ||
-                    null,
-                  possibleLeadIds,
-                  lead:
-                    activityDetail.lead ||
-                    null,
-                  relatedLead:
-                    activityDetail
-                      .relatedLead ||
-                    null,
-                  entity:
-                    activityDetail.entity ||
-                    null,
-                  logNote:
-                    activityDetail.logNote ||
-                    null
-                });
+            pagesProcessed++;
+            activitiesFoundForLead +=
+              activities.length;
+
+            activities.forEach(
+              (activity) => {
+                const activityKey =
+                  String(
+                    activity.id ||
+                    [
+                      activity.name,
+                      getActivityDate(activity)
+                    ].join('|')
+                  );
+
+                activitiesById.set(
+                  activityKey,
+                  activity
+                );
               }
+            );
 
-              continue;
-            }
-
-            const currentActivities =
-              activitiesByLead[leadId] || [];
-
-            const activityId =
-              Number(activityDetail.id);
-
-            const existingIndex =
-              currentActivities.findIndex(
-                (savedActivity) =>
-                  Number(savedActivity?.id) ===
-                  activityId
-              );
-
-            if (existingIndex >= 0) {
-              currentActivities[
-                existingIndex
-              ] = activityDetail;
-            } else {
-              currentActivities.push(
-                activityDetail
-              );
-            }
-
-            activitiesByLead[leadId] =
-              currentActivities;
-
-            matchedActivities++;
-
-            if (
-              matchedDetails.length < 100
-            ) {
-              matchedDetails.push({
-                activityId:
-                  activityDetail.id,
-
-                leadId,
-
-                activityName:
-                  activityDetail.name ||
-                  activityDetail
-                    .activityType?.name ||
-                  null,
-
-                startTime:
-                  activityDetail.startTime ||
-                  null,
-
-                createdTime:
-                  activityDetail.createdTime ||
-                  null,
-
-                modifiedTime:
-                  activityDetail.modifiedTime ||
-                  null,
-
-                user:
-                  activityDetail
-                    ?.logNote?.user?.name ||
-                  activityDetail
-                    ?.user?.name ||
-                  activityDetail
-                    ?.assignee?.name ||
-                  activityDetail
-                    ?.owner?.name ||
-                  null
-              });
+            if (activities.length < limit) {
+              break;
             }
 
             await new Promise(
               (resolve) =>
-                setTimeout(resolve, 80)
+                setTimeout(resolve, 100)
             );
-          } catch (activityError) {
-            errors++;
-
-            if (
-              errorDetails.length < 20
-            ) {
-              errorDetails.push({
-                activityId:
-                  activity.id,
-                error:
-                  activityError
-                    .response?.data ||
-                  activityError.message
-              });
-            }
           }
-        }
 
-        if (activities.length < limit) {
-          break;
-        }
+          const savedActivities =
+            Array.from(
+              activitiesById.values()
+            );
 
-        await new Promise(
-          (resolve) =>
-            setTimeout(resolve, 150)
-        );
-      }
+          const meetings =
+            savedActivities.filter(
+              isMeetingActivity
+            );
 
-      /*
-       * Atualiza todas as leads da campanha,
-       * preservando as atividades antigas.
-       */
-      for (const lead of campaignLeads) {
-        const leadId =
-          Number(lead.nutshell_id);
+          await Lead.updateOne(
+            {
+              nutshell_id: nutshellId
+            },
+            {
+              $set: {
+                activities:
+                  savedActivities,
 
-        const savedActivities =
-          activitiesByLead[leadId] || [];
-
-        await Lead.updateOne(
-          {
-            nutshell_id: leadId
-          },
-          {
-            $set: {
-              activities:
-                savedActivities,
-
-              activities_synced_at:
-                new Date()
+                activities_synced_at:
+                  new Date()
+              }
             }
-          }
-        );
+          );
 
-        updatedLeads++;
+          updatedLeads++;
+          totalActivities +=
+            savedActivities.length;
+
+          meetingActivities +=
+            meetings.length;
+
+          if (
+            savedActivities.length > 0
+          ) {
+            leadsWithActivities++;
+          }
+
+          details.push({
+            nutshell_id: nutshellId,
+            leadName:
+              campaignLead.name,
+
+            pagesProcessed,
+
+            activitiesFound:
+              activitiesFoundForLead,
+
+            activitiesSaved:
+              savedActivities.length,
+
+            meetingsFound:
+              meetings.length,
+
+            meetings:
+              meetings.map(
+                (activity) => ({
+                  activityId:
+                    activity.id,
+
+                  name:
+                    activity.name ||
+                    activity
+                      .activityType?.name ||
+                    null,
+
+                  date:
+                    getActivityDate(
+                      activity
+                    ),
+
+                  user:
+                    getActivityUser(
+                      activity
+                    ),
+
+                  status:
+                    activity.status
+                })
+              )
+          });
+
+          await new Promise(
+            (resolve) =>
+              setTimeout(resolve, 120)
+          );
+        } catch (leadError) {
+          errors++;
+
+          errorDetails.push({
+            nutshell_id:
+              nutshellId,
+
+            leadName:
+              campaignLead.name,
+
+            error:
+              leadError.response?.data ||
+              leadError.error ||
+              leadError.message ||
+              leadError
+          });
+        }
       }
 
       res.json({
         sucesso: true,
 
         routeVersion:
-          'road-activities-sync-v3',
+          'road-activities-by-lead-v1',
 
         campaignTag,
 
         campaignLeads:
           campaignLeads.length,
 
-        pagesProcessed,
-        checkedActivities,
-        detailedActivities,
-        matchedActivities,
+        checkedLeads,
+        leadsWithActivities,
+        totalActivities,
+        meetingActivities,
         updatedLeads,
         errors,
 
-        matchedDetails,
-        unlinkedSamples,
+        details,
         errorDetails
       });
     } catch (error) {
@@ -9773,7 +9769,7 @@ app.get(
         sucesso: false,
 
         routeVersion:
-          'road-activities-sync-v3',
+          'road-activities-by-lead-v1',
 
         erro:
           apiError?.error ||
