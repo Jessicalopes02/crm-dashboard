@@ -5806,10 +5806,10 @@ app.get(
 
       const maxPages = Math.min(
         Math.max(
-          Number(req.query.maxPages) || 20,
+          Number(req.query.maxPages) || 5,
           1
         ),
-        100
+        50
       );
 
       let page = 1;
@@ -5822,69 +5822,242 @@ app.get(
 
       while (page <= maxPages) {
         console.log(
-          `[ROAD TO GLORY] Página ${page}`
+          `[ROAD TO GLORY] Buscando página ${page}`
         );
 
-        const nutshellResponse =
-          await axios.post(
-            'https://app.nutshell.com/api/v1/json',
-              {
-                method: 'findLeads',
-                params: {
-                  query: campaignTag,
-                  limit,
-                  page
+        app.get(
+  '/api/sync/nutshell/road-to-glory',
+  async (req, res) => {
+    try {
+      const campaignTag =
+        'Road to the Glory - Junho';
+
+      const limit = Math.min(
+        Math.max(Number(req.query.limit) || 50, 1),
+        100
+      );
+
+      const maxPages = Math.min(
+        Math.max(Number(req.query.maxPages) || 5, 1),
+        20
+      );
+
+      let page = 1;
+      let checked = 0;
+      let matched = 0;
+      let synced = 0;
+      let errors = 0;
+
+      const details = [];
+
+      while (page <= maxPages) {
+        console.log(
+          `[ROAD TO GLORY TAG] Buscando página ${page}`
+        );
+
+        const response = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'findLeads',
+            params: {
+              query: {
+                tag: [campaignTag]
               },
-              id: 1
+              orderBy: 'modifiedTime',
+              orderDirection: 'DESC',
+              limit,
+              page,
+              stubResponses: false
             },
-            {
-              auth: {
-                username:
-                  NUTSHELL_EMAIL,
-                password:
-                  NUTSHELL_API_KEY
-              }
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
             }
-          );
+          }
+        );
+
+        if (response.data?.error) {
+          throw response.data;
+        }
 
         const leads =
-          nutshellResponse.data.result || [];
+          Array.isArray(response.data?.result)
+            ? response.data.result
+            : [];
 
         if (leads.length === 0) {
           break;
         }
 
-        for (const lead of leads) {
+        for (const fullLead of leads) {
           checked++;
 
           try {
-            const detailResponse =
-              await axios.post(
-                'https://app.nutshell.com/api/v1/json',
-                {
-                  method: 'getLead',
-                  params: {
-                    leadId: lead.id
-                  },
-                  id: 1
-                },
-                {
-                  auth: {
-                    username:
-                      NUTSHELL_EMAIL,
-                    password:
-                      NUTSHELL_API_KEY
-                  }
-                }
-              );
+            const tags =
+              Array.isArray(fullLead.tags)
+                ? fullLead.tags
+                : [];
 
-            const fullLead =
-              detailResponse.data.result;
+            const hasExactTag = tags.some(
+              (tag) =>
+                normalizeName(tag) ===
+                normalizeName(campaignTag)
+            );
 
-            if (!fullLead) {
+            if (!hasExactTag) {
+              details.push({
+                nutshell_id: fullLead.id,
+                name: fullLead.name,
+                synced: false,
+                reason: 'Tag exata não encontrada',
+                tags
+              });
+
               continue;
             }
 
+            matched++;
+
+            /*
+             * Evita apagar atividades que
+             * já estejam armazenadas.
+             */
+            if (
+              !Array.isArray(fullLead.activities) ||
+              fullLead.activities.length === 0
+            ) {
+              delete fullLead.activities;
+            }
+
+            await saveFullLead(fullLead);
+
+            synced++;
+
+            details.push({
+              nutshell_id: fullLead.id,
+              name: fullLead.name,
+              assignee:
+                fullLead.assignee?.name || null,
+              createdTime:
+                fullLead.createdTime || null,
+              modifiedTime:
+                fullLead.modifiedTime || null,
+              tags,
+              synced: true
+            });
+          } catch (leadError) {
+            errors++;
+
+            details.push({
+              nutshell_id: fullLead.id,
+              name: fullLead.name,
+              synced: false,
+              error:
+                leadError.response?.data ||
+                leadError.message
+            });
+          }
+        }
+
+        if (leads.length < limit) {
+          break;
+        }
+
+        page++;
+
+        await sleep(150);
+      }
+
+      const mongoCampaignLeads =
+        await Lead.find({
+          tags: {
+            $elemMatch: {
+              $regex:
+                '^Road to the Glory - Junho$',
+              $options: 'i'
+            }
+          }
+        })
+          .select({
+            nutshell_id: 1,
+            name: 1,
+            assignee: 1,
+            tags: 1,
+            createdTime: 1,
+            modifiedTime: 1
+          })
+          .sort({
+            modifiedTime: -1
+          })
+          .lean();
+
+      res.json({
+        sucesso: true,
+        routeVersion:
+          'road-to-glory-tag-filter-v1',
+
+        campaignTag,
+
+        search: {
+          method: 'findLeads',
+          query: {
+            tag: [campaignTag]
+          },
+          limit,
+          maxPages,
+          pagesProcessed:
+            Math.min(page, maxPages)
+        },
+
+        checked,
+        matched,
+        synced,
+        errors,
+
+        mongoAfterSync: {
+          total: mongoCampaignLeads.length,
+          leads: mongoCampaignLeads
+        },
+
+        details
+      });
+    } catch (error) {
+      const apiError =
+        error.response?.data ||
+        error;
+
+      console.error(
+        'ERRO SYNC ROAD TO GLORY TAG:',
+        apiError
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        routeVersion:
+          'road-to-glory-tag-filter-v1',
+        erro:
+          apiError?.error ||
+          apiError?.message ||
+          apiError
+      });
+    }
+  }
+);
+
+        const leads =
+          response.data.result || [];
+
+        if (leads.length === 0) {
+          break;
+        }
+
+        for (const fullLead of leads) {
+          checked++;
+
+          try {
             const tags =
               Array.isArray(fullLead.tags)
                 ? fullLead.tags
@@ -5894,9 +6067,7 @@ app.get(
               tags.some(
                 (tag) =>
                   normalizeName(tag) ===
-                  normalizeName(
-                    campaignTag
-                  )
+                  normalizeName(campaignTag)
               );
 
             if (!hasCampaignTag) {
@@ -5906,8 +6077,8 @@ app.get(
             matched++;
 
             /*
-             * Evita substituir atividades
-             * já salvas por array vazio.
+             * Evita apagar atividades que já
+             * estejam salvas no MongoDB.
              */
             if (
               !Array.isArray(
@@ -5925,28 +6096,38 @@ app.get(
             details.push({
               nutshell_id:
                 fullLead.id,
+
               name:
                 fullLead.name,
+
               assignee:
                 fullLead.assignee?.name ||
                 null,
+
               createdTime:
                 fullLead.createdTime ||
                 null,
+
+              modifiedTime:
+                fullLead.modifiedTime ||
+                null,
+
               tags,
+
               synced: true
             });
-
-            await sleep(120);
           } catch (leadError) {
             errors++;
 
             details.push({
               nutshell_id:
-                lead.id,
+                fullLead.id,
+
               name:
-                lead.name,
+                fullLead.name,
+
               synced: false,
+
               error:
                 leadError.response?.data ||
                 leadError.message
@@ -5959,6 +6140,8 @@ app.get(
         }
 
         page++;
+
+        await sleep(150);
       }
 
       const mongoCampaignLeads =
@@ -5987,13 +6170,20 @@ app.get(
       res.json({
         sucesso: true,
 
+        routeVersion:
+          'road-to-glory-find-desc-v1',
+
         campaignTag,
 
         search: {
-          query: campaignTag,
+          method: 'findLeads',
+          orderBy: 'id',
+          orderDirection: 'DESC',
+          stubResponses: false,
           limit,
           maxPages,
-          pagesProcessed: page
+          pagesProcessed:
+            Math.min(page, maxPages)
         },
 
         checked,
@@ -6004,6 +6194,7 @@ app.get(
         mongoAfterSync: {
           total:
             mongoCampaignLeads.length,
+
           leads:
             mongoCampaignLeads
         },
@@ -6019,6 +6210,10 @@ app.get(
 
       res.status(500).json({
         sucesso: false,
+
+        routeVersion:
+          'road-to-glory-find-desc-v1',
+
         erro:
           error.response?.data ||
           error.message
