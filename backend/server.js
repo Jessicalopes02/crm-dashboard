@@ -9809,7 +9809,14 @@ app.get('/api/audit/road-to-glory-activities', async (req, res) => {
 
 app.get('/api/test/nutshell/activities', async (req, res) => {
   try {
-    const leadId = Number(req.query.leadId);
+    const requestedLeadId = Number(req.query.leadId);
+
+    if (!requestedLeadId) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Informe o leadId na URL.'
+      });
+    }
 
     const response = await axios.post(
       'https://app.nutshell.com/api/v1/json',
@@ -9817,7 +9824,7 @@ app.get('/api/test/nutshell/activities', async (req, res) => {
         method: 'findActivities',
         params: {
           query: {},
-          limit: 20
+          limit: 100
         },
         id: 1
       },
@@ -9829,16 +9836,125 @@ app.get('/api/test/nutshell/activities', async (req, res) => {
       }
     );
 
+    const activities = Array.isArray(
+      response.data?.result
+    )
+      ? response.data.result
+      : [];
+
+    const details = [];
+
+    for (const activity of activities) {
+      try {
+        const detailResponse = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getActivity',
+            params: {
+              activityId: activity.id
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const detail =
+          detailResponse.data?.result;
+
+        if (!detail) continue;
+
+        const possibleLeadIds = [
+          detail?.lead?.id,
+          detail?.relatedLead?.id,
+          detail?.entity?.id,
+          detail?.leadId,
+          detail?.logNote?.lead?.id,
+          detail?.relatedEntity?.id,
+          detail?.record?.id
+        ]
+          .map((value) => Number(value))
+          .filter(
+            (value) =>
+              Number.isFinite(value) &&
+              value > 0
+          );
+
+        const belongsToRequestedLead =
+          possibleLeadIds.includes(
+            requestedLeadId
+          );
+
+        details.push({
+          activityId: detail.id,
+          name:
+            detail.name ||
+            detail.activityType?.name ||
+            null,
+
+          belongsToRequestedLead,
+
+          possibleLeadIds,
+
+          lead: detail.lead || null,
+          relatedLead:
+            detail.relatedLead || null,
+          entity: detail.entity || null,
+          relatedEntity:
+            detail.relatedEntity || null,
+          record: detail.record || null,
+
+          startTime:
+            detail.startTime || null,
+          createdTime:
+            detail.createdTime || null,
+          modifiedTime:
+            detail.modifiedTime || null,
+
+          user:
+            detail.logNote?.user?.name ||
+            detail.user?.name ||
+            detail.assignee?.name ||
+            detail.owner?.name ||
+            null
+        });
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 80)
+        );
+      } catch (activityError) {
+        details.push({
+          activityId: activity.id,
+          erro:
+            activityError.response?.data ||
+            activityError.message
+        });
+      }
+    }
+
+    const matched = details.filter(
+      (item) =>
+        item.belongsToRequestedLead
+    );
+
     res.json({
       sucesso: true,
-      leadId,
-      result: response.data.result
+      requestedLeadId,
+      checked: activities.length,
+      matchedCount: matched.length,
+      matched,
+      samples: details.slice(0, 20)
     });
-
   } catch (error) {
     res.status(500).json({
       sucesso: false,
-      erro: error.response?.data || error.message
+      erro:
+        error.response?.data ||
+        error.message
     });
   }
 });
