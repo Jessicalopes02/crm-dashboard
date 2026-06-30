@@ -3912,10 +3912,12 @@ async function saveFullLead(fullLead) {
       products: fullLead.products || [],
       sources: fullLead.sources || [],
       tags: fullLead.tags || [],
+      
       activities:
         fullLead.activities !== undefined
           ? fullLead.activities
           : existingLead?.activities || [],
+      
       customFields: fullLead.customFields || {},
       processes: fullLead.processes || [],
       createdTime: fullLead.createdTime,
@@ -5787,117 +5789,283 @@ app.get('/api/audit/nutshell-compare', async (req, res) => {
 });
 
 
-app.get('/api/sync/nutshell/road-to-glory', async (req, res) => {
-  try {
-    const limit = Number(req.query.limit) || 100;
-    const pagesBack = Number(req.query.pagesBack) || 25;
-
-    const lastPage = await getNutshellLastPage(limit);
-
-    let page = lastPage;
-    let checked = 0;
-    let matched = 0;
-    let synced = 0;
-    let errors = 0;
-
-    while (page > lastPage - pagesBack && page > 0) {
-      console.log(`Buscando página recente ${page}...`);
-
-      const nutshellResponse = await axios.post(
-        'https://app.nutshell.com/api/v1/json',
-        {
-          method: 'findLeads',
-          params: {
-            query: {},
-            limit,
-            page
-          },
-          id: 1
-        },
-        {
-          auth: {
-            username: NUTSHELL_EMAIL,
-            password: NUTSHELL_API_KEY
-          }
-        }
+app.get(
+  '/api/sync/nutshell/road-to-glory',
+  async (req, res) => {
+    try {
+      const limit = Math.min(
+        Math.max(Number(req.query.limit) || 100, 1),
+        500
       );
 
-      const leads = nutshellResponse.data.result || [];
+      const maxPages = Math.min(
+        Math.max(Number(req.query.maxPages) || 10, 1),
+        50
+      );
 
-      if (leads.length === 0) break;
+      const campaignTag =
+        'Road to the Glory - Junho';
 
-      for (const lead of leads) {
-        try {
-          checked++;
+      let page = 1;
+      let checked = 0;
+      let matched = 0;
+      let synced = 0;
+      let errors = 0;
 
-          const detailResponse = await axios.post(
+      const details = [];
+
+      while (page <= maxPages) {
+        console.log(
+          `[ROAD TO GLORY] Buscando página ${page}`
+        );
+
+        const nutshellResponse =
+          await axios.post(
             'https://app.nutshell.com/api/v1/json',
             {
-              method: 'getLead',
-              params: { leadId: lead.id },
+              method: 'findLeads',
+              params: {
+                query: {},
+                limit,
+                page,
+                sort: 'modifiedTime',
+                direction: 'DESC'
+              },
               id: 1
             },
             {
               auth: {
-                username: NUTSHELL_EMAIL,
-                password: NUTSHELL_API_KEY
+                username:
+                  NUTSHELL_EMAIL,
+                password:
+                  NUTSHELL_API_KEY
               }
             }
           );
 
-          const fullLead = detailResponse.data.result;
+        const leads =
+          nutshellResponse.data.result || [];
 
-          if (!fullLead) continue;
-
-          const hasRoadTag = (fullLead.tags || []).some((tag) =>
-            String(tag || '')
-              .toLowerCase()
-              .includes('road to the glory')
-          );
-
-          if (!hasRoadTag) continue;
-
-          matched++;
-
-          fullLead.activities = fullLead.activities || [];
-
-          await saveFullLead(fullLead);
-
-          const pagesBack = Number(req.query.pagesBack) || 25;
-
-          synced++;
-        } catch (leadError) {
-          errors++;
-          console.error(
-            `Erro ao sincronizar lead ${lead.id}:`,
-            leadError.response?.data || leadError.message
-          );
+        if (leads.length === 0) {
+          break;
         }
+
+        for (const lead of leads) {
+          checked++;
+
+          try {
+            const detailResponse =
+              await axios.post(
+                'https://app.nutshell.com/api/v1/json',
+                {
+                  method: 'getLead',
+                  params: {
+                    leadId: lead.id
+                  },
+                  id: 1
+                },
+                {
+                  auth: {
+                    username:
+                      NUTSHELL_EMAIL,
+                    password:
+                      NUTSHELL_API_KEY
+                  }
+                }
+              );
+
+            const fullLead =
+              detailResponse.data.result;
+
+            if (!fullLead) {
+              continue;
+            }
+
+            const tags = Array.isArray(
+              fullLead.tags
+            )
+              ? fullLead.tags
+              : [];
+
+            const hasCampaignTag =
+              tags.some((tag) => {
+                return (
+                  normalizeName(tag) ===
+                  normalizeName(
+                    campaignTag
+                  )
+                );
+              });
+
+            if (!hasCampaignTag) {
+              continue;
+            }
+
+            matched++;
+
+            /*
+             * Não substitui atividades já
+             * sincronizadas por array vazio.
+             */
+            const existingLead =
+              await Lead.findOne({
+                nutshell_id:
+                  fullLead.id
+              })
+                .select({
+                  activities: 1,
+                  activities_period: 1,
+                  activities_synced_at: 1
+                })
+                .lean();
+
+            if (
+              !Array.isArray(
+                fullLead.activities
+              ) ||
+              fullLead.activities.length === 0
+            ) {
+              delete fullLead.activities;
+            }
+
+            await saveFullLead(fullLead);
+
+            /*
+             * Mantém as atividades anteriores
+             * caso o getLead não as tenha enviado.
+             */
+            if (
+              existingLead &&
+              Array.isArray(
+                existingLead.activities
+              ) &&
+              existingLead.activities.length > 0
+            ) {
+              await Lead.updateOne(
+                {
+                  nutshell_id:
+                    fullLead.id
+                },
+                {
+                  $set: {
+                    activities:
+                      existingLead.activities,
+
+                    activities_period:
+                      existingLead.activities_period,
+
+                    activities_synced_at:
+                      existingLead.activities_synced_at
+                  }
+                }
+              );
+            }
+
+            synced++;
+
+            details.push({
+              nutshell_id:
+                fullLead.id,
+              name:
+                fullLead.name,
+              assignee:
+                fullLead.assignee
+                  ?.name || null,
+              tags,
+              synced: true
+            });
+
+            await sleep(120);
+          } catch (leadError) {
+            errors++;
+
+            details.push({
+              nutshell_id:
+                lead.id,
+              name:
+                lead.name,
+              synced: false,
+              error:
+                leadError.response
+                  ?.data ||
+                leadError.message
+            });
+          }
+        }
+
+        page++;
       }
 
-      page--;
+      const mongoCampaignLeads =
+        await Lead.find({
+          tags: {
+            $elemMatch: {
+              $regex:
+                '^Road to the Glory - Junho$',
+              $options: 'i'
+            }
+          }
+        })
+          .select({
+            nutshell_id: 1,
+            name: 1,
+            assignee: 1,
+            tags: 1,
+            createdTime: 1,
+            modifiedTime: 1
+          })
+          .sort({
+            modifiedTime: -1
+          })
+          .lean();
+
+      res.json({
+        sucesso: true,
+
+        campaignTag,
+
+        search: {
+          direction:
+            'page_1_forward',
+          sort:
+            'modifiedTime DESC',
+          limit,
+          maxPages,
+          pagesProcessed:
+            page - 1
+        },
+
+        checked,
+        matched,
+        synced,
+        errors,
+
+        mongoAfterSync: {
+          total:
+            mongoCampaignLeads.length,
+
+          leads:
+            mongoCampaignLeads
+        },
+
+        details
+      });
+    } catch (error) {
+      console.error(
+        'ERRO SYNC ROAD TO GLORY:',
+        error.response?.data ||
+          error.message
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro:
+          error.response?.data ||
+          error.message
+      });
     }
-
-    res.json({
-      sucesso: true,
-      direction: 'recent_to_old',
-      lastPage,
-      checked,
-      matched,
-      synced,
-      errors,
-      pagesProcessed: lastPage - page
-    });
-
-  } catch (error) {
-    console.error('ERRO SYNC ROAD TO GLORY:', error.response?.data || error.message);
-
-    res.status(500).json({
-      sucesso: false,
-      erro: error.response?.data || error.message
-    });
   }
-});
+);
 
 
 app.get('/api/sync/nutshell/road-to-glory-meetings', async (req, res) => {
