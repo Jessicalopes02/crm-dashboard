@@ -8401,7 +8401,22 @@ app.get('/api/campaigns/road-to-glory/progress-v2', async (req, res) => {
           );
         });
 
-        const meetingSameOpenDate =
+        
+      const commercialProcess = Array.isArray(lead.processes)
+        ? lead.processes.find((process) =>
+            normalizeName(process.name).includes('processo comercial') ||
+            normalizeName(process.name).includes('novos negocios') ||
+            normalizeName(process.name).includes('sdr')
+          )
+        : null;
+
+      const openDate = commercialProcess?.startedTime
+        ? new Date(commercialProcess.startedTime)
+        : lead.createdTime
+          ? new Date(lead.createdTime)
+          : null;
+
+      const meetingSameOpenDate =
   Array.isArray(lead.activities) &&
   lead.activities.some((activity) => {
     const activityName = normalizeName(
@@ -8422,20 +8437,6 @@ app.get('/api/campaigns/road-to-glory/progress-v2', async (req, res) => {
         activityDate.toISOString().slice(0, 10)
     );
   });
-      const commercialProcess = Array.isArray(lead.processes)
-        ? lead.processes.find((process) =>
-            normalizeName(process.name).includes('processo comercial') ||
-            normalizeName(process.name).includes('novos negocios') ||
-            normalizeName(process.name).includes('sdr')
-          )
-        : null;
-
-      const openDate = commercialProcess?.startedTime
-        ? new Date(commercialProcess.startedTime)
-        : lead.createdTime
-          ? new Date(lead.createdTime)
-          : null;
-
       const modified = lead.modifiedTime ? new Date(lead.modifiedTime) : null;
       const closed = lead.closedTime ? new Date(lead.closedTime) : null;
 
@@ -8462,12 +8463,12 @@ app.get('/api/campaigns/road-to-glory/progress-v2', async (req, res) => {
       }
 
       if (
-  hasMayRoadTag &&
-  openInPeriod &&
-  meetingSameOpenDate
-) {
-  result[team].miles += 100;
-}
+        hasRoadTag &&
+        openInPeriod &&
+        meetingSameOpenDate
+      ) {
+        result[team].miles += 100;
+      }
 
       if (openInPeriod && closedInPeriod && sameOpenClosedDay && lead.status === 10) {
         result[team].miles += 200;
