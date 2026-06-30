@@ -5796,14 +5796,6 @@ app.get(
       const campaignTag =
         'Road to the Glory - Junho';
 
-      const startDate =
-        req.query.startDate ||
-        '2026-06-26';
-
-      const endDate =
-        req.query.endDate ||
-        '2026-06-30';
-
       const limit = Math.min(
         Math.max(
           Number(req.query.limit) || 100,
@@ -5836,17 +5828,12 @@ app.get(
         const nutshellResponse =
           await axios.post(
             'https://app.nutshell.com/api/v1/json',
-            {
-              method: 'findLeads',
-              params: {
-                query: {
-                  createdTime: {
-                    from: startDate,
-                    to: endDate
-                  }
-                },
-                limit,
-                page
+              {
+                method: 'findLeads',
+                params: {
+                  query: campaignTag,
+                  limit,
+                  page
               },
               id: 1
             },
@@ -6003,8 +5990,7 @@ app.get(
         campaignTag,
 
         search: {
-          startDate,
-          endDate,
+          query: campaignTag,
           limit,
           maxPages,
           pagesProcessed: page
