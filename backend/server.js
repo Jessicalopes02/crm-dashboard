@@ -8172,31 +8172,26 @@ async function getRoadToGloryProgress(req, res) {
         .toLowerCase();
 
     const teams = {
-      redbull: [
-        'Alba Danielly Rezende Lima',
-        'Fabiane Carvalho Nascimento',
-        'Gisele Santos Gama'
-      ],
+  redbull: [
+    'alba danielly rezende lima',
+    'fabiane carvalho nascimento',
+    'gisele santos gama'
+  ],
 
-      mercedes: [
-        'Fábio Souza',
-        'Fabio Souza',
-        'Edson da Silva Bomfim Júnior',
-        'Edson da Silva Bomfim Junior',
-        'Guilherme Velloso',
-        'Leticia Barbosa',
-        'Letícia Barbosa'
-      ],
+  mercedes: [
+    'fabio souza',
+    'edson da silva bomfim junior',
+    'guilherme velloso',
+    'leticia barbosa'
+  ],
 
-      ferrari: [
-        'Giovanna Fernandes',
-        'Pedro Scarillo',
-        'Luma Farias Silva Santos',
-        'Luma Farias',
-        'Luiza Carvalho'
-      ]
-    };
-
+  ferrari: [
+    'giovanna fernandes',
+    'pedro scarillo',
+    'luma farias silva santos',
+    'luiza carvalho'
+  ]
+};
     const result = {
       redbull: {
         team: 'Red Bull',
@@ -8216,12 +8211,13 @@ async function getRoadToGloryProgress(req, res) {
 
     const teamByUser = {};
 
-    Object.entries(teams).forEach(([teamKey, users]) => {
-      users.forEach((user) => {
-        teamByUser[normalizeName(user)] = teamKey;
-      });
-    });
+    const teamByUser = {};
 
+Object.entries(teams).forEach(([teamKey, users]) => {
+  users.forEach((user) => {
+    teamByUser[normalizeName(user)] = teamKey;
+  });
+});
     const isInsidePeriod = (dateValue) => {
       if (!dateValue) return false;
 
