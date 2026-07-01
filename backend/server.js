@@ -7726,8 +7726,12 @@ app.get('/api/goals/achievement', async (req, res) => {
 
     const [year, month] = period.split('-').map(Number);
 
-    const defaultStartDate = new Date(year, month - 1, 1);
-    const defaultEndDate = new Date(year, month, 0, 23, 59, 59);
+const defaultStartDate = new Date(
+  Date.UTC(year, month - 1, 1, 3, 0, 0, 0)
+);
+const defaultEndDate = new Date(
+  Date.UTC(year, month, 1, 3, 0, 0, 0)
+);
 
     const goalFilter = { period };
 
@@ -7754,12 +7758,35 @@ app.get('/api/goals/achievement', async (req, res) => {
 
       const dateRule = campaign?.dateRule || 'closed_only';
 
-      const baseFilter = {
-  status: 10,
-  closedTime: {
-    $gte: startDate,
-    $lte: endDate
-  }
+  const baseFilter = {
+  $and: [
+    {
+      $or: [
+        {
+          status: 10
+        },
+        {
+          'rawData.status': 10
+        }
+      ]
+    },
+    {
+      $or: [
+        {
+          closedTime: {
+            $gte: startDate,
+            $lt: endDate
+          }
+        },
+        {
+          'rawData.closedTime': {
+            $gte: startDate,
+            $lt: endDate
+          }
+        }
+      ]
+    }
+  ]
 };
 
 if (goal.sector?.toLowerCase() === 'transportes') {
@@ -7775,12 +7802,25 @@ if (goal.sector?.toLowerCase() === 'transportes') {
     .replace(/\s+/g, ' ')
     .trim();
 
-  baseFilter['assignee.name'] = {
-  $regex: `^\\s*${cleanName
+  const escapedName = cleanName
     .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    .replace(/\s+/g, '\\s+')}\\s*$`,
-  $options: 'i'
-};
+    .replace(/\s+/g, '\\s+');
+
+  const nameRegex = {
+    $regex: `^\\s*${escapedName}\\s*$`,
+    $options: 'i'
+  };
+
+  baseFilter.$and.push({
+    $or: [
+      {
+        'assignee.name': nameRegex
+      },
+      {
+        'rawData.assignee.name': nameRegex
+      }
+    ]
+  });
 }
       if (goal.product) {
         baseFilter['products.name'] = {
@@ -7811,10 +7851,18 @@ if (goal.sector?.toLowerCase() === 'transportes') {
     $group: {
       _id: null,
       revenue: {
-        $sum: {
-          $ifNull: ['$value.amount', 0]
-        }
-      },
+  $sum: {
+    $ifNull: [
+      '$value.amount',
+      {
+        $ifNull: [
+          '$rawData.value.amount',
+          0
+        ]
+      }
+    ]
+  }
+},
       leads: { $sum: 1 },
       won: { $sum: 1 }
     }
