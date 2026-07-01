@@ -8546,7 +8546,7 @@ app.get('/api/audit/goals-achievement-detail', async (req, res) => {
 
 async function getRoadToGloryProgress(req, res) {
   try {
-    const start = new Date('2026-06-26T03:00:00.000Z');
+    const start = new Date('2026-06-30T03:00:00.000Z');
     const end = new Date('2026-07-01T02:59:59.999Z');
 
     const limitMiles = 6000;
@@ -9329,7 +9329,7 @@ app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
 
 app.get('/api/audit/road-to-glory-period', async (req, res) => {
   try {
-    const start = new Date('2026-06-26T03:00:00.000Z');
+    const start = new Date('2026-06-30T03:00:00.000Z');
     const end = new Date('2026-07-01T02:59:59.999Z');
 
     const leads = await Lead.find({
@@ -9363,7 +9363,7 @@ app.get('/api/audit/road-to-glory-period', async (req, res) => {
 });
 
 app.get('/api/audit/redbull-meetings', async (req, res) => {
-  const start = new Date('2026-06-26T03:00:00.000Z');
+  const start = new Date('2026-06-30T03:00:00.000Z');
   const end = new Date('2026-07-01T02:59:59.999Z');
 
   const normalizeName = (name) =>
@@ -9438,7 +9438,7 @@ app.get('/api/audit/redbull-meetings', async (req, res) => {
 
 app.get('/api/audit/road-to-glory-points', async (req, res) => {
   try {
-    const start = new Date('2026-06-26T03:00:00.000Z');
+    const start = new Date('2026-06-30T03:00:00.000Z');
     const end = new Date('2026-07-01T02:59:59.999Z');
 
     const normalizeName = (name) =>
