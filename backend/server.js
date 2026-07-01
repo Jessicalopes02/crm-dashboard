@@ -7879,6 +7879,7 @@ if (goal.sector?.toLowerCase() === 'transportes') {
         0
         );
 
+        
       // ========================================
       // FILTRO PARA LEADS
       // ========================================
@@ -8027,6 +8028,132 @@ if (goal.sector?.toLowerCase() === 'transportes') {
   } catch (error) {
     console.error('ERRO GOALS ACHIEVEMENT:', error.message);
 
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
+app.get('/api/debug/closer-sales', async (req, res) => {
+  try {
+    const searchName = String(req.query.name || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    if (!searchName) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Informe o nome. Exemplo: ?name=Alba'
+      });
+    }
+
+    const startDate = new Date(
+      Date.UTC(2026, 5, 1, 3, 0, 0, 0)
+    );
+
+    const endDate = new Date(
+      Date.UTC(2026, 6, 1, 3, 0, 0, 0)
+    );
+
+    const leads = await Lead.find({
+      $and: [
+        {
+          $or: [
+            {
+              'assignee.name': {
+                $regex: searchName,
+                $options: 'i'
+              }
+            },
+            {
+              'rawData.assignee.name': {
+                $regex: searchName,
+                $options: 'i'
+              }
+            }
+          ]
+        },
+        {
+          $or: [
+            {
+              closedTime: {
+                $gte: startDate,
+                $lt: endDate
+              }
+            },
+            {
+              'rawData.closedTime': {
+                $gte: startDate,
+                $lt: endDate
+              }
+            },
+            {
+              modifiedTime: {
+                $gte: startDate,
+                $lt: endDate
+              }
+            }
+          ]
+        }
+      ]
+    })
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        closedTime: 1,
+        modifiedTime: 1,
+        value: 1,
+        assignee: 1,
+        rawData: 1
+      })
+      .sort({
+        modifiedTime: -1
+      })
+      .lean();
+
+    const formatted = leads.map((lead) => ({
+      nutshell_id: lead.nutshell_id,
+      name: lead.name,
+
+      status: lead.status,
+      rawStatus: lead.rawData?.status,
+
+      assignee:
+        lead.assignee?.name || null,
+
+      rawAssignee:
+        lead.rawData?.assignee?.name || null,
+
+      value:
+        lead.value?.amount || null,
+
+      rawValue:
+        lead.rawData?.value?.amount || null,
+
+      closedTime:
+        lead.closedTime || null,
+
+      rawClosedTime:
+        lead.rawData?.closedTime || null,
+
+      modifiedTime:
+        lead.modifiedTime || null
+    }));
+
+    res.json({
+      sucesso: true,
+      routeVersion: 'debug-closer-sales-v1',
+      searchName,
+      period: {
+        startDate,
+        endDate
+      },
+      total: formatted.length,
+      leads: formatted
+    });
+  } catch (error) {
     res.status(500).json({
       sucesso: false,
       erro: error.message
