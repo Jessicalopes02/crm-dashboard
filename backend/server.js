@@ -141,7 +141,7 @@ app.get('/api/sync/refresh-may', async (req, res) => {
   try {
 
     const startDate = new Date('2026-06-01T00:00:00');
-    const endDate = new Date('2026-07-01T23:59:59');
+    const endDate = new Date('2026-06-30T23:59:59');
 
     const leads = await Lead.find({
       closedTime: {
@@ -2805,7 +2805,7 @@ app.get('/api/dashboard/sdr', async (req, res) => {
 app.get('/api/audit/won-assignees', async (req, res) => {
   try {
     const start = new Date('2026-06-01T00:00:00');
-    const end = new Date('2026-07-01T23:59:59');
+    const end = new Date('2026-06-30T23:59:59');
 
     const result = await Lead.aggregate([
       {
@@ -2944,7 +2944,7 @@ app.get('/api/audit/test-estimates', async (req, res) => {
     const { startDate, endDate } = req.query;
 
     const start = new Date(startDate || '2026-06-01');
-    const end = new Date(endDate || '2026-07-01');
+    const end = new Date(endDate || '2026-06-30');
 
     const leads = await Lead.find({
       closedTime: {
@@ -5222,7 +5222,7 @@ app.get('/api/audit/leads-by-date-status', async (req, res) => {
 app.get('/api/audit/products-won', async (req, res) => {
   try {
     const start = new Date('2026-06-01T00:00:00');
-    const end = new Date('2026-07-01T23:59:59');
+    const end = new Date('2026-06-30T23:59:59');
 
     const result = await Lead.aggregate([
       {
@@ -5672,7 +5672,7 @@ app.get('/api/audit/revenue-check', async (req, res) => {
 app.get('/api/audit/nutshell-compare', async (req, res) => {
   try {
     const start = new Date('2026-06-01T00:00:00');
-    const end = new Date('2026-07-01T23:59:59');
+    const end = new Date('2026-06-30T23:59:59');
 
     const filter = {
       status: { $in: [0, 10] },
@@ -8157,7 +8157,7 @@ app.get('/api/audit/goals-achievement-detail', async (req, res) => {
 
 async function getRoadToGloryProgress(req, res) {
   try {
-    const start = new Date('2026-06-30T03:00:00.000Z');
+    const start = new Date('2026-06-26T03:00:00.000Z');
     const end = new Date('2026-07-01T02:59:59.999Z');
 
     const limitMiles = 6000;
@@ -8940,7 +8940,7 @@ app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
 
 app.get('/api/audit/road-to-glory-period', async (req, res) => {
   try {
-    const start = new Date('2026-06-30T03:00:00.000Z');
+    const start = new Date('2026-06-26T03:00:00.000Z');
     const end = new Date('2026-07-01T02:59:59.999Z');
 
     const leads = await Lead.find({
@@ -8974,7 +8974,7 @@ app.get('/api/audit/road-to-glory-period', async (req, res) => {
 });
 
 app.get('/api/audit/redbull-meetings', async (req, res) => {
-  const start = new Date('2026-06-30T03:00:00.000Z');
+  const start = new Date('2026-06-26T03:00:00.000Z');
   const end = new Date('2026-07-01T02:59:59.999Z');
 
   const normalizeName = (name) =>
@@ -9049,7 +9049,7 @@ app.get('/api/audit/redbull-meetings', async (req, res) => {
 
 app.get('/api/audit/road-to-glory-points', async (req, res) => {
   try {
-    const start = new Date('2026-06-30T03:00:00.000Z');
+    const start = new Date('2026-06-26T03:00:00.000Z');
     const end = new Date('2026-07-01T02:59:59.999Z');
 
     const normalizeName = (name) =>
