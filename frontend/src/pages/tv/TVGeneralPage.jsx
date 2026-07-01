@@ -144,20 +144,69 @@ setTransportEstimate(
 
       setData(response.data);
 
-      const goalPeriod = `${startDate.getFullYear()}-${String(startDate.getMonth() + 1).padStart(2, '0')}`;
+      const currentGoalPeriod = `${startDate.getFullYear()}-${String(
+  startDate.getMonth() + 1
+).padStart(2, '0')}`;
 
-      const achievementResponse = await api.get('/goals/achievement', {
-        params: {
-          period: goalPeriod
-        }
-      });
+const fallbackGoalPeriod = '2026-06';
 
-      const achievementPayload =
-        achievementResponse.data?.data || achievementResponse.data;
+let activeGoalPeriod = currentGoalPeriod;
 
-      console.log('ACHIEVEMENT RESPONSE:', achievementPayload);
+let achievementResponse = await api.get(
+  '/goals/achievement',
+  {
+    params: {
+      period: activeGoalPeriod
+    }
+  }
+);
 
-      setAchievement(achievementPayload);
+let achievementPayload =
+  achievementResponse.data?.data ||
+  achievementResponse.data;
+
+const hasGoals =
+  Number(achievementPayload?.totalGoals || 0) > 0 ||
+  (
+    Array.isArray(achievementPayload?.results) &&
+    achievementPayload.results.length > 0
+  );
+
+if (
+  !hasGoals &&
+  currentGoalPeriod !== fallbackGoalPeriod
+) {
+  console.warn(
+    `Sem metas para ${currentGoalPeriod}. Usando ${fallbackGoalPeriod}.`
+  );
+
+  activeGoalPeriod = fallbackGoalPeriod;
+
+  achievementResponse = await api.get(
+    '/goals/achievement',
+    {
+      params: {
+        period: activeGoalPeriod
+      }
+    }
+  );
+
+  achievementPayload =
+    achievementResponse.data?.data ||
+    achievementResponse.data;
+}
+
+console.log(
+  'ACHIEVEMENT RESPONSE:',
+  achievementPayload
+);
+
+console.log(
+  'PERÍODO DE META UTILIZADO:',
+  activeGoalPeriod
+);
+
+setAchievement(achievementPayload);
 
     } catch (error) {
       console.error(error);
