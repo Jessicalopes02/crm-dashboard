@@ -7798,9 +7798,21 @@ if (goal.sector?.toLowerCase() === 'transportes') {
   goal.sector?.toLowerCase() !== 'geral' &&
   goal.userName
 ) {
-  const cleanName = String(goal.userName)
-    .replace(/\s+/g, ' ')
-    .trim();
+  const cleanNameParts = String(goal.userName)
+  .replace(/\s+/g, ' ')
+  .trim()
+  .split(' ');
+
+const cleanName = cleanNameParts
+  .filter((word, index) => {
+    if (index === 0) return true;
+
+    return (
+      word.toLowerCase() !==
+      cleanNameParts[index - 1].toLowerCase()
+    );
+  })
+  .join(' ');
 
   const escapedName = cleanName
     .replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
