@@ -4672,22 +4672,36 @@ async function getTeamPerformanceDashboard({
 // ========================================
 
 async function syncIncrementalLeads() {
+  console.log('Iniciando sync incremental completa...');
+
+  const limit = 500;
+
+  /*
+   * Serão verificadas até 2.500 leads recentes.
+   * Pode aumentar depois, caso necessário.
+   */
+  const maxPages = 5;
+
+  let page = 1;
+  let totalChecked = 0;
+  let totalSynced = 0;
+  let totalErrors = 0;
+
   try {
-    console.log('Iniciando sync incremental...');
-
-    const limit = 500;
-    const maxPages = 2;
-
-    let page = 1;
-    let totalChecked = 0;
-    let totalUpdated = 0;
-
     while (page <= maxPages) {
+      console.log(
+        `Sync incremental - buscando página ${page}`
+      );
+
       const nutshellResponse = await axios.post(
         'https://app.nutshell.com/api/v1/json',
         {
           method: 'findLeads',
-          params: { query: {}, limit, page },
+          params: {
+            query: {},
+            limit,
+            page
+          },
           id: 1
         },
         {
@@ -4698,50 +4712,237 @@ async function syncIncrementalLeads() {
         }
       );
 
-      const leads = nutshellResponse.data.result || [];
+      const leads =
+        nutshellResponse.data.result || [];
 
-      if (leads.length === 0) break;
+      if (leads.length === 0) {
+        break;
+      }
 
-      for (const lead of leads) {
+      for (const summaryLead of leads) {
         totalChecked++;
 
-        const existingLead = await Lead.findOne({ nutshell_id: lead.id });
+        try {
+          const leadId = Number(
+            summaryLead.id
+          );
 
-        if (!existingLead || existingLead.rev !== lead.rev) {
-          await saveSummaryLead(lead);
-          totalUpdated++;
+          if (!leadId) {
+            console.warn(
+              'Lead sem ID ignorada:',
+              summaryLead
+            );
+
+            totalErrors++;
+            continue;
+          }
+
+          /*
+           * Sempre busca a lead completa.
+           * Não depende mais do rev e nem salva
+           * apenas os dados resumidos.
+           */
+          const detailResponse =
+            await axios.post(
+              'https://app.nutshell.com/api/v1/json',
+              {
+                method: 'getLead',
+                params: {
+                  leadId
+                },
+                id: 1
+              },
+              {
+                auth: {
+                  username:
+                    NUTSHELL_EMAIL,
+
+                  password:
+                    NUTSHELL_API_KEY
+                }
+              }
+            );
+
+          const fullLead =
+            detailResponse.data.result;
+
+          if (!fullLead) {
+            console.warn(
+              `Lead ${leadId} não retornou detalhes`
+            );
+
+            totalErrors++;
+            continue;
+          }
+
+          /*
+           * Busca atividades sem impedir
+           * a atualização da lead em caso de erro.
+           */
+          try {
+            const activities =
+              await getLeadActivities(
+                leadId
+              );
+
+            fullLead.activities =
+              activities || [];
+          } catch (activityError) {
+            console.warn(
+              `Erro ao buscar atividades da lead ${leadId}:`,
+              activityError.response?.data ||
+                activityError.message
+            );
+
+            fullLead.activities =
+              fullLead.activities || [];
+          }
+
+          /*
+           * Deve criar ou atualizar a lead,
+           * mesmo que ela já exista no MongoDB.
+           */
+          await saveFullLead(fullLead);
+
+          totalSynced++;
+        } catch (leadError) {
+          totalErrors++;
+
+          console.error(
+            `Erro ao sincronizar lead ${summaryLead?.id}:`,
+            leadError.response?.data ||
+              leadError.message
+          );
         }
+      }
+
+      console.log(
+        `Página ${page} concluída. Leads recebidas: ${leads.length}`
+      );
+
+      /*
+       * Se retornou menos que o limite,
+       * significa que chegou à última página.
+       */
+      if (leads.length < limit) {
+        break;
       }
 
       page++;
     }
 
-    console.log(`Sync incremental finalizada. Verificados: ${totalChecked} | Atualizados: ${totalUpdated}`);
+    const result = {
+      routeVersion:
+        'incremental-full-lead-v3',
 
+      pagesProcessed: page,
+
+      totalChecked,
+      totalSynced,
+      totalErrors
+    };
+
+    console.log(
+      'Sync incremental finalizada:',
+      result
+    );
+
+    return result;
   } catch (error) {
-    console.error('Erro na sync incremental:', error.response?.data || error.message);
+    console.error(
+      'Erro geral na sync incremental:',
+      error.response?.data ||
+        error.message
+    );
+
+    
+    throw error;
   }
 }
 
+let incrementalSyncRunning = false;
+
+// ========================================
+// SYNC INCREMENTAL MANUAL
+// ========================================
+
 app.get('/api/sync/nutshell/leads/incremental', async (req, res) => {
+  if (incrementalSyncRunning) {
+    return res.status(409).json({
+      sucesso: false,
+      mensagem: 'Já existe uma sincronização incremental em andamento'
+    });
+  }
+
   try {
-    await syncIncrementalLeads();
+    incrementalSyncRunning = true;
+
+    console.log('SYNC INCREMENTAL MANUAL INICIADA');
+
+    const result = await syncIncrementalLeads();
+
+    console.log(
+      'SYNC INCREMENTAL MANUAL FINALIZADA:',
+      result
+    );
 
     res.json({
       sucesso: true,
-      mensagem: 'Sync incremental executada com sucesso'
+      routeVersion: 'incremental-sync-v2',
+      mensagem: 'Sync incremental executada com sucesso',
+      resultado: result || null
     });
 
   } catch (error) {
+    console.error(
+      'ERRO SYNC INCREMENTAL MANUAL:',
+      error.response?.data || error.message
+    );
+
     res.status(500).json({
       sucesso: false,
       erro: error.response?.data || error.message
     });
+
+  } finally {
+    incrementalSyncRunning = false;
   }
 });
 
-cron.schedule('*/15 * * * *', () => {
-  syncIncrementalLeads();
+// ========================================
+// SYNC INCREMENTAL AUTOMÁTICA
+// ========================================
+
+cron.schedule('*/15 * * * *', async () => {
+  if (incrementalSyncRunning) {
+    console.log(
+      'SYNC INCREMENTAL IGNORADA: outra sincronização ainda está executando'
+    );
+
+    return;
+  }
+
+  try {
+    incrementalSyncRunning = true;
+
+    console.log('SYNC INCREMENTAL AUTOMÁTICA INICIADA');
+
+    const result = await syncIncrementalLeads();
+
+    console.log(
+      'SYNC INCREMENTAL AUTOMÁTICA FINALIZADA:',
+      result
+    );
+
+  } catch (error) {
+    console.error(
+      'ERRO SYNC INCREMENTAL AUTOMÁTICA:',
+      error.response?.data || error.message
+    );
+
+  } finally {
+    incrementalSyncRunning = false;
+  }
 });
 
 // ========================================
