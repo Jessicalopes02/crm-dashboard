@@ -4672,14 +4672,9 @@ async function getTeamPerformanceDashboard({
 // ========================================
 
 async function syncIncrementalLeads() {
-  console.log('Iniciando sync incremental completa...');
+  console.log('Iniciando sync incremental...');
 
-  const limit = 500;
-
-  /*
-   * Serão verificadas até 2.500 leads recentes.
-   * Pode aumentar depois, caso necessário.
-   */
+  const limit = 100;
   const maxPages = 5;
 
   let page = 1;
@@ -4690,7 +4685,7 @@ async function syncIncrementalLeads() {
   try {
     while (page <= maxPages) {
       console.log(
-        `Sync incremental - buscando página ${page}`
+        `Sync incremental - página ${page}`
       );
 
       const nutshellResponse = await axios.post(
@@ -4728,20 +4723,10 @@ async function syncIncrementalLeads() {
           );
 
           if (!leadId) {
-            console.warn(
-              'Lead sem ID ignorada:',
-              summaryLead
-            );
-
             totalErrors++;
             continue;
           }
 
-          /*
-           * Sempre busca a lead completa.
-           * Não depende mais do rev e nem salva
-           * apenas os dados resumidos.
-           */
           const detailResponse =
             await axios.post(
               'https://app.nutshell.com/api/v1/json',
@@ -4756,7 +4741,6 @@ async function syncIncrementalLeads() {
                 auth: {
                   username:
                     NUTSHELL_EMAIL,
-
                   password:
                     NUTSHELL_API_KEY
                 }
@@ -4767,40 +4751,14 @@ async function syncIncrementalLeads() {
             detailResponse.data.result;
 
           if (!fullLead) {
-            console.warn(
-              `Lead ${leadId} não retornou detalhes`
-            );
-
             totalErrors++;
             continue;
           }
 
           /*
-           * Busca atividades sem impedir
-           * a atualização da lead em caso de erro.
-           */
-          try {
-            const activities =
-              await getLeadActivities(
-                leadId
-              );
-
-            fullLead.activities =
-              activities || [];
-          } catch (activityError) {
-            console.warn(
-              `Erro ao buscar atividades da lead ${leadId}:`,
-              activityError.response?.data ||
-                activityError.message
-            );
-
-            fullLead.activities =
-              fullLead.activities || [];
-          }
-
-          /*
-           * Deve criar ou atualizar a lead,
-           * mesmo que ela já exista no MongoDB.
+           * Não buscar atividades aqui.
+           * O objetivo da incremental é atualizar
+           * status, valor, closer e fechamento.
            */
           await saveFullLead(fullLead);
 
@@ -4816,14 +4774,6 @@ async function syncIncrementalLeads() {
         }
       }
 
-      console.log(
-        `Página ${page} concluída. Leads recebidas: ${leads.length}`
-      );
-
-      /*
-       * Se retornou menos que o limite,
-       * significa que chegou à última página.
-       */
       if (leads.length < limit) {
         break;
       }
@@ -4833,10 +4783,8 @@ async function syncIncrementalLeads() {
 
     const result = {
       routeVersion:
-        'incremental-full-lead-v3',
-
+        'incremental-fast-v4',
       pagesProcessed: page,
-
       totalChecked,
       totalSynced,
       totalErrors
@@ -4855,68 +4803,116 @@ async function syncIncrementalLeads() {
         error.message
     );
 
-    
     throw error;
   }
 }
 
 let incrementalSyncRunning = false;
 
+let incrementalSyncStartedAt = null;
+
+function isIncrementalSyncStuck() {
+  if (!incrementalSyncRunning) {
+    return false;
+  }
+
+  if (!incrementalSyncStartedAt) {
+    return true;
+  }
+
+  const maximumDuration =
+    20 * 60 * 1000;
+
+  return (
+    Date.now() -
+      incrementalSyncStartedAt.getTime() >
+    maximumDuration
+  );
+}
+
 // ========================================
 // SYNC INCREMENTAL MANUAL
 // ========================================
 
-app.get('/api/sync/nutshell/leads/incremental', async (req, res) => {
-  if (incrementalSyncRunning) {
-    return res.status(409).json({
-      sucesso: false,
-      mensagem: 'Já existe uma sincronização incremental em andamento'
-    });
+app.get(
+  '/api/sync/nutshell/leads/incremental',
+  async (req, res) => {
+    /*
+     * Caso esteja travada há mais de 20 minutos,
+     * libera uma nova execução.
+     */
+    if (isIncrementalSyncStuck()) {
+      console.warn(
+        'Sync incremental antiga liberada por timeout'
+      );
+
+      incrementalSyncRunning = false;
+      incrementalSyncStartedAt = null;
+    }
+
+    if (incrementalSyncRunning) {
+      return res.status(409).json({
+        sucesso: false,
+        mensagem:
+          'Já existe uma sincronização incremental em andamento',
+        iniciadaEm:
+          incrementalSyncStartedAt
+      });
+    }
+
+    try {
+      incrementalSyncRunning = true;
+      incrementalSyncStartedAt =
+        new Date();
+
+      const result =
+        await syncIncrementalLeads();
+
+      res.json({
+        sucesso: true,
+        routeVersion:
+          'incremental-route-v3',
+        mensagem:
+          'Sync incremental executada com sucesso',
+        resultado: result
+      });
+    } catch (error) {
+      console.error(
+        'ERRO SYNC INCREMENTAL:',
+        error.response?.data ||
+          error.message
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro:
+          error.response?.data ||
+          error.message
+      });
+    } finally {
+      incrementalSyncRunning = false;
+      incrementalSyncStartedAt = null;
+    }
   }
-
-  try {
-    incrementalSyncRunning = true;
-
-    console.log('SYNC INCREMENTAL MANUAL INICIADA');
-
-    const result = await syncIncrementalLeads();
-
-    console.log(
-      'SYNC INCREMENTAL MANUAL FINALIZADA:',
-      result
-    );
-
-    res.json({
-      sucesso: true,
-      routeVersion: 'incremental-sync-v2',
-      mensagem: 'Sync incremental executada com sucesso',
-      resultado: result || null
-    });
-
-  } catch (error) {
-    console.error(
-      'ERRO SYNC INCREMENTAL MANUAL:',
-      error.response?.data || error.message
-    );
-
-    res.status(500).json({
-      sucesso: false,
-      erro: error.response?.data || error.message
-    });
-
-  } finally {
-    incrementalSyncRunning = false;
-  }
-});
+);
 
 // ========================================
 // SYNC INCREMENTAL AUTOMÁTICA
 // ========================================
 
 cron.schedule('*/15 * * * *', async () => {
+  if (isIncrementalSyncStuck()) {
+    console.warn(
+      'Sync automática anterior liberada por timeout'
+    );
+
+    incrementalSyncRunning = false;
+    incrementalSyncStartedAt = null;
+  }
+
   if (incrementalSyncRunning) {
     console.log(
-      'SYNC INCREMENTAL IGNORADA: outra sincronização ainda está executando'
+      'Sync automática ignorada: outra execução está ativa'
     );
 
     return;
@@ -4924,24 +4920,29 @@ cron.schedule('*/15 * * * *', async () => {
 
   try {
     incrementalSyncRunning = true;
-
-    console.log('SYNC INCREMENTAL AUTOMÁTICA INICIADA');
-
-    const result = await syncIncrementalLeads();
+    incrementalSyncStartedAt =
+      new Date();
 
     console.log(
-      'SYNC INCREMENTAL AUTOMÁTICA FINALIZADA:',
+      'Sync incremental automática iniciada'
+    );
+
+    const result =
+      await syncIncrementalLeads();
+
+    console.log(
+      'Sync incremental automática finalizada:',
       result
     );
-
   } catch (error) {
     console.error(
-      'ERRO SYNC INCREMENTAL AUTOMÁTICA:',
-      error.response?.data || error.message
+      'Erro no cron incremental:',
+      error.response?.data ||
+        error.message
     );
-
   } finally {
     incrementalSyncRunning = false;
+    incrementalSyncStartedAt = null;
   }
 });
 
