@@ -9098,7 +9098,6 @@ Object.entries(teams).forEach(([teamKey, users]) => {
 
     const manualAdjustments = {
   ferrari: 425,
-  mercedes: 540,
   redbull:850
 };
 
