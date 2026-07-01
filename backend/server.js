@@ -9099,7 +9099,7 @@ Object.entries(teams).forEach(([teamKey, users]) => {
     const manualAdjustments = {
   ferrari: 425,
   redbull:850,
-  mercedes:240
+  mercedes:280
 };
 
 // aplica ajuste ANTES do ranking
