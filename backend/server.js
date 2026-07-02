@@ -11333,446 +11333,6 @@ app.get(
   }
 );
 
-app.get('/api/audit/forecast-current', async (req, res) => {
-  try {
-    const {
-      period = '2026-06',
-      assignee = ''
-    } = req.query;
-
-    const [year, month] = period.split('-').map(Number);
-
-    const startDate = new Date(year, month - 1, 1);
-    const endDate = new Date(
-      year,
-      month,
-      0,
-      23,
-      59,
-      59,
-      999
-    );
-
-    const filter = {
-      status: {
-        $in: [0, 1]
-      },
-      dueTime: {
-        $gte: startDate,
-        $lte: endDate,
-        $ne: null
-      },
-      'stageset.name': {
-        $ne: 'Processo de Vendas - Global Alliance'
-      }
-    };
-
-    if (assignee) {
-      filter['assignee.name'] = {
-        $regex: assignee,
-        $options: 'i'
-      };
-    }
-
-    const mongoLeads = await Lead.find(filter)
-      .select({
-        nutshell_id: 1,
-        name: 1,
-        status: 1,
-        value: 1,
-        normalizedValue: 1,
-        estimatedValue: 1,
-        assignee: 1,
-        dueTime: 1,
-        closedTime: 1,
-        modifiedTime: 1,
-        synced_at: 1,
-        stageset: 1,
-        htmlUrl: 1
-      })
-      .sort({
-        'assignee.name': 1,
-        dueTime: 1
-      })
-      .lean();
-
-    const audit = [];
-
-    for (const mongoLead of mongoLeads) {
-      try {
-        const response = await axios.post(
-          'https://app.nutshell.com/api/v1/json',
-          {
-            method: 'getLead',
-            params: {
-              leadId: mongoLead.nutshell_id
-            },
-            id: 1
-          },
-          {
-            auth: {
-              username: NUTSHELL_EMAIL,
-              password: NUTSHELL_API_KEY
-            }
-          }
-        );
-
-        const nutshellLead = response.data?.result;
-
-        const nutshellDueTime = nutshellLead?.dueTime
-          ? new Date(nutshellLead.dueTime)
-          : null;
-
-        const nutshellQualifies =
-          [0, 1].includes(Number(nutshellLead?.status)) &&
-          nutshellDueTime &&
-          nutshellDueTime >= startDate &&
-          nutshellDueTime <= endDate;
-
-        const mongoAmount = Number(
-          mongoLead.estimatedValue?.amount ??
-          mongoLead.value?.amount ??
-          mongoLead.normalizedValue?.amount ??
-          0
-        );
-
-        const nutshellAmount = Number(
-          nutshellLead?.estimatedValue?.amount ??
-          nutshellLead?.value?.amount ??
-          nutshellLead?.normalizedValue?.amount ??
-          0
-        );
-
-        audit.push({
-          nutshell_id: mongoLead.nutshell_id,
-          name: mongoLead.name,
-          htmlUrl:
-            nutshellLead?.htmlUrl ||
-            mongoLead.htmlUrl ||
-            `https://app.nutshell.com/lead/${mongoLead.nutshell_id}`,
-
-          mongo: {
-            status: mongoLead.status,
-            assignee: mongoLead.assignee?.name || null,
-            amount: mongoAmount,
-            value: mongoLead.value?.amount ?? null,
-            estimatedValue:
-              mongoLead.estimatedValue?.amount ?? null,
-            dueTime: mongoLead.dueTime || null,
-            closedTime: mongoLead.closedTime || null,
-            synced_at: mongoLead.synced_at || null
-          },
-
-          nutshell: {
-            status: nutshellLead?.status ?? null,
-            assignee: nutshellLead?.assignee?.name || null,
-            amount: nutshellAmount,
-            value: nutshellLead?.value?.amount ?? null,
-            estimatedValue:
-              nutshellLead?.estimatedValue?.amount ?? null,
-            dueTime: nutshellLead?.dueTime || null,
-            closedTime: nutshellLead?.closedTime || null,
-            qualifies: Boolean(nutshellQualifies)
-          },
-
-          differences: {
-            statusDifferent:
-              Number(mongoLead.status) !==
-              Number(nutshellLead?.status),
-
-            assigneeDifferent:
-              String(mongoLead.assignee?.name || '').trim() !==
-              String(nutshellLead?.assignee?.name || '').trim(),
-
-            amountDifferent:
-              mongoAmount !== nutshellAmount,
-
-            dueTimeDifferent:
-              String(mongoLead.dueTime || '') !==
-              String(nutshellLead?.dueTime || ''),
-
-            shouldBeRemovedFromEstimate:
-              !nutshellQualifies
-          }
-        });
-
-        await sleep(120);
-      } catch (leadError) {
-        audit.push({
-          nutshell_id: mongoLead.nutshell_id,
-          name: mongoLead.name,
-          erro:
-            leadError.response?.data ||
-            leadError.message
-        });
-      }
-    }
-
-    const validNutshellLeads = audit.filter(
-      (item) => item.nutshell?.qualifies
-    );
-
-    const mongoTotal = audit.reduce(
-      (sum, item) =>
-        sum + Number(item.mongo?.amount || 0),
-      0
-    );
-
-    const nutshellTotal = validNutshellLeads.reduce(
-      (sum, item) =>
-        sum + Number(item.nutshell?.amount || 0),
-      0
-    );
-
-    res.json({
-      sucesso: true,
-      period,
-      assignee: assignee || null,
-
-      summary: {
-        mongoLeads: mongoLeads.length,
-        validNutshellLeads:
-          validNutshellLeads.length,
-        mongoTotal,
-        nutshellTotal,
-        shouldBeRemoved:
-          audit.filter(
-            (item) =>
-              item.differences
-                ?.shouldBeRemovedFromEstimate
-          ).length,
-        statusDifferences:
-          audit.filter(
-            (item) =>
-              item.differences?.statusDifferent
-          ).length,
-        amountDifferences:
-          audit.filter(
-            (item) =>
-              item.differences?.amountDifferent
-          ).length
-      },
-
-      audit
-    });
-  } catch (error) {
-    res.status(500).json({
-      sucesso: false,
-      erro:
-        error.response?.data ||
-        error.message
-    });
-  }
-});
-
-app.get('/api/sync/nutshell/reconcile-forecast', async (req, res) => {
-  try {
-    const {
-      startDate,
-      endDate
-    } = req.query;
-
-    if (!startDate || !endDate) {
-      return res.status(400).json({
-        sucesso: false,
-        erro: 'Informe startDate e endDate no formato YYYY-MM-DD'
-      });
-    }
-
-    const start = new Date(`${startDate}T00:00:00.000`);
-    const end = new Date(`${endDate}T23:59:59.999`);
-
-    const mongoLeads = await Lead.find({
-      status: {
-        $in: [0, 1]
-      },
-      dueTime: {
-        $gte: start,
-        $lte: end,
-        $ne: null
-      },
-      'stageset.name': {
-        $ne: 'Processo de Vendas - Global Alliance'
-      }
-    })
-      .select({
-        nutshell_id: 1,
-        name: 1,
-        status: 1,
-        dueTime: 1,
-        value: 1,
-        assignee: 1
-      })
-      .lean();
-
-    let checked = 0;
-    let updated = 0;
-    let removedFromForecast = 0;
-    let changedAssignee = 0;
-    let changedStatus = 0;
-    let errors = 0;
-
-    const details = [];
-
-    for (const mongoLead of mongoLeads) {
-      try {
-        checked++;
-
-        const response = await axios.post(
-          'https://app.nutshell.com/api/v1/json',
-          {
-            method: 'getLead',
-            params: {
-              leadId: mongoLead.nutshell_id
-            },
-            id: 1
-          },
-          {
-            auth: {
-              username: NUTSHELL_EMAIL,
-              password: NUTSHELL_API_KEY
-            }
-          }
-        );
-
-        const fullLead = response.data?.result;
-
-        if (!fullLead) {
-          details.push({
-            nutshell_id: mongoLead.nutshell_id,
-            name: mongoLead.name,
-            updated: false,
-            reason: 'Lead não encontrada no Nutshell'
-          });
-
-          continue;
-        }
-
-        const currentDueTime = fullLead.dueTime
-          ? new Date(fullLead.dueTime)
-          : null;
-
-        const currentlyQualifies =
-          [0, 1].includes(Number(fullLead.status)) &&
-          currentDueTime &&
-          !Number.isNaN(currentDueTime.getTime()) &&
-          currentDueTime >= start &&
-          currentDueTime <= end;
-
-        const assigneeWasChanged =
-          String(mongoLead.assignee?.name || '').trim() !==
-          String(fullLead.assignee?.name || '').trim();
-
-        const statusWasChanged =
-          Number(mongoLead.status) !==
-          Number(fullLead.status);
-
-        if (!currentlyQualifies) {
-          removedFromForecast++;
-        }
-
-        if (assigneeWasChanged) {
-          changedAssignee++;
-        }
-
-        if (statusWasChanged) {
-          changedStatus++;
-        }
-
-        await saveFullLead(fullLead);
-
-        updated++;
-
-        details.push({
-          nutshell_id: fullLead.id,
-          name: fullLead.name,
-          updated: true,
-          currentlyQualifies: Boolean(currentlyQualifies),
-
-          before: {
-            status: mongoLead.status,
-            assignee: mongoLead.assignee?.name || null,
-            value: Number(mongoLead.value?.amount || 0),
-            dueTime: mongoLead.dueTime || null
-          },
-
-          after: {
-            status: fullLead.status,
-            assignee: fullLead.assignee?.name || null,
-            value: Number(fullLead.value?.amount || 0),
-            estimatedValue: Number(
-              fullLead.estimatedValue?.amount || 0
-            ),
-            dueTime: fullLead.dueTime ?? null,
-            closedTime: fullLead.closedTime ?? null
-          }
-        });
-
-        await sleep(120);
-      } catch (leadError) {
-        errors++;
-
-        details.push({
-          nutshell_id: mongoLead.nutshell_id,
-          name: mongoLead.name,
-          updated: false,
-          error:
-            leadError.response?.data ||
-            leadError.message
-        });
-      }
-    }
-
-    res.json({
-      sucesso: true,
-      startDate,
-      endDate,
-      summary: {
-        mongoForecastCandidates: mongoLeads.length,
-        checked,
-        updated,
-        removedFromForecast,
-        changedAssignee,
-        changedStatus,
-        errors
-      },
-      details
-    });
-  } catch (error) {
-    console.error(
-      'ERRO RECONCILE FORECAST:',
-      error.response?.data || error.message
-    );
-
-    res.status(500).json({
-      sucesso: false,
-      erro:
-        error.response?.data ||
-        error.message
-    });
-  }
-});
-
-app.use(express.static(path.join(__dirname, '../frontend/dist')));
-
-
-const frontendPath = path.join(__dirname, '../frontend/dist');
-
-
-app.use(express.static(frontendPath));
-
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({
-      sucesso: false,
-      erro: 'API não encontrada'
-    });
-  }
-
-  res.sendFile(path.join(frontendPath, 'index.html'));
-});
-
-
 app.get('/api/reports/road-to-glory', async (req, res) => {
   try {
     const campaignTags = [
@@ -12301,6 +11861,448 @@ app.get('/api/reports/road-to-glory', async (req, res) => {
     });
   }
 });
+
+app.get('/api/audit/forecast-current', async (req, res) => {
+  try {
+    const {
+      period = '2026-06',
+      assignee = ''
+    } = req.query;
+
+    const [year, month] = period.split('-').map(Number);
+
+    const startDate = new Date(year, month - 1, 1);
+    const endDate = new Date(
+      year,
+      month,
+      0,
+      23,
+      59,
+      59,
+      999
+    );
+
+    const filter = {
+      status: {
+        $in: [0, 1]
+      },
+      dueTime: {
+        $gte: startDate,
+        $lte: endDate,
+        $ne: null
+      },
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      }
+    };
+
+    if (assignee) {
+      filter['assignee.name'] = {
+        $regex: assignee,
+        $options: 'i'
+      };
+    }
+
+    const mongoLeads = await Lead.find(filter)
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        value: 1,
+        normalizedValue: 1,
+        estimatedValue: 1,
+        assignee: 1,
+        dueTime: 1,
+        closedTime: 1,
+        modifiedTime: 1,
+        synced_at: 1,
+        stageset: 1,
+        htmlUrl: 1
+      })
+      .sort({
+        'assignee.name': 1,
+        dueTime: 1
+      })
+      .lean();
+
+    const audit = [];
+
+    for (const mongoLead of mongoLeads) {
+      try {
+        const response = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: {
+              leadId: mongoLead.nutshell_id
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const nutshellLead = response.data?.result;
+
+        const nutshellDueTime = nutshellLead?.dueTime
+          ? new Date(nutshellLead.dueTime)
+          : null;
+
+        const nutshellQualifies =
+          [0, 1].includes(Number(nutshellLead?.status)) &&
+          nutshellDueTime &&
+          nutshellDueTime >= startDate &&
+          nutshellDueTime <= endDate;
+
+        const mongoAmount = Number(
+          mongoLead.estimatedValue?.amount ??
+          mongoLead.value?.amount ??
+          mongoLead.normalizedValue?.amount ??
+          0
+        );
+
+        const nutshellAmount = Number(
+          nutshellLead?.estimatedValue?.amount ??
+          nutshellLead?.value?.amount ??
+          nutshellLead?.normalizedValue?.amount ??
+          0
+        );
+
+        audit.push({
+          nutshell_id: mongoLead.nutshell_id,
+          name: mongoLead.name,
+          htmlUrl:
+            nutshellLead?.htmlUrl ||
+            mongoLead.htmlUrl ||
+            `https://app.nutshell.com/lead/${mongoLead.nutshell_id}`,
+
+          mongo: {
+            status: mongoLead.status,
+            assignee: mongoLead.assignee?.name || null,
+            amount: mongoAmount,
+            value: mongoLead.value?.amount ?? null,
+            estimatedValue:
+              mongoLead.estimatedValue?.amount ?? null,
+            dueTime: mongoLead.dueTime || null,
+            closedTime: mongoLead.closedTime || null,
+            synced_at: mongoLead.synced_at || null
+          },
+
+          nutshell: {
+            status: nutshellLead?.status ?? null,
+            assignee: nutshellLead?.assignee?.name || null,
+            amount: nutshellAmount,
+            value: nutshellLead?.value?.amount ?? null,
+            estimatedValue:
+              nutshellLead?.estimatedValue?.amount ?? null,
+            dueTime: nutshellLead?.dueTime || null,
+            closedTime: nutshellLead?.closedTime || null,
+            qualifies: Boolean(nutshellQualifies)
+          },
+
+          differences: {
+            statusDifferent:
+              Number(mongoLead.status) !==
+              Number(nutshellLead?.status),
+
+            assigneeDifferent:
+              String(mongoLead.assignee?.name || '').trim() !==
+              String(nutshellLead?.assignee?.name || '').trim(),
+
+            amountDifferent:
+              mongoAmount !== nutshellAmount,
+
+            dueTimeDifferent:
+              String(mongoLead.dueTime || '') !==
+              String(nutshellLead?.dueTime || ''),
+
+            shouldBeRemovedFromEstimate:
+              !nutshellQualifies
+          }
+        });
+
+        await sleep(120);
+      } catch (leadError) {
+        audit.push({
+          nutshell_id: mongoLead.nutshell_id,
+          name: mongoLead.name,
+          erro:
+            leadError.response?.data ||
+            leadError.message
+        });
+      }
+    }
+
+    const validNutshellLeads = audit.filter(
+      (item) => item.nutshell?.qualifies
+    );
+
+    const mongoTotal = audit.reduce(
+      (sum, item) =>
+        sum + Number(item.mongo?.amount || 0),
+      0
+    );
+
+    const nutshellTotal = validNutshellLeads.reduce(
+      (sum, item) =>
+        sum + Number(item.nutshell?.amount || 0),
+      0
+    );
+
+    res.json({
+      sucesso: true,
+      period,
+      assignee: assignee || null,
+
+      summary: {
+        mongoLeads: mongoLeads.length,
+        validNutshellLeads:
+          validNutshellLeads.length,
+        mongoTotal,
+        nutshellTotal,
+        shouldBeRemoved:
+          audit.filter(
+            (item) =>
+              item.differences
+                ?.shouldBeRemovedFromEstimate
+          ).length,
+        statusDifferences:
+          audit.filter(
+            (item) =>
+              item.differences?.statusDifferent
+          ).length,
+        amountDifferences:
+          audit.filter(
+            (item) =>
+              item.differences?.amountDifferent
+          ).length
+      },
+
+      audit
+    });
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro:
+        error.response?.data ||
+        error.message
+    });
+  }
+});
+
+app.get('/api/sync/nutshell/reconcile-forecast', async (req, res) => {
+  try {
+    const {
+      startDate,
+      endDate
+    } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Informe startDate e endDate no formato YYYY-MM-DD'
+      });
+    }
+
+    const start = new Date(`${startDate}T00:00:00.000`);
+    const end = new Date(`${endDate}T23:59:59.999`);
+
+    const mongoLeads = await Lead.find({
+      status: {
+        $in: [0, 1]
+      },
+      dueTime: {
+        $gte: start,
+        $lte: end,
+        $ne: null
+      },
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      }
+    })
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        dueTime: 1,
+        value: 1,
+        assignee: 1
+      })
+      .lean();
+
+    let checked = 0;
+    let updated = 0;
+    let removedFromForecast = 0;
+    let changedAssignee = 0;
+    let changedStatus = 0;
+    let errors = 0;
+
+    const details = [];
+
+    for (const mongoLead of mongoLeads) {
+      try {
+        checked++;
+
+        const response = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: {
+              leadId: mongoLead.nutshell_id
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const fullLead = response.data?.result;
+
+        if (!fullLead) {
+          details.push({
+            nutshell_id: mongoLead.nutshell_id,
+            name: mongoLead.name,
+            updated: false,
+            reason: 'Lead não encontrada no Nutshell'
+          });
+
+          continue;
+        }
+
+        const currentDueTime = fullLead.dueTime
+          ? new Date(fullLead.dueTime)
+          : null;
+
+        const currentlyQualifies =
+          [0, 1].includes(Number(fullLead.status)) &&
+          currentDueTime &&
+          !Number.isNaN(currentDueTime.getTime()) &&
+          currentDueTime >= start &&
+          currentDueTime <= end;
+
+        const assigneeWasChanged =
+          String(mongoLead.assignee?.name || '').trim() !==
+          String(fullLead.assignee?.name || '').trim();
+
+        const statusWasChanged =
+          Number(mongoLead.status) !==
+          Number(fullLead.status);
+
+        if (!currentlyQualifies) {
+          removedFromForecast++;
+        }
+
+        if (assigneeWasChanged) {
+          changedAssignee++;
+        }
+
+        if (statusWasChanged) {
+          changedStatus++;
+        }
+
+        await saveFullLead(fullLead);
+
+        updated++;
+
+        details.push({
+          nutshell_id: fullLead.id,
+          name: fullLead.name,
+          updated: true,
+          currentlyQualifies: Boolean(currentlyQualifies),
+
+          before: {
+            status: mongoLead.status,
+            assignee: mongoLead.assignee?.name || null,
+            value: Number(mongoLead.value?.amount || 0),
+            dueTime: mongoLead.dueTime || null
+          },
+
+          after: {
+            status: fullLead.status,
+            assignee: fullLead.assignee?.name || null,
+            value: Number(fullLead.value?.amount || 0),
+            estimatedValue: Number(
+              fullLead.estimatedValue?.amount || 0
+            ),
+            dueTime: fullLead.dueTime ?? null,
+            closedTime: fullLead.closedTime ?? null
+          }
+        });
+
+        await sleep(120);
+      } catch (leadError) {
+        errors++;
+
+        details.push({
+          nutshell_id: mongoLead.nutshell_id,
+          name: mongoLead.name,
+          updated: false,
+          error:
+            leadError.response?.data ||
+            leadError.message
+        });
+      }
+    }
+
+    res.json({
+      sucesso: true,
+      startDate,
+      endDate,
+      summary: {
+        mongoForecastCandidates: mongoLeads.length,
+        checked,
+        updated,
+        removedFromForecast,
+        changedAssignee,
+        changedStatus,
+        errors
+      },
+      details
+    });
+  } catch (error) {
+    console.error(
+      'ERRO RECONCILE FORECAST:',
+      error.response?.data || error.message
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro:
+        error.response?.data ||
+        error.message
+    });
+  }
+});
+
+app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+
+const frontendPath = path.join(__dirname, '../frontend/dist');
+
+
+app.use(express.static(frontendPath));
+
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({
+      sucesso: false,
+      erro: 'API não encontrada'
+    });
+  }
+
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
+
+
 
 // ========================================
 // CONEXÃO MONGODB
