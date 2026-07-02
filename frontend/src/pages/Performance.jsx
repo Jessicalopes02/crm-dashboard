@@ -18,8 +18,20 @@ function normalizeName(value) {
     .toLowerCase();
 }
 
+function formatBRL(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL'
+  }).format(Number(value || 0));
+}
+
+function formatPercent(value) {
+  return `${Number(value || 0).toFixed(1)}%`;
+}
+
 function Performance() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] =
+    useState(true);
 
   const [selectedPeriod, setSelectedPeriod] =
     useState(getCurrentPeriod());
@@ -66,7 +78,6 @@ function Performance() {
           ? payload.sdrs
           : []
       );
-
     } catch (error) {
       console.error(
         'Erro ao carregar performance:',
@@ -75,22 +86,10 @@ function Performance() {
 
       setClosers([]);
       setSdrs([]);
-
     } finally {
       setLoading(false);
     }
   }
-
-  const formatBRL = (value) => {
-    return new Intl.NumberFormat('pt-BR', {
-      style: 'currency',
-      currency: 'BRL'
-    }).format(Number(value || 0));
-  };
-
-  const formatPercent = (value) => {
-    return `${Number(value || 0).toFixed(2)}%`;
-  };
 
   const currentPerformance =
     viewMode === 'closer'
@@ -132,80 +131,78 @@ function Performance() {
 
   const summary = useMemo(() => {
     return filteredPerformance.reduce(
-      (accumulator, item) => {
-        accumulator.totalLeads += Number(
+      (total, item) => {
+        total.totalLeads += Number(
           item.totalLeads || 0
         );
 
-        accumulator.wonLeads += Number(
+        total.wonLeads += Number(
           item.wonLeads || 0
         );
 
-        accumulator.lostLeads += Number(
+        total.lostLeads += Number(
           item.lostLeads || 0
         );
 
-        accumulator.openLeads += Number(
+        total.openLeads += Number(
           item.openLeads || 0
         );
 
-        accumulator.pendingLeads += Number(
-          item.pendingLeads || 0
-        );
-
-        accumulator.activitiesCount += Number(
+        total.activitiesCount += Number(
           item.activitiesCount || 0
         );
 
-        accumulator.staleOpenPending += Number(
+        total.meetingsCount += Number(
+          item.meetingsCount || 0
+        );
+
+        total.staleOpenPending += Number(
           item.staleOpenPending || 0
         );
 
-        accumulator.totalRevenue += Number(
+        total.totalRevenue += Number(
           item.totalRevenue || 0
         );
 
-        return accumulator;
+        return total;
       },
       {
         totalLeads: 0,
         wonLeads: 0,
         lostLeads: 0,
         openLeads: 0,
-        pendingLeads: 0,
         activitiesCount: 0,
+        meetingsCount: 0,
         staleOpenPending: 0,
         totalRevenue: 0
       }
     );
   }, [filteredPerformance]);
 
-  const title =
-    viewMode === 'closer'
-      ? 'Performance por Closer'
-      : 'Performance por SDR';
-
-  const description =
-    viewMode === 'closer'
-      ? 'Ranking mensal por receita, vendas, atividades e leads paradas.'
-      : 'Ranking mensal por volume de leads, atividades e leads paradas.';
+  const generalConversion =
+    summary.totalLeads > 0
+      ? (
+          summary.wonLeads /
+          summary.totalLeads
+        ) * 100
+      : 0;
 
   return (
-    <div className="p-8 bg-slate-50 min-h-screen">
+    <div className="min-h-screen bg-slate-50 p-4 md:p-6 lg:p-8 overflow-x-hidden">
 
       <div className="mb-6">
 
-        <h1 className="text-4xl font-bold text-slate-900">
+        <h1 className="text-3xl md:text-4xl font-bold text-slate-900">
           Performance Comercial
         </h1>
 
-        <p className="text-slate-500 mt-1">
-          Acompanhamento mensal separado por Closer e SDR
+        <p className="mt-1 text-slate-500">
+          Acompanhamento mensal por Closer e SDR
         </p>
 
       </div>
 
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
+      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
 
         <div className="flex flex-wrap gap-3">
 
@@ -215,10 +212,10 @@ function Performance() {
               setViewMode('closer');
               setSearch('');
             }}
-            className={`px-6 py-3 rounded-xl font-semibold transition ${
+            className={`rounded-xl px-5 py-3 font-semibold transition ${
               viewMode === 'closer'
                 ? 'bg-slate-900 text-white shadow'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
             }`}
           >
             Performance por Closer
@@ -230,10 +227,10 @@ function Performance() {
               setViewMode('sdr');
               setSearch('');
             }}
-            className={`px-6 py-3 rounded-xl font-semibold transition ${
+            className={`rounded-xl px-5 py-3 font-semibold transition ${
               viewMode === 'sdr'
                 ? 'bg-slate-900 text-white shadow'
-                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+                : 'border border-slate-200 bg-white text-slate-600 hover:bg-slate-100'
             }`}
           >
             Performance por SDR
@@ -241,15 +238,17 @@ function Performance() {
 
         </div>
 
-        <div className="flex flex-wrap gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row">
 
           <input
             type="month"
             value={selectedPeriod}
             onChange={(event) =>
-              setSelectedPeriod(event.target.value)
+              setSelectedPeriod(
+                event.target.value
+              )
             }
-            className="px-4 py-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-slate-300"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-slate-300"
           />
 
           <input
@@ -259,13 +258,13 @@ function Performance() {
               setSearch(event.target.value)
             }
             placeholder="Buscar responsável..."
-            className="px-4 py-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-slate-300"
+            className="rounded-xl border border-slate-300 bg-white px-4 py-3 outline-none focus:ring-2 focus:ring-slate-300"
           />
 
           <button
             type="button"
             onClick={loadPerformance}
-            className="px-5 py-3 rounded-xl bg-slate-200 text-slate-700 font-semibold hover:bg-slate-300"
+            className="rounded-xl bg-slate-200 px-5 py-3 font-semibold text-slate-700 transition hover:bg-slate-300"
           >
             Atualizar
           </button>
@@ -274,43 +273,30 @@ function Performance() {
 
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
 
         <h2 className="text-2xl font-bold text-slate-900">
-          {title}
+          {viewMode === 'closer'
+            ? 'Performance por Closer'
+            : 'Performance por SDR'}
         </h2>
 
-        <p className="text-slate-500 mt-1">
-          {description}
+        <p className="mt-1 text-slate-500">
+          Visão geral de desempenho, atividades, reuniões e acompanhamento das leads.
         </p>
 
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4 mb-6">
+      <div className="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
 
         <SummaryCard
-          title="Total Leads"
+          title="Total de Leads"
           value={summary.totalLeads}
         />
 
         <SummaryCard
-          title="Won"
-          value={summary.wonLeads}
-        />
-
-        <SummaryCard
-          title="Lost"
-          value={summary.lostLeads}
-        />
-
-        <SummaryCard
-          title="Open"
+          title="Leads Abertas"
           value={summary.openLeads}
-        />
-
-        <SummaryCard
-          title="Pending"
-          value={summary.pendingLeads}
         />
 
         <SummaryCard
@@ -321,184 +307,192 @@ function Performance() {
         <SummaryCard
           title="Paradas +5 dias"
           value={summary.staleOpenPending}
-          danger={summary.staleOpenPending > 0}
+          danger={
+            summary.staleOpenPending > 0
+          }
         />
 
         <SummaryCard
-          title="Receita"
-          value={formatBRL(summary.totalRevenue)}
+          title="Reuniões"
+          value={summary.meetingsCount}
+        />
+
+        <SummaryCard
+          title="Conversão"
+          value={formatPercent(
+            generalConversion
+          )}
+        />
+
+        <SummaryCard
+          title="Leads Ganhas"
+          value={summary.wonLeads}
+        />
+
+        <SummaryCard
+          title={
+            viewMode === 'closer'
+              ? 'Receita'
+              : 'Leads Perdidas'
+          }
+          value={
+            viewMode === 'closer'
+              ? formatBRL(
+                  summary.totalRevenue
+                )
+              : summary.lostLeads
+          }
         />
 
       </div>
 
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
+      <div className="mb-6 grid grid-cols-1 gap-6 xl:grid-cols-2">
 
-        <table className="w-full min-w-[1450px]">
+        <RankingPanel
+          title="Total de Leads por Responsável"
+          items={filteredPerformance}
+          valueKey="totalLeads"
+        />
 
-          <thead className="bg-slate-100">
+        <RankingPanel
+          title="Leads Paradas há Mais de 5 Dias"
+          items={filteredPerformance}
+          valueKey="staleOpenPending"
+          danger
+        />
 
-            <tr className="text-left text-sm text-slate-600">
+        <RankingPanel
+          title="Atividades por Responsável"
+          items={filteredPerformance}
+          valueKey="activitiesCount"
+        />
 
-              <th className="p-4">
-                Posição
-              </th>
+        <RankingPanel
+          title="Reuniões por Responsável"
+          items={filteredPerformance}
+          valueKey="meetingsCount"
+        />
 
-              <th className="p-4">
-                Responsável
-              </th>
+      </div>
 
-              <th className="p-4">
-                Total Leads
-              </th>
+      <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
 
-              <th className="p-4">
-                Won
-              </th>
+        <div className="overflow-x-auto">
 
-              <th className="p-4">
-                Lost
-              </th>
+          <table className="w-full min-w-[760px] table-fixed">
 
-              <th className="p-4">
-                Open
-              </th>
+            <thead className="bg-slate-100">
 
-              <th className="p-4">
-                Pending
-              </th>
+              <tr className="text-left text-sm text-slate-600">
 
-              <th className="p-4">
-                Cancelado
-              </th>
+                <th className="w-24 p-4">
+                  Posição
+                </th>
 
-              <th className="p-4">
-                Atividades
-              </th>
+                <th className="w-72 p-4">
+                  Responsável
+                </th>
 
-              <th className="p-4">
-                Paradas +5 dias
-              </th>
+                <th className="p-4">
+                  Total Leads
+                </th>
 
-              <th className="p-4">
-                Receita
-              </th>
+                <th className="p-4">
+                  Won
+                </th>
 
-              <th className="p-4">
-                Ticket Médio
-              </th>
+                <th className="p-4">
+                  Lost
+                </th>
 
-              <th className="p-4">
-                Conversão
-              </th>
+                <th className="p-4">
+                  Open
+                </th>
 
-            </tr>
-
-          </thead>
-
-          <tbody>
-
-            {loading && (
-              <tr>
-                <td
-                  colSpan="13"
-                  className="p-12 text-center text-slate-500"
-                >
-                  Carregando performance...
-                </td>
               </tr>
-            )}
 
-            {!loading &&
-              sortedPerformance.length === 0 && (
+            </thead>
+
+            <tbody>
+
+              {loading && (
                 <tr>
                   <td
-                    colSpan="13"
+                    colSpan="6"
                     className="p-12 text-center text-slate-500"
                   >
-                    Nenhum resultado encontrado para este mês.
+                    Carregando performance...
                   </td>
                 </tr>
               )}
 
-            {!loading &&
-              sortedPerformance.map(
-                (item, index) => (
-                  <tr
-                    key={`${item._id}-${index}`}
-                    className="border-t hover:bg-slate-50"
-                  >
-
-                    <td className="p-4">
-                      <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-slate-100 font-bold text-slate-700">
-                        {index + 1}
-                      </span>
+              {!loading &&
+                sortedPerformance.length === 0 && (
+                  <tr>
+                    <td
+                      colSpan="6"
+                      className="p-12 text-center text-slate-500"
+                    >
+                      Nenhum resultado encontrado.
                     </td>
-
-                    <td className="p-4 font-semibold text-slate-900">
-                      {item._id || 'Sem responsável'}
-                    </td>
-
-                    <td className="p-4">
-                      {Number(item.totalLeads || 0)}
-                    </td>
-
-                    <td className="p-4 text-green-700 font-semibold">
-                      {Number(item.wonLeads || 0)}
-                    </td>
-
-                    <td className="p-4 text-red-700 font-semibold">
-                      {Number(item.lostLeads || 0)}
-                    </td>
-
-                    <td className="p-4 text-blue-700 font-semibold">
-                      {Number(item.openLeads || 0)}
-                    </td>
-
-                    <td className="p-4 text-yellow-700 font-semibold">
-                      {Number(item.pendingLeads || 0)}
-                    </td>
-
-                    <td className="p-4 text-slate-600 font-semibold">
-                      {Number(item.canceledLeads || 0)}
-                    </td>
-
-                    <td className="p-4 font-semibold text-indigo-700">
-                      {Number(item.activitiesCount || 0)}
-                    </td>
-
-                    <td className="p-4">
-                      <span
-                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                          Number(item.staleOpenPending || 0) > 0
-                            ? 'bg-red-100 text-red-700'
-                            : 'bg-green-100 text-green-700'
-                        }`}
-                      >
-                        {Number(item.staleOpenPending || 0)}
-                      </span>
-                    </td>
-
-                    <td className="p-4 font-semibold">
-                      {formatBRL(item.totalRevenue)}
-                    </td>
-
-                    <td className="p-4">
-                      {formatBRL(item.averageTicket)}
-                    </td>
-
-                    <td className="p-4">
-                      <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">
-                        {formatPercent(item.conversionRate)}
-                      </span>
-                    </td>
-
                   </tr>
-                )
-              )}
+                )}
 
-          </tbody>
+              {!loading &&
+                sortedPerformance.map(
+                  (item, index) => (
+                    <tr
+                      key={`${item._id}-${index}`}
+                      className="border-t border-slate-200 transition hover:bg-slate-50"
+                    >
 
-        </table>
+                      <td className="p-4">
+                        <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-slate-100 font-bold text-slate-700">
+                          {index + 1}
+                        </span>
+                      </td>
+
+                      <td
+                        className="truncate p-4 font-semibold text-slate-900"
+                        title={item._id}
+                      >
+                        {item._id ||
+                          'Sem responsável'}
+                      </td>
+
+                      <td className="p-4 font-semibold text-slate-800">
+                        {Number(
+                          item.totalLeads || 0
+                        )}
+                      </td>
+
+                      <td className="p-4 font-semibold text-green-700">
+                        {Number(
+                          item.wonLeads || 0
+                        )}
+                      </td>
+
+                      <td className="p-4 font-semibold text-red-700">
+                        {Number(
+                          item.lostLeads || 0
+                        )}
+                      </td>
+
+                      <td className="p-4 font-semibold text-blue-700">
+                        {Number(
+                          item.openLeads || 0
+                        )}
+                      </td>
+
+                    </tr>
+                  )
+                )}
+
+            </tbody>
+
+          </table>
+
+        </div>
 
       </div>
 
@@ -512,21 +506,120 @@ function SummaryCard({
   danger = false
 }) {
   return (
-    <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
 
       <p className="text-sm text-slate-500">
         {title}
       </p>
 
       <p
-        className={`text-xl font-bold mt-2 break-words ${
+        className={`mt-2 truncate text-2xl font-bold ${
           danger
             ? 'text-red-700'
             : 'text-slate-900'
         }`}
+        title={String(value)}
       >
         {value}
       </p>
+
+    </div>
+  );
+}
+
+function RankingPanel({
+  title,
+  items,
+  valueKey,
+  danger = false
+}) {
+  const sortedItems = useMemo(() => {
+    return [...items].sort(
+      (first, second) =>
+        Number(second[valueKey] || 0) -
+        Number(first[valueKey] || 0)
+    );
+  }, [items, valueKey]);
+
+  const maximumValue = Math.max(
+    ...sortedItems.map((item) =>
+      Number(item[valueKey] || 0)
+    ),
+    1
+  );
+
+  return (
+    <div className="min-w-0 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+
+      <h3 className="mb-5 text-lg font-bold text-slate-900">
+        {title}
+      </h3>
+
+      {sortedItems.length === 0 ? (
+        <p className="text-sm text-slate-500">
+          Nenhum dado disponível.
+        </p>
+      ) : (
+        <div className="space-y-4">
+
+          {sortedItems.map((item) => {
+            const value = Number(
+              item[valueKey] || 0
+            );
+
+            const width = Math.max(
+              (value / maximumValue) * 100,
+              value > 0 ? 4 : 0
+            );
+
+            return (
+              <div
+                key={`${title}-${item._id}`}
+                className="min-w-0"
+              >
+
+                <div className="mb-1 flex items-center justify-between gap-3">
+
+                  <span
+                    className="truncate text-sm font-semibold text-slate-700"
+                    title={item._id}
+                  >
+                    {item._id}
+                  </span>
+
+                  <span
+                    className={`shrink-0 text-sm font-bold ${
+                      danger
+                        ? 'text-red-700'
+                        : 'text-slate-900'
+                    }`}
+                  >
+                    {value}
+                  </span>
+
+                </div>
+
+                <div className="h-2.5 overflow-hidden rounded-full bg-slate-100">
+
+                  <div
+                    className={`h-full rounded-full ${
+                      danger
+                        ? 'bg-red-400'
+                        : 'bg-slate-700'
+                    }`}
+                    style={{
+                      width: `${width}%`
+                    }}
+                  />
+
+                </div>
+
+              </div>
+            );
+          })}
+
+        </div>
+      )}
 
     </div>
   );
