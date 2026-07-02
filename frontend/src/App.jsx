@@ -4,11 +4,13 @@ import Dashboard from './pages/Dashboard';
 import Leads from './pages/Leads';
 import Performance from './pages/Performance';
 import Campaigns from './pages/Campaigns';
+import Reports from './pages/Reports';
 import TVGeneralPage from './pages/tv/TVGeneralPage';
 import TVCloserPage from './pages/tv/TVCloserPage';
 import TVSdrPage from './pages/tv/TVSdrPage';
 import TVOperationalPage from './pages/tv/TVOperationalPage';
 import TVFullPage from './pages/tv/TVFullPage';
+import Reports from './pages/Reports';
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
@@ -48,6 +50,7 @@ return (
       {activePage === 'leads' && <Leads />}
       {activePage === 'performance' && <Performance />}
       {activePage === 'campaigns' && <Campaigns />}
+      {activePage === 'reports' && <Reports />}
 
       {activePage === 'tv-general' && <TVGeneralPage />}
       {activePage === 'tv-closer' && <TVCloserPage />}
