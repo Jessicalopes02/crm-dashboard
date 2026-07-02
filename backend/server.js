@@ -3708,6 +3708,9 @@ cron.schedule('0 3 * * *', async () => {
   }
 });
 
+
+
+
 async function getNutshellLastPage(limit = 20) {
   const estimatedTotal = await Lead.countDocuments();
 
@@ -4807,6 +4810,113 @@ async function syncIncrementalLeads() {
   }
 }
 
+//========================================
+
+async function syncRecentLeadActivities() {
+  console.log('Iniciando sincronização de atividades...');
+
+  const limit = 100;
+  const maxPages = 5;
+
+  let page = 1;
+  let checked = 0;
+  let updated = 0;
+  let errors = 0;
+
+  while (page <= maxPages) {
+    const nutshellResponse = await axios.post(
+      'https://app.nutshell.com/api/v1/json',
+      {
+        method: 'findLeads',
+        params: {
+          query: {},
+          limit,
+          page
+        },
+        id: 1
+      },
+      {
+        auth: {
+          username: NUTSHELL_EMAIL,
+          password: NUTSHELL_API_KEY
+        }
+      }
+    );
+
+    const leads =
+      nutshellResponse.data.result || [];
+
+    if (leads.length === 0) {
+      break;
+    }
+
+    for (const lead of leads) {
+      checked++;
+
+      try {
+        const leadId = Number(lead.id);
+
+        if (!leadId) {
+          errors++;
+          continue;
+        }
+
+        const activities =
+          await getLeadActivities(leadId);
+
+        await Lead.updateOne(
+          {
+            nutshell_id: leadId
+          },
+          {
+            $set: {
+              activities:
+                Array.isArray(activities)
+                  ? activities
+                  : [],
+
+              activitiesSyncedAt:
+                new Date()
+            }
+          }
+        );
+
+        updated++;
+      } catch (error) {
+        errors++;
+
+        console.error(
+          `Erro ao atualizar atividades da lead ${lead?.id}:`,
+          error.response?.data ||
+            error.message
+        );
+      }
+    }
+
+    if (leads.length < limit) {
+      break;
+    }
+
+    page++;
+  }
+
+  const result = {
+    routeVersion:
+      'activity-sync-v1',
+    pagesProcessed: page,
+    checked,
+    updated,
+    errors
+  };
+
+  console.log(
+    'Sincronização de atividades finalizada:',
+    result
+  );
+
+  return result;
+}
+
 let incrementalSyncRunning = false;
 
 let incrementalSyncStartedAt = null;
@@ -4829,6 +4939,8 @@ function isIncrementalSyncStuck() {
     maximumDuration
   );
 }
+
+
 
 // ========================================
 // SYNC INCREMENTAL MANUAL
@@ -4895,6 +5007,50 @@ app.get(
     }
   }
 );
+
+app.get(
+  '/api/sync/nutshell/activities',
+  async (req, res) => {
+    try {
+      const result =
+        await syncRecentLeadActivities();
+
+      res.json({
+        sucesso: true,
+        ...result
+      });
+    } catch (error) {
+      console.error(
+        'ERRO SYNC ATIVIDADES:',
+        error.response?.data ||
+          error.message
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro:
+          error.response?.data ||
+          error.message
+      });
+    }
+  }
+);
+
+cron.schedule('*/15 * * * *', async () => {
+  // cron atual das leads
+});
+
+cron.schedule('0 6 * * *', async () => {
+  try {
+    await syncRecentLeadActivities();
+  } catch (error) {
+    console.error(
+      'Erro no cron de atividades:',
+      error.response?.data || error.message
+    );
+  }
+});
+
 
 // ========================================
 // SYNC INCREMENTAL AUTOMÁTICA
@@ -6544,11 +6700,12 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
     );
 
     const ignoredNames = new Set([
-      'accounts grupo',
-      'transportes',
-      'geral',
-      'sem responsável',
-      'sem responsavel'
+       'accounts grupo',
+       'transportes',
+       'geral',
+       'faturamento log & comex',
+       'sem responsável',
+       'sem responsavel'
     ]);
 
     // ========================================
@@ -6879,21 +7036,27 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
 
     const staleLeadsByAssignee =
       await Lead.aggregate([
-        {
-          $match: {
-            ...baseFilter,
 
-            status: {
-              $in: [0, 1]
+          {
+             $match: {
+               ...baseFilter,
+
+               status: {
+                 $in: [0, 1]
+               },
+
+               createdTime: {
+                 $gte: start,
+                 $lt: end,
+                 $ne: null
+               },
+
+               modifiedTime: {
+                 $lt: fiveDaysAgo,
+                 $ne: null
+               }
+             }
             },
-
-            modifiedTime: {
-              $lt: fiveDaysAgo,
-              $ne: null
-            }
-          }
-        },
-
         {
           $group: {
             _id: '$assignee.name',
