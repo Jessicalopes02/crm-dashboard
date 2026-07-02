@@ -8914,6 +8914,61 @@ app.get('/api/debug/closer-sales', async (req, res) => {
   }
 });
 
+app.get('/api/debug/activities/:name', async (req, res) => {
+  try {
+    const searchName = String(req.params.name || '')
+      .replace(/\s+/g, ' ')
+      .trim();
+
+    const lead = await Lead.findOne({
+      'assignee.name': {
+        $regex: searchName,
+        $options: 'i'
+      },
+      activities: {
+        $exists: true,
+        $ne: []
+      }
+    })
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        assignee: 1,
+        activities: 1,
+        activitiesSyncedAt: 1
+      })
+      .lean();
+
+    res.json({
+      sucesso: true,
+      searchName,
+      encontrada: Boolean(lead),
+      lead: lead
+        ? {
+            nutshell_id: lead.nutshell_id,
+            name: lead.name,
+            assignee: lead.assignee?.name,
+            activitiesSyncedAt:
+              lead.activitiesSyncedAt || null,
+            totalActivities:
+              Array.isArray(lead.activities)
+                ? lead.activities.length
+                : 0,
+            firstActivities:
+              Array.isArray(lead.activities)
+                ? lead.activities.slice(0, 5)
+                : []
+          }
+        : null
+    });
+  } catch (error) {
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 app.get('/api/audit/goals-achievement-detail', async (req, res) => {
   try {
     const { period, userName, sector = 'closer' } = req.query;
