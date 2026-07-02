@@ -11772,6 +11772,536 @@ app.use((req, res, next) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
+
+app.get('/api/reports/road-to-glory', async (req, res) => {
+  try {
+    const campaignTags = [
+      'All Hands - Road to the Glory',
+      'Road to the Glory - Maio',
+      'Road to the Glory - Junho'
+    ];
+
+    /*
+     * Composição dos times válida para os três períodos.
+     */
+    const teams = {
+      ferrari: {
+        name: 'Ferrari',
+        members: [
+          'giovanna fernandes',
+          'pedro scarillo',
+          'luma farias silva santos',
+          'gabriel lopes'
+        ]
+      },
+
+      mercedes: {
+        name: 'Mercedes',
+        members: [
+          'edson da silva bomfim junior',
+          'fabio souza',
+          'guilherme velloso',
+          'leticia barbosa'
+        ]
+      },
+
+      redbull: {
+        name: 'Red Bull',
+        members: [
+          'gisele santos gama',
+          'alba danielly rezende lima',
+          'luiza carvalho'
+        ]
+      }
+    };
+
+    /*
+     * Pontuação manual.
+     * Depois você poderá trocar somente estes números.
+     */
+    const manualPoints = {
+      'All Hands - Road to the Glory': {
+        ferrari: 0,
+        mercedes: 0,
+        redbull: 0
+      },
+
+      'Road to the Glory - Maio': {
+        ferrari: 0,
+        mercedes: 0,
+        redbull: 0
+      },
+
+      'Road to the Glory - Junho': {
+        ferrari: 0,
+        mercedes: 0,
+        redbull: 0
+      }
+    };
+
+    function normalizeCampaignName(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    }
+
+    function getTeamKeyByPerson(personName) {
+      const normalizedPerson =
+        normalizeCampaignName(personName);
+
+      for (const [teamKey, teamData] of Object.entries(teams)) {
+        if (teamData.members.includes(normalizedPerson)) {
+          return teamKey;
+        }
+      }
+
+      return null;
+    }
+
+    function createEmptyMetrics(teamKey) {
+      return {
+        teamKey,
+        team: teams[teamKey].name,
+
+        totalLeads: 0,
+        openLeads: 0,
+        wonLeads: 0,
+        lostLeads: 0,
+        canceledLeads: 0,
+
+        activitiesCount: 0,
+        meetingsCount: 0,
+
+        conversionRate: 0,
+
+        manualPoints: 0
+      };
+    }
+
+    const campaigns = [];
+
+    for (const campaignTag of campaignTags) {
+      const leads = await Lead.find({
+        tags: {
+          $elemMatch: {
+            $regex: `^${campaignTag.replace(
+              /[.*+?^${}()|[\]\\]/g,
+              '\\$&'
+            )}$`,
+            $options: 'i'
+          }
+        }
+      })
+        .select({
+          name: 1,
+          status: 1,
+          assignee: 1,
+          tags: 1,
+          activities: 1,
+          value: 1,
+          rawData: 1
+        })
+        .lean();
+
+      const teamsResult = {
+        ferrari: createEmptyMetrics('ferrari'),
+        mercedes: createEmptyMetrics('mercedes'),
+        redbull: createEmptyMetrics('redbull')
+      };
+
+      let totalLeads = 0;
+      let openLeads = 0;
+      let wonLeads = 0;
+      let lostLeads = 0;
+      let canceledLeads = 0;
+      let activitiesCount = 0;
+      let meetingsCount = 0;
+
+      for (const lead of leads) {
+        const assigneeName =
+          lead?.assignee?.name || '';
+
+        const leadTeamKey =
+          getTeamKeyByPerson(assigneeName);
+
+        /*
+         * Leads sem responsável ou de pessoas fora dos três
+         * times entram no total geral, mas não entram em um time.
+         */
+        totalLeads += 1;
+
+        if (Number(lead.status) === 0) {
+          openLeads += 1;
+        }
+
+        if (Number(lead.status) === 10) {
+          wonLeads += 1;
+        }
+
+        if (Number(lead.status) === 11) {
+          lostLeads += 1;
+        }
+
+        if (Number(lead.status) === 12) {
+          canceledLeads += 1;
+        }
+
+        if (leadTeamKey) {
+          const teamResult =
+            teamsResult[leadTeamKey];
+
+          teamResult.totalLeads += 1;
+
+          if (Number(lead.status) === 0) {
+            teamResult.openLeads += 1;
+          }
+
+          if (Number(lead.status) === 10) {
+            teamResult.wonLeads += 1;
+          }
+
+          if (Number(lead.status) === 11) {
+            teamResult.lostLeads += 1;
+          }
+
+          if (Number(lead.status) === 12) {
+            teamResult.canceledLeads += 1;
+          }
+        }
+
+        const activities =
+          Array.isArray(lead.activities)
+            ? lead.activities
+            : [];
+
+        for (const activity of activities) {
+          activitiesCount += 1;
+
+          const activityName =
+            `${activity?.name || ''} ${
+              activity?.activityType?.name || ''
+            }`;
+
+          const isMeeting =
+            /reuni/i.test(activityName);
+
+          if (isMeeting) {
+            meetingsCount += 1;
+          }
+
+          /*
+           * Atividades e reuniões são atribuídas a quem
+           * realmente registrou a atividade.
+           */
+          const activityOwner =
+            activity?.loggedBy?.name ||
+            activity?.participants?.[0]?.name ||
+            '';
+
+          const activityTeamKey =
+            getTeamKeyByPerson(activityOwner);
+
+          if (activityTeamKey) {
+            teamsResult[
+              activityTeamKey
+            ].activitiesCount += 1;
+
+            if (isMeeting) {
+              teamsResult[
+                activityTeamKey
+              ].meetingsCount += 1;
+            }
+          }
+        }
+      }
+
+      for (const teamKey of Object.keys(teamsResult)) {
+        const teamResult =
+          teamsResult[teamKey];
+
+        teamResult.conversionRate =
+          teamResult.totalLeads > 0
+            ? Number(
+                (
+                  (
+                    teamResult.wonLeads /
+                    teamResult.totalLeads
+                  ) * 100
+                ).toFixed(2)
+              )
+            : 0;
+
+        teamResult.manualPoints =
+          Number(
+            manualPoints?.[campaignTag]?.[
+              teamKey
+            ] || 0
+          );
+      }
+
+      const teamsArray =
+        Object.values(teamsResult);
+
+      const rankingByPoints = [
+        ...teamsArray
+      ].sort((first, second) => {
+        if (
+          second.manualPoints !==
+          first.manualPoints
+        ) {
+          return (
+            second.manualPoints -
+            first.manualPoints
+          );
+        }
+
+        if (
+          second.wonLeads !==
+          first.wonLeads
+        ) {
+          return (
+            second.wonLeads -
+            first.wonLeads
+          );
+        }
+
+        if (
+          second.meetingsCount !==
+          first.meetingsCount
+        ) {
+          return (
+            second.meetingsCount -
+            first.meetingsCount
+          );
+        }
+
+        return (
+          second.conversionRate -
+          first.conversionRate
+        );
+      });
+
+      const rankingByPerformance = [
+        ...teamsArray
+      ].sort((first, second) => {
+        if (
+          second.wonLeads !==
+          first.wonLeads
+        ) {
+          return (
+            second.wonLeads -
+            first.wonLeads
+          );
+        }
+
+        if (
+          second.meetingsCount !==
+          first.meetingsCount
+        ) {
+          return (
+            second.meetingsCount -
+            first.meetingsCount
+          );
+        }
+
+        if (
+          second.conversionRate !==
+          first.conversionRate
+        ) {
+          return (
+            second.conversionRate -
+            first.conversionRate
+          );
+        }
+
+        return (
+          second.totalLeads -
+          first.totalLeads
+        );
+      });
+
+      campaigns.push({
+        tag: campaignTag,
+
+        totalLeads,
+        openLeads,
+        wonLeads,
+        lostLeads,
+        canceledLeads,
+
+        activitiesCount,
+        meetingsCount,
+
+        conversionRate:
+          totalLeads > 0
+            ? Number(
+                (
+                  (
+                    wonLeads /
+                    totalLeads
+                  ) * 100
+                ).toFixed(2)
+              )
+            : 0,
+
+        teams: teamsArray,
+
+        rankingByPoints:
+          rankingByPoints.map(
+            (team, index) => ({
+              position: index + 1,
+              ...team
+            })
+          ),
+
+        rankingByPerformance:
+          rankingByPerformance.map(
+            (team, index) => ({
+              position: index + 1,
+              ...team
+            })
+          ),
+
+        winnerByPoints:
+          rankingByPoints[0] || null,
+
+        bestPerformance:
+          rankingByPerformance[0] || null
+      });
+    }
+
+    const comparison = campaigns.map(
+      (campaign) => ({
+        tag: campaign.tag,
+
+        totalLeads:
+          campaign.totalLeads,
+
+        openLeads:
+          campaign.openLeads,
+
+        wonLeads:
+          campaign.wonLeads,
+
+        lostLeads:
+          campaign.lostLeads,
+
+        activitiesCount:
+          campaign.activitiesCount,
+
+        meetingsCount:
+          campaign.meetingsCount,
+
+        conversionRate:
+          campaign.conversionRate,
+
+        bestTeam:
+          campaign.bestPerformance
+            ?.team || null
+      })
+    );
+
+    const bestCampaignByLeads =
+      [...campaigns].sort(
+        (first, second) =>
+          second.totalLeads -
+          first.totalLeads
+      )[0] || null;
+
+    const bestCampaignByWon =
+      [...campaigns].sort(
+        (first, second) =>
+          second.wonLeads -
+          first.wonLeads
+      )[0] || null;
+
+    const bestCampaignByMeetings =
+      [...campaigns].sort(
+        (first, second) =>
+          second.meetingsCount -
+          first.meetingsCount
+      )[0] || null;
+
+    const bestCampaignByConversion =
+      [...campaigns].sort(
+        (first, second) =>
+          second.conversionRate -
+          first.conversionRate
+      )[0] || null;
+
+    res.json({
+      sucesso: true,
+
+      routeVersion:
+        'road-to-glory-report-v1',
+
+      tags: campaignTags,
+
+      teams,
+
+      campaigns,
+
+      comparison,
+
+      highlights: {
+        highestLeadVolume:
+          bestCampaignByLeads
+            ? {
+                tag:
+                  bestCampaignByLeads.tag,
+                value:
+                  bestCampaignByLeads.totalLeads
+              }
+            : null,
+
+        highestWon:
+          bestCampaignByWon
+            ? {
+                tag:
+                  bestCampaignByWon.tag,
+                value:
+                  bestCampaignByWon.wonLeads
+              }
+            : null,
+
+        highestMeetings:
+          bestCampaignByMeetings
+            ? {
+                tag:
+                  bestCampaignByMeetings.tag,
+                value:
+                  bestCampaignByMeetings.meetingsCount
+              }
+            : null,
+
+        bestConversion:
+          bestCampaignByConversion
+            ? {
+                tag:
+                  bestCampaignByConversion.tag,
+                value:
+                  bestCampaignByConversion.conversionRate
+              }
+            : null
+      }
+    });
+
+  } catch (error) {
+    console.error(
+      'ERRO RELATÓRIO ROAD TO GLORY:',
+      error
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 // ========================================
 // CONEXÃO MONGODB
 // ========================================
