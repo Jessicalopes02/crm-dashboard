@@ -1,17 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import api from '../services/api';
 
-const CLOSER_NAMES = [
-  'Gabriel Lopes',
-  'Edson da Silva Bomfim Júnior',
-  'Alba Danielly Rezende Lima',
-  'Fábio Souza',
-  'Luiza Carvalho',
-  'Fabiane Carvalho Nascimento',
-  'Beatriz Costa',
-  'Beatriz Costa Costa',
-  'Marcus Santana'
-];
+function getCurrentPeriod() {
+  const today = new Date();
+
+  return `${today.getFullYear()}-${String(
+    today.getMonth() + 1
+  ).padStart(2, '0')}`;
+}
 
 function normalizeName(value) {
   return String(value || '')
@@ -24,110 +20,52 @@ function normalizeName(value) {
 
 function Performance() {
   const [loading, setLoading] = useState(true);
-  const [viewMode, setViewMode] = useState('closer');
 
-  const [closerPerformance, setCloserPerformance] =
+  const [selectedPeriod, setSelectedPeriod] =
+    useState(getCurrentPeriod());
+
+  const [viewMode, setViewMode] =
+    useState('closer');
+
+  const [closers, setClosers] =
     useState([]);
 
-  const [sdrPerformance, setSdrPerformance] =
+  const [sdrs, setSdrs] =
     useState([]);
 
-  const [search, setSearch] = useState('');
+  const [search, setSearch] =
+    useState('');
 
   useEffect(() => {
     loadPerformance();
-  }, []);
+  }, [selectedPeriod]);
 
   async function loadPerformance() {
     try {
       setLoading(true);
 
       const response = await api.get(
-        '/dashboard/performance-by-assignee'
+        '/dashboard/performance-by-assignee',
+        {
+          params: {
+            period: selectedPeriod
+          }
+        }
       );
 
       const payload = response.data || {};
 
-      /*
-       * Estrutura futura recomendada:
-       *
-       * {
-       *   closers: [],
-       *   sdrs: []
-       * }
-       */
-      if (
-        Array.isArray(payload.closers) ||
+      setClosers(
+        Array.isArray(payload.closers)
+          ? payload.closers
+          : []
+      );
+
+      setSdrs(
         Array.isArray(payload.sdrs)
-      ) {
-        setCloserPerformance(
-          Array.isArray(payload.closers)
-            ? payload.closers
-            : []
-        );
-
-        setSdrPerformance(
-          Array.isArray(payload.sdrs)
-            ? payload.sdrs
-            : []
-        );
-
-        return;
-      }
-
-      /*
-       * Compatibilidade com o retorno atual:
-       *
-       * {
-       *   performance: []
-       * }
-       */
-      const allPerformance = Array.isArray(
-        payload.performance
-      )
-        ? payload.performance
-        : [];
-
-      const normalizedCloserNames =
-        CLOSER_NAMES.map(normalizeName);
-
-      const closers = allPerformance.filter(
-        (item) => {
-          const itemName = normalizeName(
-            item._id ||
-            item.userName ||
-            item.assignee
-          );
-
-          return normalizedCloserNames.includes(
-            itemName
-          );
-        }
+          ? payload.sdrs
+          : []
       );
-
-      const sdrs = allPerformance.filter(
-        (item) => {
-          const itemName = normalizeName(
-            item._id ||
-            item.userName ||
-            item.assignee
-          );
-
-          return (
-            itemName &&
-            !normalizedCloserNames.includes(
-              itemName
-            ) &&
-            itemName !== 'accounts grupo' &&
-            itemName !== 'transportes' &&
-            itemName !== 'geral' &&
-            itemName !== 'sem responsavel'
-          );
-        }
-      );
-
-      setCloserPerformance(closers);
-      setSdrPerformance(sdrs);
 
     } catch (error) {
       console.error(
@@ -135,8 +73,8 @@ function Performance() {
         error
       );
 
-      setCloserPerformance([]);
-      setSdrPerformance([]);
+      setClosers([]);
+      setSdrs([]);
 
     } finally {
       setLoading(false);
@@ -156,8 +94,8 @@ function Performance() {
 
   const currentPerformance =
     viewMode === 'closer'
-      ? closerPerformance
-      : sdrPerformance;
+      ? closers
+      : sdrs;
 
   const filteredPerformance = useMemo(() => {
     const normalizedSearch =
@@ -167,23 +105,30 @@ function Performance() {
       return currentPerformance;
     }
 
-    return currentPerformance.filter(
-      (item) => {
-        const itemName = normalizeName(
-          item._id ||
-          item.userName ||
-          item.assignee
-        );
+    return currentPerformance.filter((item) =>
+      normalizeName(item._id).includes(
+        normalizedSearch
+      )
+    );
+  }, [currentPerformance, search]);
 
-        return itemName.includes(
-          normalizedSearch
+  const sortedPerformance = useMemo(() => {
+    return [...filteredPerformance].sort(
+      (first, second) => {
+        if (viewMode === 'closer') {
+          return (
+            Number(second.totalRevenue || 0) -
+            Number(first.totalRevenue || 0)
+          );
+        }
+
+        return (
+          Number(second.totalLeads || 0) -
+          Number(first.totalLeads || 0)
         );
       }
     );
-  }, [
-    currentPerformance,
-    search
-  ]);
+  }, [filteredPerformance, viewMode]);
 
   const summary = useMemo(() => {
     return filteredPerformance.reduce(
@@ -200,12 +145,20 @@ function Performance() {
           item.lostLeads || 0
         );
 
+        accumulator.openLeads += Number(
+          item.openLeads || 0
+        );
+
         accumulator.pendingLeads += Number(
           item.pendingLeads || 0
         );
 
-        accumulator.canceledLeads += Number(
-          item.canceledLeads || 0
+        accumulator.activitiesCount += Number(
+          item.activitiesCount || 0
+        );
+
+        accumulator.staleOpenPending += Number(
+          item.staleOpenPending || 0
         );
 
         accumulator.totalRevenue += Number(
@@ -218,114 +171,122 @@ function Performance() {
         totalLeads: 0,
         wonLeads: 0,
         lostLeads: 0,
+        openLeads: 0,
         pendingLeads: 0,
-        canceledLeads: 0,
+        activitiesCount: 0,
+        staleOpenPending: 0,
         totalRevenue: 0
       }
     );
   }, [filteredPerformance]);
 
-  const moduleTitle =
+  const title =
     viewMode === 'closer'
       ? 'Performance por Closer'
       : 'Performance por SDR';
 
-  const moduleDescription =
+  const description =
     viewMode === 'closer'
-      ? 'Receita, vendas, conversão e desempenho dos closers'
-      : 'Leads, conversão e desempenho dos SDRs';
+      ? 'Ranking mensal por receita, vendas, atividades e leads paradas.'
+      : 'Ranking mensal por volume de leads, atividades e leads paradas.';
 
   return (
     <div className="p-8 bg-slate-50 min-h-screen">
 
       <div className="mb-6">
+
         <h1 className="text-4xl font-bold text-slate-900">
           Performance Comercial
         </h1>
 
         <p className="text-slate-500 mt-1">
-          Acompanhamento separado por equipe comercial
+          Acompanhamento mensal separado por Closer e SDR
         </p>
-      </div>
-
-      {/* Botões dos dois módulos */}
-      <div className="flex flex-wrap gap-3 mb-6">
-
-        <button
-          type="button"
-          onClick={() => {
-            setViewMode('closer');
-            setSearch('');
-          }}
-          className={`px-6 py-3 rounded-xl font-semibold transition ${
-            viewMode === 'closer'
-              ? 'bg-slate-900 text-white shadow'
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-          }`}
-        >
-          Performance por Closer
-        </button>
-
-        <button
-          type="button"
-          onClick={() => {
-            setViewMode('sdr');
-            setSearch('');
-          }}
-          className={`px-6 py-3 rounded-xl font-semibold transition ${
-            viewMode === 'sdr'
-              ? 'bg-slate-900 text-white shadow'
-              : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
-          }`}
-        >
-          Performance por SDR
-        </button>
 
       </div>
 
-      {/* Cabeçalho do módulo */}
-      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4 mb-6">
 
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="flex flex-wrap gap-3">
 
-          <div>
-            <h2 className="text-2xl font-bold text-slate-900">
-              {moduleTitle}
-            </h2>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('closer');
+              setSearch('');
+            }}
+            className={`px-6 py-3 rounded-xl font-semibold transition ${
+              viewMode === 'closer'
+                ? 'bg-slate-900 text-white shadow'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            Performance por Closer
+          </button>
 
-            <p className="text-slate-500 mt-1">
-              {moduleDescription}
-            </p>
-          </div>
+          <button
+            type="button"
+            onClick={() => {
+              setViewMode('sdr');
+              setSearch('');
+            }}
+            className={`px-6 py-3 rounded-xl font-semibold transition ${
+              viewMode === 'sdr'
+                ? 'bg-slate-900 text-white shadow'
+                : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-100'
+            }`}
+          >
+            Performance por SDR
+          </button>
 
-          <div className="flex gap-3">
+        </div>
 
-            <input
-              type="text"
-              value={search}
-              onChange={(event) =>
-                setSearch(event.target.value)
-              }
-              placeholder="Buscar responsável..."
-              className="w-full lg:w-72 px-4 py-3 rounded-xl border border-slate-300 outline-none focus:ring-2 focus:ring-slate-300"
-            />
+        <div className="flex flex-wrap gap-3">
 
-            <button
-              type="button"
-              onClick={loadPerformance}
-              className="px-5 py-3 rounded-xl bg-slate-100 text-slate-700 font-semibold hover:bg-slate-200"
-            >
-              Atualizar
-            </button>
+          <input
+            type="month"
+            value={selectedPeriod}
+            onChange={(event) =>
+              setSelectedPeriod(event.target.value)
+            }
+            className="px-4 py-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-slate-300"
+          />
 
-          </div>
+          <input
+            type="text"
+            value={search}
+            onChange={(event) =>
+              setSearch(event.target.value)
+            }
+            placeholder="Buscar responsável..."
+            className="px-4 py-3 rounded-xl border border-slate-300 bg-white outline-none focus:ring-2 focus:ring-slate-300"
+          />
+
+          <button
+            type="button"
+            onClick={loadPerformance}
+            className="px-5 py-3 rounded-xl bg-slate-200 text-slate-700 font-semibold hover:bg-slate-300"
+          >
+            Atualizar
+          </button>
 
         </div>
 
       </div>
 
-      {/* Resumo */}
-      <div className="grid grid-cols-2 lg:grid-cols-6 gap-4 mb-6">
+      <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+
+        <h2 className="text-2xl font-bold text-slate-900">
+          {title}
+        </h2>
+
+        <p className="text-slate-500 mt-1">
+          {description}
+        </p>
+
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-4 mb-6">
 
         <SummaryCard
           title="Total Leads"
@@ -343,28 +304,36 @@ function Performance() {
         />
 
         <SummaryCard
+          title="Open"
+          value={summary.openLeads}
+        />
+
+        <SummaryCard
           title="Pending"
           value={summary.pendingLeads}
         />
 
         <SummaryCard
-          title="Canceladas"
-          value={summary.canceledLeads}
+          title="Atividades"
+          value={summary.activitiesCount}
+        />
+
+        <SummaryCard
+          title="Paradas +5 dias"
+          value={summary.staleOpenPending}
+          danger={summary.staleOpenPending > 0}
         />
 
         <SummaryCard
           title="Receita"
-          value={formatBRL(
-            summary.totalRevenue
-          )}
+          value={formatBRL(summary.totalRevenue)}
         />
 
       </div>
 
-      {/* Tabela */}
       <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-x-auto">
 
-        <table className="w-full min-w-[1100px]">
+        <table className="w-full min-w-[1450px]">
 
           <thead className="bg-slate-100">
 
@@ -391,11 +360,23 @@ function Performance() {
               </th>
 
               <th className="p-4">
+                Open
+              </th>
+
+              <th className="p-4">
                 Pending
               </th>
 
               <th className="p-4">
                 Cancelado
+              </th>
+
+              <th className="p-4">
+                Atividades
+              </th>
+
+              <th className="p-4">
+                Paradas +5 dias
               </th>
 
               <th className="p-4">
@@ -419,7 +400,7 @@ function Performance() {
             {loading && (
               <tr>
                 <td
-                  colSpan="10"
+                  colSpan="13"
                   className="p-12 text-center text-slate-500"
                 >
                   Carregando performance...
@@ -428,26 +409,22 @@ function Performance() {
             )}
 
             {!loading &&
-              filteredPerformance.length === 0 && (
+              sortedPerformance.length === 0 && (
                 <tr>
                   <td
-                    colSpan="10"
+                    colSpan="13"
                     className="p-12 text-center text-slate-500"
                   >
-                    Nenhum resultado encontrado neste módulo.
+                    Nenhum resultado encontrado para este mês.
                   </td>
                 </tr>
               )}
 
             {!loading &&
-              filteredPerformance.map(
+              sortedPerformance.map(
                 (item, index) => (
                   <tr
-                    key={
-                      item._id ||
-                      item.userName ||
-                      index
-                    }
+                    key={`${item._id}-${index}`}
                     className="border-t hover:bg-slate-50"
                   >
 
@@ -458,59 +435,60 @@ function Performance() {
                     </td>
 
                     <td className="p-4 font-semibold text-slate-900">
-                      {item._id ||
-                        item.userName ||
-                        item.assignee ||
-                        'Sem responsável'}
+                      {item._id || 'Sem responsável'}
                     </td>
 
                     <td className="p-4">
-                      {Number(
-                        item.totalLeads || 0
-                      )}
+                      {Number(item.totalLeads || 0)}
                     </td>
 
                     <td className="p-4 text-green-700 font-semibold">
-                      {Number(
-                        item.wonLeads || 0
-                      )}
+                      {Number(item.wonLeads || 0)}
                     </td>
 
                     <td className="p-4 text-red-700 font-semibold">
-                      {Number(
-                        item.lostLeads || 0
-                      )}
+                      {Number(item.lostLeads || 0)}
+                    </td>
+
+                    <td className="p-4 text-blue-700 font-semibold">
+                      {Number(item.openLeads || 0)}
                     </td>
 
                     <td className="p-4 text-yellow-700 font-semibold">
-                      {Number(
-                        item.pendingLeads || 0
-                      )}
+                      {Number(item.pendingLeads || 0)}
                     </td>
 
                     <td className="p-4 text-slate-600 font-semibold">
-                      {Number(
-                        item.canceledLeads || 0
-                      )}
+                      {Number(item.canceledLeads || 0)}
                     </td>
 
-                    <td className="p-4 font-semibold">
-                      {formatBRL(
-                        item.totalRevenue
-                      )}
+                    <td className="p-4 font-semibold text-indigo-700">
+                      {Number(item.activitiesCount || 0)}
                     </td>
 
                     <td className="p-4">
-                      {formatBRL(
-                        item.averageTicket
-                      )}
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${
+                          Number(item.staleOpenPending || 0) > 0
+                            ? 'bg-red-100 text-red-700'
+                            : 'bg-green-100 text-green-700'
+                        }`}
+                      >
+                        {Number(item.staleOpenPending || 0)}
+                      </span>
+                    </td>
+
+                    <td className="p-4 font-semibold">
+                      {formatBRL(item.totalRevenue)}
+                    </td>
+
+                    <td className="p-4">
+                      {formatBRL(item.averageTicket)}
                     </td>
 
                     <td className="p-4">
                       <span className="bg-blue-100 text-blue-700 px-3 py-1 rounded-full text-xs font-semibold">
-                        {formatPercent(
-                          item.conversionRate
-                        )}
+                        {formatPercent(item.conversionRate)}
                       </span>
                     </td>
 
@@ -530,7 +508,8 @@ function Performance() {
 
 function SummaryCard({
   title,
-  value
+  value,
+  danger = false
 }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
@@ -539,7 +518,13 @@ function SummaryCard({
         {title}
       </p>
 
-      <p className="text-xl font-bold text-slate-900 mt-2 break-words">
+      <p
+        className={`text-xl font-bold mt-2 break-words ${
+          danger
+            ? 'text-red-700'
+            : 'text-slate-900'
+        }`}
+      >
         {value}
       </p>
 
