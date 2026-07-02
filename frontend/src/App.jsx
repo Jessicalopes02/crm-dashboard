@@ -10,7 +10,6 @@ import TVCloserPage from './pages/tv/TVCloserPage';
 import TVSdrPage from './pages/tv/TVSdrPage';
 import TVOperationalPage from './pages/tv/TVOperationalPage';
 import TVFullPage from './pages/tv/TVFullPage';
-import Reports from './pages/Reports';
 
 function App() {
   const [activePage, setActivePage] = useState('dashboard');
