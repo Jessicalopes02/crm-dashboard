@@ -7026,15 +7026,47 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
     }
   },
 
-  {
-    $group: {
-      _id: '$activityOwner',
+ {
+  $group: {
+    _id: '$activityOwner',
 
-      activitiesCount: {
-        $sum: 1
+    activitiesCount: {
+      $sum: 1
+    },
+
+    meetingsCount: {
+      $sum: {
+        $cond: [
+          {
+            $regexMatch: {
+              input: {
+                $concat: [
+                  {
+                    $ifNull: [
+                      '$activities.name',
+                      ''
+                    ]
+                  },
+                  ' ',
+                  {
+                    $ifNull: [
+                      '$activities.activityType.name',
+                      ''
+                    ]
+                  }
+                ]
+              },
+              regex: 'reuni',
+              options: 'i'
+            }
+          },
+          1,
+          0
+        ]
       }
     }
-  },
+  }
+},
 
   {
     $sort: {
@@ -7087,11 +7119,19 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
     // ========================================
 
     const activitiesMap = new Map(
-      activitiesByAssignee.map((item) => [
-        normalizeName(item._id),
-        Number(item.activitiesCount || 0)
-      ])
-    );
+  activitiesByAssignee.map((item) => [
+    normalizeName(item._id),
+    {
+      activitiesCount: Number(
+        item.activitiesCount || 0
+      ),
+
+      meetingsCount: Number(
+        item.meetingsCount || 0
+      )
+    }
+  ])
+);
 
     const staleMap = new Map(
       staleLeadsByAssignee.map((item) => [
@@ -7109,14 +7149,15 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
           ...item,
 
           activitiesCount:
-            activitiesMap.get(
-              normalizedName
-            ) || 0,
+  activitiesMap.get(normalizedName)
+    ?.activitiesCount || 0,
 
-          staleOpenPending:
-            staleMap.get(
-              normalizedName
-            ) || 0
+meetingsCount:
+  activitiesMap.get(normalizedName)
+    ?.meetingsCount || 0,
+
+staleOpenPending:
+  staleMap.get(normalizedName) || 0
         };
       });
 
