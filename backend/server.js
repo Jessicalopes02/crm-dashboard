@@ -6952,82 +6952,96 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
     // ATIVIDADES REALIZADAS NO MÊS
     // ========================================
 
-    const activitiesByAssignee =
-      await Lead.aggregate([
-        {
-          $match: {
-            ...baseFilter,
+    const activitiesByAssignee = await Lead.aggregate([
+  {
+    $match: {
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      },
 
-            activities: {
-              $exists: true,
-              $ne: []
-            }
-          }
-        },
+      activities: {
+        $exists: true,
+        $ne: []
+      }
+    }
+  },
 
-        {
-          $unwind: '$activities'
-        },
+  {
+    $unwind: '$activities'
+  },
 
-        {
-          $addFields: {
-            activityDate: {
-              $convert: {
-                input: {
-                  $ifNull: [
-                    '$activities.activityTime',
-                    {
-                      $ifNull: [
-                        '$activities.createdTime',
-                        {
-                          $ifNull: [
-                            '$activities.startTime',
-                            {
-                              $ifNull: [
-                                '$activities.endTime',
-                                {
-                                  $ifNull: [
-                                    '$activities.date',
-                                    '$activities.modifiedTime'
-                                  ]
-                                }
-                              ]
-                            }
-                          ]
-                        }
-                      ]
-                    }
-                  ]
-                },
-
-                to: 'date',
-                onError: null,
-                onNull: null
+  {
+    $addFields: {
+      activityDate: {
+        $convert: {
+          input: {
+            $ifNull: [
+              '$activities.createdTime',
+              {
+                $ifNull: [
+                  '$activities.endTime',
+                  {
+                    $ifNull: [
+                      '$activities.startTime',
+                      '$activities.modifiedTime'
+                    ]
+                  }
+                ]
               }
-            }
-          }
-        },
+            ]
+          },
 
-        {
-          $match: {
-            activityDate: {
-              $gte: start,
-              $lt: end,
-              $ne: null
-            }
-          }
-        },
-
-        {
-          $group: {
-            _id: '$assignee.name',
-
-            activitiesCount: {
-              $sum: 1
-            }
-          }
+          to: 'date',
+          onError: null,
+          onNull: null
         }
-      ]);
+      },
+
+      activityOwner: {
+        $ifNull: [
+          '$activities.loggedBy.name',
+          {
+            $arrayElemAt: [
+              '$activities.participants.name',
+              0
+            ]
+          }
+        ]
+      }
+    }
+  },
+
+  {
+    $match: {
+      activityDate: {
+        $gte: start,
+        $lt: end,
+        $ne: null
+      },
+
+      activityOwner: {
+        $exists: true,
+        $nin: [null, '']
+      }
+    }
+  },
+
+  {
+    $group: {
+      _id: '$activityOwner',
+
+      activitiesCount: {
+        $sum: 1
+      }
+    }
+  },
+
+  {
+    $sort: {
+      activitiesCount: -1
+    }
+  }
+]);
 
     // ========================================
     // OPEN OU PENDING SEM ATUALIZAÇÃO
