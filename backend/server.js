@@ -6440,27 +6440,81 @@ app.get('/api/sync/nutshell/enrich-missing-assignee', async (req, res) => {
 
 app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
   try {
-    const { startDate, endDate, status, role } = req.query;
+    const {
+      period,
+      startDate,
+      endDate,
+      status
+    } = req.query;
 
-    const dateConditions = {};
+    // ========================================
+    // PERÍODO
+    // PADRÃO: MÊS CORRENTE
+    // ========================================
 
-    if (startDate) {
-      const start = new Date(startDate);
+    const now = new Date();
+
+    const defaultPeriod = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, '0')}`;
+
+    const selectedPeriod =
+      period || defaultPeriod;
+
+    const [year, month] = selectedPeriod
+      .split('-')
+      .map(Number);
+
+    let start;
+    let end;
+
+    if (startDate && endDate) {
+      start = new Date(startDate);
       start.setHours(0, 0, 0, 0);
-      dateConditions.$gte = start;
-    }
 
-    if (endDate) {
-      const end = new Date(endDate);
+      end = new Date(endDate);
       end.setHours(23, 59, 59, 999);
-      dateConditions.$lte = end;
+    } else {
+      /*
+       * Início do mês no horário de Brasília.
+       * O MongoDB armazena em UTC.
+       */
+      start = new Date(
+        Date.UTC(
+          year,
+          month - 1,
+          1,
+          3,
+          0,
+          0,
+          0
+        )
+      );
+
+      /*
+       * Início do próximo mês.
+       * Utilizado com $lt.
+       */
+      end = new Date(
+        Date.UTC(
+          year,
+          month,
+          1,
+          3,
+          0,
+          0,
+          0
+        )
+      );
     }
 
-    const hasDateFilter = Object.keys(dateConditions).length > 0;
+    const fiveDaysAgo = new Date(
+      Date.now() - 5 * 24 * 60 * 60 * 1000
+    );
 
-    const ignoredPipelineFilter = {
-      'stageset.name': { $ne: 'Processo de Vendas - Global Alliance' }
-    };
+    // ========================================
+    // RESPONSÁVEIS CLOSERS
+    // ========================================
 
     const CLOSER_ASSIGNEES = [
       'Alba Danielly Rezende Lima',
@@ -6472,36 +6526,71 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
       'Giovanna Fernandes',
       'Luiza Carvalho',
       'Pedro Scarillo',
-      'Marcus Vinicius Dias Santana',
-      'Accounts Grupo'
+      'Marcus Santana',
+      'Marcus Vinicius Dias Santana'
     ];
+
+    function normalizeName(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    }
+
+    const normalizedCloserNames = new Set(
+      CLOSER_ASSIGNEES.map(normalizeName)
+    );
+
+    const ignoredNames = new Set([
+      'accounts grupo',
+      'transportes',
+      'geral',
+      'sem responsável',
+      'sem responsavel'
+    ]);
+
+    // ========================================
+    // FILTRO PRINCIPAL
+    // ========================================
+
     const baseFilter = {
-      ...ignoredPipelineFilter,
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      },
+
       'assignee.name': {
         $exists: true,
-        $ne: null,
-        $ne: ''
+        $nin: [null, '']
       }
     };
 
-    if (role === 'closer') {
-      baseFilter['assignee.name'] = { $in: CLOSER_ASSIGNEES };
-    }
-
-    if (status !== undefined && status !== '') {
+    if (
+      status !== undefined &&
+      status !== ''
+    ) {
       baseFilter.status = Number(status);
     }
+
+    // ========================================
+    // PERFORMANCE MENSAL
+    // ========================================
 
     const performance = await Lead.aggregate([
       {
         $match: baseFilter
       },
+
       {
         $addFields: {
           performanceDate: {
             $cond: [
               {
-                $in: ['$status', [10, 11, 12]]
+                $in: [
+                  '$status',
+                  [10, 11, 12]
+                ]
               },
               '$closedTime',
               '$createdTime'
@@ -6509,20 +6598,17 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
           }
         }
       },
+
       {
-        $match: hasDateFilter
-          ? {
-              performanceDate: {
-                ...dateConditions,
-                $ne: null
-              }
-            }
-          : {
-              performanceDate: {
-                $ne: null
-              }
-            }
+        $match: {
+          performanceDate: {
+            $gte: start,
+            $lt: end,
+            $ne: null
+          }
+        }
       },
+
       {
         $group: {
           _id: '$assignee.name',
@@ -6533,31 +6619,61 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
 
           wonLeads: {
             $sum: {
-              $cond: [{ $eq: ['$status', 10] }, 1, 0]
+              $cond: [
+                {
+                  $eq: ['$status', 10]
+                },
+                1,
+                0
+              ]
             }
           },
 
           lostLeads: {
             $sum: {
-              $cond: [{ $eq: ['$status', 11] }, 1, 0]
+              $cond: [
+                {
+                  $eq: ['$status', 11]
+                },
+                1,
+                0
+              ]
             }
           },
 
           openLeads: {
             $sum: {
-              $cond: [{ $eq: ['$status', 0] }, 1, 0]
+              $cond: [
+                {
+                  $eq: ['$status', 0]
+                },
+                1,
+                0
+              ]
             }
           },
 
           pendingLeads: {
             $sum: {
-              $cond: [{ $eq: ['$status', 1] }, 1, 0]
+              $cond: [
+                {
+                  $eq: ['$status', 1]
+                },
+                1,
+                0
+              ]
             }
           },
 
           canceledLeads: {
             $sum: {
-              $cond: [{ $eq: ['$status', 12] }, 1, 0]
+              $cond: [
+                {
+                  $eq: ['$status', 12]
+                },
+                1,
+                0
+              ]
             }
           },
 
@@ -6565,42 +6681,93 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
             $sum: {
               $cond: [
                 {
-                  $and: [
-                    { $eq: ['$status', 10] },
-                    { $ne: ['$value.amount', null] }
+                  $eq: ['$status', 10]
+                },
+                {
+                  $ifNull: [
+                    '$value.amount',
+                    {
+                      $ifNull: [
+                        '$rawData.value.amount',
+                        0
+                      ]
+                    }
                   ]
                 },
-                '$value.amount',
                 0
               ]
             }
           },
 
-          averageTicket: {
-            $avg: {
+          totalWonWithValue: {
+            $sum: {
               $cond: [
                 {
                   $and: [
-                    { $eq: ['$status', 10] },
-                    { $ne: ['$value.amount', null] }
+                    {
+                      $eq: ['$status', 10]
+                    },
+                    {
+                      $gt: [
+                        {
+                          $ifNull: [
+                            '$value.amount',
+                            {
+                              $ifNull: [
+                                '$rawData.value.amount',
+                                0
+                              ]
+                            }
+                          ]
+                        },
+                        0
+                      ]
+                    }
                   ]
                 },
-                '$value.amount',
-                null
+                1,
+                0
               ]
             }
           }
         }
       },
+
       {
         $addFields: {
+          averageTicket: {
+            $cond: [
+              {
+                $gt: [
+                  '$totalWonWithValue',
+                  0
+                ]
+              },
+              {
+                $divide: [
+                  '$totalRevenue',
+                  '$totalWonWithValue'
+                ]
+              },
+              0
+            ]
+          },
+
           conversionRate: {
             $cond: [
-              { $gt: ['$totalLeads', 0] },
+              {
+                $gt: [
+                  '$totalLeads',
+                  0
+                ]
+              },
               {
                 $multiply: [
                   {
-                    $divide: ['$wonLeads', '$totalLeads']
+                    $divide: [
+                      '$wonLeads',
+                      '$totalLeads'
+                    ]
                   },
                   100
                 ]
@@ -6610,6 +6777,13 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
           }
         }
       },
+
+      {
+        $project: {
+          totalWonWithValue: 0
+        }
+      },
+
       {
         $sort: {
           totalRevenue: -1
@@ -6617,20 +6791,222 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
       }
     ]);
 
+    // ========================================
+    // ATIVIDADES REALIZADAS NO MÊS
+    // ========================================
+
+    const activitiesByAssignee =
+      await Lead.aggregate([
+        {
+          $match: {
+            ...baseFilter,
+
+            activities: {
+              $exists: true,
+              $ne: []
+            }
+          }
+        },
+
+        {
+          $unwind: '$activities'
+        },
+
+        {
+          $addFields: {
+            activityDate: {
+              $convert: {
+                input: {
+                  $ifNull: [
+                    '$activities.activityTime',
+                    {
+                      $ifNull: [
+                        '$activities.createdTime',
+                        {
+                          $ifNull: [
+                            '$activities.startTime',
+                            {
+                              $ifNull: [
+                                '$activities.endTime',
+                                {
+                                  $ifNull: [
+                                    '$activities.date',
+                                    '$activities.modifiedTime'
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+
+                to: 'date',
+                onError: null,
+                onNull: null
+              }
+            }
+          }
+        },
+
+        {
+          $match: {
+            activityDate: {
+              $gte: start,
+              $lt: end,
+              $ne: null
+            }
+          }
+        },
+
+        {
+          $group: {
+            _id: '$assignee.name',
+
+            activitiesCount: {
+              $sum: 1
+            }
+          }
+        }
+      ]);
+
+    // ========================================
+    // OPEN OU PENDING SEM ATUALIZAÇÃO
+    // HÁ MAIS DE 5 DIAS
+    // ========================================
+
+    const staleLeadsByAssignee =
+      await Lead.aggregate([
+        {
+          $match: {
+            ...baseFilter,
+
+            status: {
+              $in: [0, 1]
+            },
+
+            modifiedTime: {
+              $lt: fiveDaysAgo,
+              $ne: null
+            }
+          }
+        },
+
+        {
+          $group: {
+            _id: '$assignee.name',
+
+            staleOpenPending: {
+              $sum: 1
+            }
+          }
+        }
+      ]);
+
+    // ========================================
+    // MAPAS AUXILIARES
+    // ========================================
+
+    const activitiesMap = new Map(
+      activitiesByAssignee.map((item) => [
+        normalizeName(item._id),
+        Number(item.activitiesCount || 0)
+      ])
+    );
+
+    const staleMap = new Map(
+      staleLeadsByAssignee.map((item) => [
+        normalizeName(item._id),
+        Number(item.staleOpenPending || 0)
+      ])
+    );
+
+    const completePerformance =
+      performance.map((item) => {
+        const normalizedName =
+          normalizeName(item._id);
+
+        return {
+          ...item,
+
+          activitiesCount:
+            activitiesMap.get(
+              normalizedName
+            ) || 0,
+
+          staleOpenPending:
+            staleMap.get(
+              normalizedName
+            ) || 0
+        };
+      });
+
+    // ========================================
+    // SEPARAÇÃO CLOSERS E SDRS
+    // ========================================
+
+    const closers =
+      completePerformance.filter((item) =>
+        normalizedCloserNames.has(
+          normalizeName(item._id)
+        )
+      );
+
+    const sdrs =
+      completePerformance.filter((item) => {
+        const normalizedName =
+          normalizeName(item._id);
+
+        return (
+          normalizedName &&
+          !normalizedCloserNames.has(
+            normalizedName
+          ) &&
+          !ignoredNames.has(
+            normalizedName
+          )
+        );
+      });
+
     res.json({
       sucesso: true,
-      filters: {
-        startDate: startDate || null,
-        endDate: endDate || null,
-        status: status || null,
-        role: role || null
+
+      routeVersion:
+        'performance-by-assignee-v2',
+
+      period: selectedPeriod,
+
+      periodRange: {
+        startDate: start,
+        endDate: end
       },
-      totalAssignees: performance.length,
-      performance
+
+      staleRule: {
+        statuses: [0, 1],
+        daysWithoutUpdate: 5,
+        referenceDate: fiveDaysAgo
+      },
+
+      totalClosers: closers.length,
+      totalSdrs: sdrs.length,
+
+      closers,
+      sdrs,
+
+      /*
+       * Mantido para não quebrar o frontend
+       * antigo durante a alteração.
+       */
+      performance: completePerformance
     });
 
   } catch (error) {
-    console.error('ERRO PERFORMANCE ASSIGNEE:', error.message);
+    console.error(
+      'ERRO PERFORMANCE ASSIGNEE:',
+      error
+    );
 
     res.status(500).json({
       sucesso: false,
