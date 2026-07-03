@@ -16,6 +16,7 @@ const OFFICIAL_CAMPAIGN_DATA = {
     wonLeads: 4,
     lostLeads: 77,
     meetingsCount: 16,
+    wonRevenue: 21500,
     referenceLabel: '30/04/2026'
   },
 
@@ -25,6 +26,7 @@ const OFFICIAL_CAMPAIGN_DATA = {
     wonLeads: 8,
     lostLeads: 103,
     meetingsCount: 57,
+    wonRevenue: 69165.25,
     referenceLabel:
       '25/05/2026 a 29/05/2026'
   },
@@ -35,6 +37,7 @@ const OFFICIAL_CAMPAIGN_DATA = {
     wonLeads: 2,
     lostLeads: 21,
     meetingsCount: 12,
+    wonRevenue: 6500,
     referenceLabel: '30/06/2026'
   }
 };
@@ -49,12 +52,21 @@ function formatPoints(value) {
   );
 }
 
+function formatCurrency(value) {
+  return Number(value || 0).toLocaleString(
+    'pt-BR',
+    {
+      style: 'currency',
+      currency: 'BRL'
+    }
+  );
+}
 function shortCampaignName(tag) {
   if (
     tag ===
     'All Hands - Road to the Glory'
   ) {
-    return 'All Hands';
+    return 'Abril';
   }
 
   if (String(tag).includes('Maio')) {
@@ -245,6 +257,11 @@ function Reports() {
             official.meetingsCount ??
             campaign.meetingsCount,
 
+          wonRevenue:
+            official.wonRevenue ??
+            campaign.wonRevenue ??
+            0,
+
           referenceLabel:
             official.referenceLabel ||
             campaign.referenceLabel
@@ -337,12 +354,17 @@ function Reports() {
       wonLeads: campaign.wonLeads,
       lostLeads: campaign.lostLeads,
       meetingsCount:
-        campaign.meetingsCount,
-      conversionRate:
-        campaign.conversionRate,
-      bestTeam:
-        campaign.bestPerformance?.team ||
-        '—'
+  campaign.meetingsCount,
+
+wonRevenue:
+  campaign.wonRevenue || 0,
+
+conversionRate:
+  campaign.conversionRate,
+
+bestTeam:
+  campaign.bestPerformance?.team ||
+  '—'
     }));
   }, [campaigns]);
 
@@ -602,117 +624,118 @@ function ComparisonTable({
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-lg">
 
-      <div className="border-b border-slate-800 p-6">
+      <div className="border-b border-slate-800 p-5">
 
         <h2 className="text-xl font-bold text-white">
           Comparativo das campanhas
         </h2>
 
         <p className="mt-1 text-sm text-slate-400">
-          Resultados gerais dos três
-          períodos
+          Resultados gerais dos três períodos
         </p>
 
       </div>
 
-      <div className="overflow-x-auto">
+      <div className="w-full">
 
-        <table className="w-full min-w-[900px]">
+  <table className="w-full table-fixed">
 
-          <thead className="bg-slate-800">
+    <thead className="bg-slate-800">
 
-            <tr className="text-left text-sm text-slate-300">
+      <tr className="text-left text-[11px] text-slate-300 lg:text-xs">
 
-              <th className="p-4">
-                Campanha
-              </th>
+        <th className="w-[11%] px-2 py-3">
+          Campanha
+        </th>
 
-              <th className="p-4">
-                Total Leads
-              </th>
+        <th className="w-[8%] px-1 py-3 text-center">
+          Total
+        </th>
 
-              <th className="p-4">
-                Open
-              </th>
+        <th className="w-[8%] px-1 py-3 text-center">
+          Open
+        </th>
 
-              <th className="p-4">
-                Won
-              </th>
+        <th className="w-[8%] px-1 py-3 text-center">
+          Won
+        </th>
 
-              <th className="p-4">
-                Lost
-              </th>
+        <th className="w-[8%] px-1 py-3 text-center">
+          Lost
+        </th>
 
-              <th className="p-4">
-                Reuniões
-              </th>
+        <th className="w-[9%] px-1 py-3 text-center">
+          Reuniões
+        </th>
 
-              <th className="p-4">
-                Conversão
-              </th>
+        <th className="w-[18%] px-2 py-3 text-right">
+          Receita Won
+        </th>
 
-              <th className="p-4">
-                Melhor Time
-              </th>
+        <th className="w-[11%] px-1 py-3 text-center">
+          Conversão
+        </th>
 
-            </tr>
+        <th className="w-[19%] px-2 py-3">
+          Melhor Time
+        </th>
 
-          </thead>
+      </tr>
 
-          <tbody>
+    </thead>
 
-            {comparison.map(
-              (item) => (
-                <tr
-                  key={item.tag}
-                  className="border-t border-slate-800 text-slate-200"
-                >
+    <tbody>
 
-                  <td className="p-4 font-semibold text-white">
-                    {shortCampaignName(
-                      item.tag
-                    )}
-                  </td>
+      {comparison.map((item) => (
+        <tr
+          key={item.tag}
+          className="border-t border-slate-800 text-xs text-slate-200 lg:text-sm"
+        >
 
-                  <td className="p-4">
-                    {item.totalLeads}
-                  </td>
+          <td className="px-2 py-3 font-semibold text-white">
+            {shortCampaignName(item.tag)}
+          </td>
 
-                  <td className="p-4 font-semibold text-blue-400">
-                    {item.openLeads}
-                  </td>
+          <td className="px-1 py-3 text-center">
+            {item.totalLeads}
+          </td>
 
-                  <td className="p-4 font-semibold text-emerald-400">
-                    {item.wonLeads}
-                  </td>
+          <td className="px-1 py-3 text-center font-semibold text-blue-400">
+            {item.openLeads}
+          </td>
 
-                  <td className="p-4 font-semibold text-red-400">
-                    {item.lostLeads}
-                  </td>
+          <td className="px-1 py-3 text-center font-semibold text-emerald-400">
+            {item.wonLeads}
+          </td>
 
-                  <td className="p-4">
-                    {item.meetingsCount}
-                  </td>
+          <td className="px-1 py-3 text-center font-semibold text-red-400">
+            {item.lostLeads}
+          </td>
 
-                  <td className="p-4">
-                    {formatPercent(
-                      item.conversionRate
-                    )}
-                  </td>
+          <td className="px-1 py-3 text-center">
+            {item.meetingsCount}
+          </td>
 
-                  <td className="p-4 font-semibold text-white">
-                    {item.bestTeam}
-                  </td>
+          <td className="whitespace-nowrap px-2 py-3 text-right font-semibold text-emerald-300">
+            {formatCurrency(item.wonRevenue)}
+          </td>
 
-                </tr>
-              )
-            )}
+          <td className="px-1 py-3 text-center">
+            {formatPercent(item.conversionRate)}
+          </td>
 
-          </tbody>
+          <td className="px-2 py-3 font-semibold text-white">
+            {item.bestTeam}
+          </td>
 
-        </table>
+        </tr>
+      ))}
 
-      </div>
+    </tbody>
+
+  </table>
+
+</div>
 
     </div>
   );
