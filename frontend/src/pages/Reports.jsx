@@ -6,6 +6,39 @@ import {
 
 import api from '../services/api';
 
+const STORAGE_KEY =
+  'roadToGloryReportOverrides';
+
+const OFFICIAL_CAMPAIGN_DATA = {
+  'All Hands - Road to the Glory': {
+    totalLeads: 107,
+    openLeads: 26,
+    wonLeads: 4,
+    lostLeads: 77,
+    meetingsCount: 16,
+    referenceLabel: '30/04/2026'
+  },
+
+  'Road to the Glory - Maio': {
+    totalLeads: 140,
+    openLeads: 29,
+    wonLeads: 8,
+    lostLeads: 103,
+    meetingsCount: 57,
+    referenceLabel:
+      '25/05/2026 a 29/05/2026'
+  },
+
+  'Road to the Glory - Junho': {
+    totalLeads: 65,
+    openLeads: 42,
+    wonLeads: 2,
+    lostLeads: 21,
+    meetingsCount: 12,
+    referenceLabel: '30/06/2026'
+  }
+};
+
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(2)}%`;
 }
@@ -35,18 +68,59 @@ function shortCampaignName(tag) {
   return tag;
 }
 
+function safeNumber(value) {
+  const number = Number(value);
+
+  return Number.isFinite(number)
+    ? number
+    : 0;
+}
+
+function calculateConversion(won, total) {
+  return safeNumber(total) > 0
+    ? Number(
+        (
+          (safeNumber(won) /
+            safeNumber(total)) *
+          100
+        ).toFixed(2)
+      )
+    : 0;
+}
+
+function getStoredOverrides() {
+  try {
+    const raw = localStorage.getItem(
+      STORAGE_KEY
+    );
+
+    return raw
+      ? JSON.parse(raw)
+      : {
+          campaigns: {},
+          teams: {}
+        };
+  } catch {
+    return {
+      campaigns: {},
+      teams: {}
+    };
+  }
+}
+
+function saveStoredOverrides(value) {
+  localStorage.setItem(
+    STORAGE_KEY,
+    JSON.stringify(value)
+  );
+}
+
 function Reports() {
   const [loading, setLoading] =
     useState(true);
 
-  const [campaigns, setCampaigns] =
+  const [rawCampaigns, setRawCampaigns] =
     useState([]);
-
-  const [comparison, setComparison] =
-    useState([]);
-
-  const [highlights, setHighlights] =
-    useState({});
 
   const [
     selectedCampaign,
@@ -55,6 +129,9 @@ function Reports() {
 
   const [errorMessage, setErrorMessage] =
     useState('');
+
+  const [overrides, setOverrides] =
+    useState(() => getStoredOverrides());
 
   useEffect(() => {
     loadReport();
@@ -72,20 +149,10 @@ function Reports() {
       const payload =
         response.data || {};
 
-      setCampaigns(
+      setRawCampaigns(
         Array.isArray(payload.campaigns)
           ? payload.campaigns
           : []
-      );
-
-      setComparison(
-        Array.isArray(payload.comparison)
-          ? payload.comparison
-          : []
-      );
-
-      setHighlights(
-        payload.highlights || {}
       );
     } catch (error) {
       console.error(
@@ -93,9 +160,7 @@ function Reports() {
         error
       );
 
-      setCampaigns([]);
-      setComparison([]);
-      setHighlights({});
+      setRawCampaigns([]);
 
       setErrorMessage(
         error.response?.data?.erro ||
@@ -105,6 +170,181 @@ function Reports() {
       setLoading(false);
     }
   }
+
+  function updateOverrides(nextValue) {
+    setOverrides(nextValue);
+    saveStoredOverrides(nextValue);
+  }
+
+  function saveCampaignOverride(
+    campaignTag,
+    values
+  ) {
+    const nextOverrides = {
+      ...overrides,
+      campaigns: {
+        ...overrides.campaigns,
+        [campaignTag]: values
+      }
+    };
+
+    updateOverrides(nextOverrides);
+  }
+
+  function saveTeamOverride(
+    campaignTag,
+    teamKey,
+    values
+  ) {
+    const key = `${campaignTag}|${teamKey}`;
+
+    const nextOverrides = {
+      ...overrides,
+      teams: {
+        ...overrides.teams,
+        [key]: values
+      }
+    };
+
+    updateOverrides(nextOverrides);
+  }
+
+  const campaigns = useMemo(() => {
+    return rawCampaigns.map(
+      (campaign) => {
+        const official =
+          OFFICIAL_CAMPAIGN_DATA[
+            campaign.tag
+          ] || {};
+
+        const campaignOverride =
+          overrides.campaigns?.[
+            campaign.tag
+          ] || {};
+
+        const baseCampaign = {
+          ...campaign,
+
+          totalLeads:
+            official.totalLeads ??
+            campaign.totalLeads,
+
+          openLeads:
+            official.openLeads ??
+            campaign.openLeads,
+
+          wonLeads:
+            official.wonLeads ??
+            campaign.wonLeads,
+
+          lostLeads:
+            official.lostLeads ??
+            campaign.lostLeads,
+
+          meetingsCount:
+            official.meetingsCount ??
+            campaign.meetingsCount,
+
+          referenceLabel:
+            official.referenceLabel ||
+            campaign.referenceLabel
+        };
+
+        const mergedCampaign = {
+          ...baseCampaign,
+          ...campaignOverride
+        };
+
+        mergedCampaign.conversionRate =
+          calculateConversion(
+            mergedCampaign.wonLeads,
+            mergedCampaign.totalLeads
+          );
+
+        const teams = Array.isArray(
+          campaign.teams
+        )
+          ? campaign.teams
+          : [];
+
+        const adjustedTeams = teams.map(
+          (team) => {
+            const key = `${campaign.tag}|${team.teamKey}`;
+
+            const teamOverride =
+              overrides.teams?.[key] || {};
+
+            const adjustedTeam = {
+              ...team,
+              ...teamOverride
+            };
+
+            adjustedTeam.automaticPoints =
+              safeNumber(
+                adjustedTeam.automaticPoints
+              );
+
+            adjustedTeam.manualPoints =
+              safeNumber(
+                adjustedTeam.manualPoints
+              );
+
+            adjustedTeam.totalPoints =
+              safeNumber(
+                adjustedTeam.automaticPoints
+              ) +
+              safeNumber(
+                adjustedTeam.manualPoints
+              );
+
+            adjustedTeam.conversionRate =
+              calculateConversion(
+                adjustedTeam.wonLeads,
+                adjustedTeam.totalLeads
+              );
+
+            return adjustedTeam;
+          }
+        );
+
+        const bestTeamByMiles = [
+          ...adjustedTeams
+        ].sort(
+          (first, second) =>
+            safeNumber(
+              second.totalPoints
+            ) -
+            safeNumber(
+              first.totalPoints
+            )
+        )[0];
+
+        return {
+          ...mergedCampaign,
+          teams: adjustedTeams,
+          bestPerformance:
+            bestTeamByMiles || null
+        };
+      }
+    );
+  }, [rawCampaigns, overrides]);
+
+  const comparison = useMemo(() => {
+    return campaigns.map((campaign) => ({
+      tag: campaign.tag,
+      totalLeads: campaign.totalLeads,
+      openLeads: campaign.openLeads,
+      wonLeads: campaign.wonLeads,
+      lostLeads: campaign.lostLeads,
+      meetingsCount:
+        campaign.meetingsCount,
+      conversionRate:
+        campaign.conversionRate,
+      bestTeam:
+        campaign.bestPerformance?.team ||
+        '—'
+    }));
+  }, [campaigns]);
 
   const visibleCampaigns =
     useMemo(() => {
@@ -128,28 +368,24 @@ function Reports() {
     useMemo(() => {
       return visibleCampaigns.reduce(
         (total, campaign) => {
-          total.totalLeads += Number(
-            campaign.totalLeads || 0
+          total.totalLeads += safeNumber(
+            campaign.totalLeads
           );
 
-          total.openLeads += Number(
-            campaign.openLeads || 0
+          total.openLeads += safeNumber(
+            campaign.openLeads
           );
 
-          total.wonLeads += Number(
-            campaign.wonLeads || 0
+          total.wonLeads += safeNumber(
+            campaign.wonLeads
           );
 
-          total.lostLeads += Number(
-            campaign.lostLeads || 0
+          total.lostLeads += safeNumber(
+            campaign.lostLeads
           );
 
-          total.meetingsCount += Number(
-            campaign.meetingsCount || 0
-          );
-
-          total.activitiesCount += Number(
-            campaign.activitiesCount || 0
+          total.meetingsCount += safeNumber(
+            campaign.meetingsCount
           );
 
           total.totalPoints +=
@@ -159,10 +395,8 @@ function Reports() {
               ? campaign.teams.reduce(
                   (sum, team) =>
                     sum +
-                    Number(
-                      team.totalPoints ??
-                        team.manualPoints ??
-                        0
+                    safeNumber(
+                      team.totalPoints
                     ),
                   0
                 )
@@ -176,19 +410,16 @@ function Reports() {
           wonLeads: 0,
           lostLeads: 0,
           meetingsCount: 0,
-          activitiesCount: 0,
           totalPoints: 0
         }
       );
     }, [visibleCampaigns]);
 
   const conversionRate =
-    generalSummary.totalLeads > 0
-      ? (
-          generalSummary.wonLeads /
-          generalSummary.totalLeads
-        ) * 100
-      : 0;
+    calculateConversion(
+      generalSummary.wonLeads,
+      generalSummary.totalLeads
+    );
 
   if (loading) {
     return (
@@ -318,44 +549,9 @@ function Reports() {
       </div>
 
       {selectedCampaign === 'all' && (
-        <>
-          <div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
-
-            <HighlightCard
-              title="Maior volume de leads"
-              data={
-                highlights.highestLeadVolume
-              }
-            />
-
-            <HighlightCard
-              title="Maior número de Won"
-              data={
-                highlights.highestWon
-              }
-            />
-
-            <HighlightCard
-              title="Maior número de reuniões"
-              data={
-                highlights.highestMeetings
-              }
-            />
-
-            <HighlightCard
-              title="Melhor conversão"
-              data={
-                highlights.bestConversion
-              }
-              percentage
-            />
-
-          </div>
-
-          <ComparisonTable
-            comparison={comparison}
-          />
-        </>
+        <ComparisonTable
+          comparison={comparison}
+        />
       )}
 
       <div className="mt-6 space-y-6">
@@ -365,7 +561,12 @@ function Reports() {
             <CampaignSection
               key={campaign.tag}
               campaign={campaign}
-              onSaved={loadReport}
+              onSaveCampaign={
+                saveCampaignOverride
+              }
+              onSaveTeam={
+                saveTeamOverride
+              }
             />
           )
         )}
@@ -389,40 +590,6 @@ function SummaryCard({
 
       <p className="mt-2 text-2xl font-bold text-white">
         {value}
-      </p>
-
-    </div>
-  );
-}
-
-function HighlightCard({
-  title,
-  data,
-  percentage = false
-}) {
-  return (
-    <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
-
-      <p className="text-sm text-slate-400">
-        {title}
-      </p>
-
-      <p className="mt-2 text-lg font-bold text-white">
-        {data
-          ? shortCampaignName(
-              data.tag
-            )
-          : '—'}
-      </p>
-
-      <p className="mt-1 text-2xl font-bold text-blue-400">
-        {data
-          ? percentage
-            ? formatPercent(
-                data.value
-              )
-            : data.value
-          : 0}
       </p>
 
     </div>
@@ -534,8 +701,7 @@ function ComparisonTable({
                   </td>
 
                   <td className="p-4 font-semibold text-white">
-                    {item.bestTeam ||
-                      '—'}
+                    {item.bestTeam}
                   </td>
 
                 </tr>
@@ -554,7 +720,8 @@ function ComparisonTable({
 
 function CampaignSection({
   campaign,
-  onSaved
+  onSaveCampaign,
+  onSaveTeam
 }) {
   const teams = Array.isArray(
     campaign.teams
@@ -565,15 +732,15 @@ function CampaignSection({
   const teamsTotal = teams.reduce(
     (total, team) =>
       total +
-      Number(
-        team.totalLeads || 0
+      safeNumber(
+        team.totalLeads
       ),
     0
   );
 
   const outsideTeams = Math.max(
-    Number(
-      campaign.totalLeads || 0
+    safeNumber(
+      campaign.totalLeads
     ) - teamsTotal,
     0
   );
@@ -582,10 +749,8 @@ function CampaignSection({
     teams.reduce(
       (total, team) =>
         total +
-        Number(
-          team.totalPoints ??
-            team.manualPoints ??
-            0
+        safeNumber(
+          team.totalPoints
         ),
       0
     );
@@ -652,7 +817,12 @@ function CampaignSection({
 
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
+      <CampaignManualEditor
+        campaign={campaign}
+        onSave={onSaveCampaign}
+      />
+
+      <div className="mb-6 mt-6 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
 
         <MiniCard
           label="Total"
@@ -712,13 +882,169 @@ function CampaignSection({
             campaignTag={
               campaign.tag
             }
-            onSaved={onSaved}
+            onSave={onSaveTeam}
           />
         ))}
 
       </div>
 
     </div>
+  );
+}
+
+function CampaignManualEditor({
+  campaign,
+  onSave
+}) {
+  const [form, setForm] =
+    useState({
+      totalLeads:
+        campaign.totalLeads || 0,
+      openLeads:
+        campaign.openLeads || 0,
+      wonLeads:
+        campaign.wonLeads || 0,
+      lostLeads:
+        campaign.lostLeads || 0,
+      meetingsCount:
+        campaign.meetingsCount || 0,
+      activitiesCount:
+        campaign.activitiesCount || 0
+    });
+
+  useEffect(() => {
+    setForm({
+      totalLeads:
+        campaign.totalLeads || 0,
+      openLeads:
+        campaign.openLeads || 0,
+      wonLeads:
+        campaign.wonLeads || 0,
+      lostLeads:
+        campaign.lostLeads || 0,
+      meetingsCount:
+        campaign.meetingsCount || 0,
+      activitiesCount:
+        campaign.activitiesCount || 0
+    });
+  }, [campaign]);
+
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+
+    onSave(campaign.tag, {
+      totalLeads:
+        safeNumber(form.totalLeads),
+      openLeads:
+        safeNumber(form.openLeads),
+      wonLeads:
+        safeNumber(form.wonLeads),
+      lostLeads:
+        safeNumber(form.lostLeads),
+      meetingsCount:
+        safeNumber(form.meetingsCount),
+      activitiesCount:
+        safeNumber(
+          form.activitiesCount
+        )
+    });
+  }
+
+  return (
+    <form
+      onSubmit={handleSubmit}
+      className="rounded-2xl border border-slate-700 bg-slate-950 p-4"
+    >
+
+      <p className="mb-3 font-semibold text-white">
+        Ajuste manual da campanha
+      </p>
+
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-7">
+
+        <EditInput
+          label="Total"
+          value={form.totalLeads}
+          onChange={(value) =>
+            updateField(
+              'totalLeads',
+              value
+            )
+          }
+        />
+
+        <EditInput
+          label="Open"
+          value={form.openLeads}
+          onChange={(value) =>
+            updateField(
+              'openLeads',
+              value
+            )
+          }
+        />
+
+        <EditInput
+          label="Won"
+          value={form.wonLeads}
+          onChange={(value) =>
+            updateField(
+              'wonLeads',
+              value
+            )
+          }
+        />
+
+        <EditInput
+          label="Lost"
+          value={form.lostLeads}
+          onChange={(value) =>
+            updateField(
+              'lostLeads',
+              value
+            )
+          }
+        />
+
+        <EditInput
+          label="Reuniões"
+          value={form.meetingsCount}
+          onChange={(value) =>
+            updateField(
+              'meetingsCount',
+              value
+            )
+          }
+        />
+
+        <EditInput
+          label="Atividades"
+          value={form.activitiesCount}
+          onChange={(value) =>
+            updateField(
+              'activitiesCount',
+              value
+            )
+          }
+        />
+
+        <button
+          type="submit"
+          className="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500"
+        >
+          Salvar
+        </button>
+
+      </div>
+
+    </form>
   );
 }
 
@@ -744,90 +1070,100 @@ function MiniCard({
 function TeamCard({
   team,
   campaignTag,
-  onSaved
+  onSave
 }) {
-  const [points, setPoints] =
-    useState('');
+  const [form, setForm] =
+    useState({
+      totalLeads:
+        team.totalLeads || 0,
+      openLeads:
+        team.openLeads || 0,
+      wonLeads:
+        team.wonLeads || 0,
+      lostLeads:
+        team.lostLeads || 0,
+      meetingsCount:
+        team.meetingsCount || 0,
+      activitiesCount:
+        team.activitiesCount || 0,
+      automaticPoints:
+        team.automaticPoints || 0,
+      manualPoints:
+        team.manualPoints || 0
+    });
 
-  const [reason, setReason] =
-    useState('');
+  useEffect(() => {
+    setForm({
+      totalLeads:
+        team.totalLeads || 0,
+      openLeads:
+        team.openLeads || 0,
+      wonLeads:
+        team.wonLeads || 0,
+      lostLeads:
+        team.lostLeads || 0,
+      meetingsCount:
+        team.meetingsCount || 0,
+      activitiesCount:
+        team.activitiesCount || 0,
+      automaticPoints:
+        team.automaticPoints || 0,
+      manualPoints:
+        team.manualPoints || 0
+    });
+  }, [team]);
 
-  const [saving, setSaving] =
-    useState(false);
+  const automaticPoints =
+    safeNumber(
+      team.automaticPoints
+    );
 
-  const [message, setMessage] =
-    useState('');
+  const manualPoints =
+    safeNumber(team.manualPoints);
 
-  const automaticPoints = Number(
-    team.automaticPoints || 0
-  );
+  const totalPoints =
+    safeNumber(team.totalPoints);
 
-  const manualPoints = Number(
-    team.manualPoints || 0
-  );
+  function updateField(field, value) {
+    setForm((current) => ({
+      ...current,
+      [field]: value
+    }));
+  }
 
-  const totalPoints = Number(
-    team.totalPoints ??
-      automaticPoints +
-        manualPoints
-  );
-
-  async function handleAddPoints(
-    event
-  ) {
+  function handleSubmit(event) {
     event.preventDefault();
 
-    const numericPoints =
-      Number(points);
-
-    if (
-      !Number.isFinite(
-        numericPoints
-      ) ||
-      numericPoints === 0
-    ) {
-      setMessage(
-        'Informe uma pontuação diferente de zero.'
-      );
-
-      return;
-    }
-
-    try {
-      setSaving(true);
-      setMessage('');
-
-      await api.post(
-        '/reports/road-to-glory/adjustments',
-        {
-          campaignTag,
-          teamKey: team.teamKey,
-          points: numericPoints,
-          reason: reason.trim()
-        }
-      );
-
-      setPoints('');
-      setReason('');
-
-      setMessage(
-        'Ajuste salvo com sucesso.'
-      );
-
-      await onSaved();
-    } catch (error) {
-      console.error(
-        'Erro ao salvar ajuste:',
-        error
-      );
-
-      setMessage(
-        error.response?.data?.erro ||
-          'Não foi possível salvar o ajuste.'
-      );
-    } finally {
-      setSaving(false);
-    }
+    onSave(
+      campaignTag,
+      team.teamKey,
+      {
+        totalLeads:
+          safeNumber(form.totalLeads),
+        openLeads:
+          safeNumber(form.openLeads),
+        wonLeads:
+          safeNumber(form.wonLeads),
+        lostLeads:
+          safeNumber(form.lostLeads),
+        meetingsCount:
+          safeNumber(
+            form.meetingsCount
+          ),
+        activitiesCount:
+          safeNumber(
+            form.activitiesCount
+          ),
+        automaticPoints:
+          safeNumber(
+            form.automaticPoints
+          ),
+        manualPoints:
+          safeNumber(
+            form.manualPoints
+          )
+      }
+    );
   }
 
   return (
@@ -907,7 +1243,7 @@ function TeamCard({
         />
 
         <Metric
-          label="Ajustes manuais"
+          label="Milhas manuais"
           value={formatPoints(
             manualPoints
           )}
@@ -924,61 +1260,141 @@ function TeamCard({
       </div>
 
       <form
-        onSubmit={handleAddPoints}
+        onSubmit={handleSubmit}
         className="mt-5 rounded-xl border border-slate-700 bg-slate-900 p-4"
       >
 
         <p className="mb-3 font-semibold text-white">
-          Adicionar ajuste manual
+          Ajuste manual do time
         </p>
 
-        <div className="grid grid-cols-1 gap-3">
+        <div className="grid grid-cols-2 gap-3">
 
-          <input
-            type="number"
-            value={points}
-            onChange={(event) =>
-              setPoints(
-                event.target.value
+          <EditInput
+            label="Total"
+            value={form.totalLeads}
+            onChange={(value) =>
+              updateField(
+                'totalLeads',
+                value
               )
             }
-            placeholder="Milhas. Ex.: 200 ou -50"
-            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
           />
 
-          <input
-            type="text"
-            value={reason}
-            onChange={(event) =>
-              setReason(
-                event.target.value
+          <EditInput
+            label="Open"
+            value={form.openLeads}
+            onChange={(value) =>
+              updateField(
+                'openLeads',
+                value
               )
             }
-            placeholder="Motivo do ajuste"
-            className="rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
           />
 
-          <button
-            type="submit"
-            disabled={saving}
-            className="rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {saving
-              ? 'Salvando...'
-              : 'Adicionar milhas'}
-          </button>
+          <EditInput
+            label="Won"
+            value={form.wonLeads}
+            onChange={(value) =>
+              updateField(
+                'wonLeads',
+                value
+              )
+            }
+          />
+
+          <EditInput
+            label="Lost"
+            value={form.lostLeads}
+            onChange={(value) =>
+              updateField(
+                'lostLeads',
+                value
+              )
+            }
+          />
+
+          <EditInput
+            label="Reuniões"
+            value={form.meetingsCount}
+            onChange={(value) =>
+              updateField(
+                'meetingsCount',
+                value
+              )
+            }
+          />
+
+          <EditInput
+            label="Atividades"
+            value={form.activitiesCount}
+            onChange={(value) =>
+              updateField(
+                'activitiesCount',
+                value
+              )
+            }
+          />
+
+          <EditInput
+            label="Milhas auto"
+            value={form.automaticPoints}
+            onChange={(value) =>
+              updateField(
+                'automaticPoints',
+                value
+              )
+            }
+          />
+
+          <EditInput
+            label="Milhas manuais"
+            value={form.manualPoints}
+            onChange={(value) =>
+              updateField(
+                'manualPoints',
+                value
+              )
+            }
+          />
 
         </div>
 
-        {message && (
-          <p className="mt-3 text-sm text-slate-300">
-            {message}
-          </p>
-        )}
+        <button
+          type="submit"
+          className="mt-3 w-full rounded-xl bg-blue-600 px-4 py-3 font-semibold text-white transition hover:bg-blue-500"
+        >
+          Salvar ajustes do time
+        </button>
 
       </form>
 
     </div>
+  );
+}
+
+function EditInput({
+  label,
+  value,
+  onChange
+}) {
+  return (
+    <label className="block">
+
+      <span className="mb-1 block text-xs text-slate-400">
+        {label}
+      </span>
+
+      <input
+        type="number"
+        value={value}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
+        className="w-full rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-white outline-none focus:border-blue-500"
+      />
+
+    </label>
   );
 }
 
