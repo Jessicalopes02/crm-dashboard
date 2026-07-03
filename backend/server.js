@@ -9,6 +9,9 @@ const leadController = require('./controllers/leadController');
 const Lead = require('./models/lead');
 const Campaign = require('./models/campaign');
 const Goal = require('./models/goal');
+
+const CampaignScoreAdjustment =
+  require('./models/campaignScoreAdjustment');
 const app = express();
 
 const multer = require('multer');
@@ -11341,6 +11344,35 @@ app.get('/api/reports/road-to-glory', async (req, res) => {
       'Road to the Glory - Junho'
     ];
 
+    const officialCampaignResults = {
+  'All Hands - Road to the Glory': {
+    totalLeads: 107,
+    wonLeads: 4,
+    openLeads: 26,
+    lostLeads: 77,
+    meetingsCount: 16,
+    referenceLabel: '30/04/2026'
+  },
+
+  'Road to the Glory - Maio': {
+    totalLeads: 140,
+    wonLeads: 8,
+    openLeads: 29,
+    lostLeads: 103,
+    meetingsCount: 57,
+    referenceLabel:
+      '25/05/2026 a 29/05/2026'
+  },
+
+  'Road to the Glory - Junho': {
+    totalLeads: 65,
+    wonLeads: 2,
+    openLeads: 42,
+    lostLeads: 21,
+    meetingsCount: 12,
+    referenceLabel: '30/06/2026'
+  }
+};
     /*
      * Composição dos times válida para os três períodos.
      */
@@ -11441,6 +11473,35 @@ app.get('/api/reports/road-to-glory', async (req, res) => {
       };
     }
 
+  const scoreAdjustments =
+  await CampaignScoreAdjustment.find({
+    campaignTag: {
+      $in: campaignTags
+    }
+  })
+    .sort({
+      createdAt: -1
+    })
+    .lean();
+
+function getManualPoints(
+  campaignTag,
+  teamKey
+) {
+  return scoreAdjustments
+    .filter(
+      (adjustment) =>
+        adjustment.campaignTag ===
+          campaignTag &&
+        adjustment.teamKey === teamKey
+    )
+    .reduce(
+      (total, adjustment) =>
+        total +
+        Number(adjustment.points || 0),
+      0
+    );
+}  
     const campaigns = [];
 
     for (const campaignTag of campaignTags) {
@@ -11595,11 +11656,16 @@ app.get('/api/reports/road-to-glory', async (req, res) => {
             : 0;
 
         teamResult.manualPoints =
-          Number(
-            manualPoints?.[campaignTag]?.[
-              teamKey
-            ] || 0
+          getManualPoints(
+            campaignTag,
+            teamKey
           );
+
+        teamResult.automaticPoints = 0;
+
+        teamResult.totalPoints =
+          teamResult.automaticPoints +
+          teamResult.manualPoints;
       }
 
       const teamsArray =
@@ -11861,6 +11927,77 @@ app.get('/api/reports/road-to-glory', async (req, res) => {
     });
   }
 });
+
+app.post(
+  '/api/reports/road-to-glory/adjustments',
+  async (req, res) => {
+    try {
+      const {
+        campaignTag,
+        teamKey,
+        points,
+        reason
+      } = req.body;
+
+      if (!campaignTag) {
+        return res.status(400).json({
+          sucesso: false,
+          erro: 'A campanha é obrigatória.'
+        });
+      }
+
+      const validTeams = [
+        'ferrari',
+        'mercedes',
+        'redbull',
+        'general'
+      ];
+
+      if (!validTeams.includes(teamKey)) {
+        return res.status(400).json({
+          sucesso: false,
+          erro: 'Time inválido.'
+        });
+      }
+
+      const numericPoints =
+        Number(points);
+
+      if (!Number.isFinite(numericPoints)) {
+        return res.status(400).json({
+          sucesso: false,
+          erro: 'Pontuação inválida.'
+        });
+      }
+
+      const adjustment =
+        await CampaignScoreAdjustment.create({
+          campaignTag,
+          teamKey,
+          points: numericPoints,
+          reason: String(
+            reason || ''
+          ).trim()
+        });
+
+      res.status(201).json({
+        sucesso: true,
+        adjustment
+      });
+    } catch (error) {
+      console.error(
+        'ERRO AJUSTE ROAD TO GLORY:',
+        error
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro: error.message
+      });
+    }
+  }
+);
+
 
 app.get('/api/audit/forecast-current', async (req, res) => {
   try {
