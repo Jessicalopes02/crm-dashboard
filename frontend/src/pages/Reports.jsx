@@ -42,6 +42,26 @@ const OFFICIAL_CAMPAIGN_DATA = {
   }
 };
 
+const WON_REVENUE_BY_TEAM = {
+  'All Hands - Road to the Glory': {
+    ferrari: 0,
+    mercedes: 0,
+    redbull: 21500
+  },
+
+  'Road to the Glory - Maio': {
+    ferrari: 0,
+    mercedes: 15000,
+    redbull: 54165.25
+  },
+
+  'Road to the Glory - Junho': {
+    ferrari: 4500,
+    mercedes: 0,
+    redbull: 2000
+  }
+};
+
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(2)}%`;
 }
@@ -594,6 +614,10 @@ bestTeam:
         )}
 
       </div>
+
+    <WonRevenuePanel
+  campaigns={visibleCampaigns}
+/>
 
     </div>
   );
@@ -1454,6 +1478,96 @@ function Metric({
       >
         {value ?? 0}
       </p>
+
+    </div>
+  );
+}
+
+function WonRevenuePanel({
+  campaigns
+}) {
+  return (
+    <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-lg">
+
+      <div className="mb-5">
+        <h2 className="text-xl font-bold text-white">
+          Receita Won por Time
+        </h2>
+
+        <p className="mt-1 text-sm text-slate-400">
+          Receita por campanha e por equipe
+        </p>
+      </div>
+
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+
+        {campaigns.map((campaign) => {
+          const revenue =
+            WON_REVENUE_BY_TEAM[
+              campaign.tag
+            ] || {};
+
+          return (
+            <div
+              key={campaign.tag}
+              className="rounded-2xl border border-slate-700 bg-slate-950 p-5"
+            >
+
+              <h3 className="mb-4 text-lg font-bold text-white">
+                {shortCampaignName(
+                  campaign.tag
+                )}
+              </h3>
+
+              <div className="space-y-3">
+
+                <RevenueRow
+                  team="Ferrari"
+                  value={
+                    revenue.ferrari
+                  }
+                />
+
+                <RevenueRow
+                  team="Mercedes"
+                  value={
+                    revenue.mercedes
+                  }
+                />
+
+                <RevenueRow
+                  team="Red Bull"
+                  value={
+                    revenue.redbull
+                  }
+                />
+
+              </div>
+
+            </div>
+          );
+        })}
+
+      </div>
+
+    </div>
+  );
+}
+
+function RevenueRow({
+  team,
+  value
+}) {
+  return (
+    <div className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+
+      <span className="text-sm text-slate-400">
+        {team}
+      </span>
+
+      <span className="font-bold text-emerald-300">
+        {formatCurrency(value)}
+      </span>
 
     </div>
   );
