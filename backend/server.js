@@ -6843,13 +6843,12 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
     const CLOSER_ASSIGNEES = [
       'Alba Danielly Rezende Lima',
       'Beatriz Costa',
+      'Beatriz Costa  Costa',
       'Edson da Silva Bomfim Júnior',
       'Fabiane Carvalho Nascimento',
       'Fábio Souza',
       'Gabriel Lopes',
-      'Giovanna Fernandes',
       'Luiza Carvalho',
-      'Pedro Scarillo',
       'Marcus Santana',
       'Marcus Vinicius Dias Santana'
     ];
@@ -6873,7 +6872,9 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
        'geral',
        'faturamento log & comex',
        'sem responsável',
-       'sem responsavel'
+       'sem responsavel',
+       'giovanna fernandes',
+       'pedro scarillo'
     ]);
 
     // ========================================
@@ -13305,48 +13306,76 @@ app.get(
   '/api/sync/nutshell/activities-period',
   async (req, res) => {
     try {
-      const period = String(
-        req.query.period || '2026-06'
-      );
+      const {
+  period,
+  startDate,
+  endDate
+} = req.query;
 
-      const match = period.match(
-        /^(\d{4})-(\d{2})$/
-      );
+let start;
+let end;
+let selectedPeriod = null;
 
-      if (!match) {
-        return res.status(400).json({
-          sucesso: false,
-          erro:
-            'Período inválido. Utilize YYYY-MM.'
-        });
-      }
+if (startDate && endDate) {
+  start = new Date(
+    `${startDate}T03:00:00.000Z`
+  );
 
-      const year = Number(match[1]);
-      const month = Number(match[2]);
+  end = new Date(
+    `${endDate}T03:00:00.000Z`
+  );
 
-      const start = new Date(
-        Date.UTC(
-          year,
-          month - 1,
-          1,
-          3,
-          0,
-          0,
-          0
-        )
-      );
+  /*
+   * Soma um dia porque o filtro final usa $lt.
+   * Assim, o endDate inteiro será incluído.
+   */
+  end.setUTCDate(
+    end.getUTCDate() + 1
+  );
+} else {
+  selectedPeriod = String(
+    period || '2026-07'
+  );
 
-      const end = new Date(
-        Date.UTC(
-          year,
-          month,
-          1,
-          3,
-          0,
-          0,
-          0
-        )
-      );
+  const match = selectedPeriod.match(
+    /^(\d{4})-(\d{2})$/
+  );
+
+  if (!match) {
+    return res.status(400).json({
+      sucesso: false,
+      erro:
+        'Período inválido. Utilize YYYY-MM.'
+    });
+  }
+
+  const year = Number(match[1]);
+  const month = Number(match[2]);
+
+  start = new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      1,
+      3,
+      0,
+      0,
+      0
+    )
+  );
+
+  end = new Date(
+    Date.UTC(
+      year,
+      month,
+      1,
+      3,
+      0,
+      0,
+      0
+    )
+  );
+}
 
       const PAGE_LIMIT = 100;
       const MAX_PAGES = 200;
@@ -13645,35 +13674,29 @@ app.get(
       }
 
       res.json({
-        sucesso: true,
-        period,
+  sucesso: true,
 
-        range: {
-          start,
-          end
-        },
+  period: selectedPeriod,
+  startDate: startDate || null,
+  endDate: endDate || null,
 
-        pagesProcessed:
-          page,
+  range: {
+    start,
+    end
+  },
 
-        checked,
-
-        activitiesInsidePeriod,
-
-        activitiesWithoutLead,
-
-        detailsRequested,
-
-        leadsWithActivities:
-          activitiesByLead.size,
-
-        leadsFoundInMongo:
-          leads.length,
-
-        leadsUpdated,
-
-        activitiesSaved
-      });
+  pagesProcessed: page,
+  checked,
+  activitiesInsidePeriod,
+  activitiesWithoutLead,
+  detailsRequested,
+  leadsWithActivities:
+    activitiesByLead.size,
+  leadsFoundInMongo:
+    leads.length,
+  leadsUpdated,
+  activitiesSaved
+});
     } catch (error) {
       console.error(
         'ERRO AO SINCRONIZAR ATIVIDADES:',
