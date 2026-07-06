@@ -46,28 +46,31 @@ function TVFullSimplePage() {
         <TVGeneralPage tvMode />
       </div>
 
-      <div
-        style={{
-          position: 'absolute',
-          inset: 0,
-          display:
-            currentScreen === 'background'
-              ? 'block'
-              : 'none',
-          backgroundColor: '#000'
-        }}
-      >
-        <img
-          src="/campaign-tv/campeao.png"
-          alt=""
-          style={{
-            width: '100%',
-            height: '100%',
-            objectFit: 'cover',
-            display: 'block'
-          }}
-        />
-      </div>
+     <div
+  style={{
+    position: 'absolute',
+    inset: 0,
+    display:
+      currentScreen === 'background'
+        ? 'flex'
+        : 'none',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#000'
+  }}
+>
+  <img
+    src="/campaign-tv/campeao.png"
+    alt=""
+    style={{
+      width: '100%',
+      height: '100%',
+      objectFit: 'contain',
+      objectPosition: 'center',
+      display: 'block'
+    }}
+  />
+</div>
     </div>
   );
 }
