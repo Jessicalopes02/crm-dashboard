@@ -12843,6 +12843,269 @@ const frontendPath = path.join(__dirname, '../frontend/dist');
 
 app.use(express.static(frontendPath));
 
+// ========================================
+// DIAGNÓSTICO DE ATIVIDADES SALVAS
+// ========================================
+
+app.get(
+  '/api/debug/activities-summary',
+  async (req, res) => {
+    try {
+      const period =
+        req.query.period || '2026-06';
+
+      const [year, month] = period
+        .split('-')
+        .map(Number);
+
+      const start = new Date(
+        Date.UTC(
+          year,
+          month - 1,
+          1,
+          3,
+          0,
+          0,
+          0
+        )
+      );
+
+      const end = new Date(
+        Date.UTC(
+          year,
+          month,
+          1,
+          3,
+          0,
+          0,
+          0
+        )
+      );
+
+      const totalLeadsWithActivities =
+        await Lead.countDocuments({
+          activities: {
+            $exists: true,
+            $ne: []
+          }
+        });
+
+      const storedActivities =
+        await Lead.aggregate([
+          {
+            $match: {
+              activities: {
+                $exists: true,
+                $ne: []
+              }
+            }
+          },
+
+          {
+            $unwind: '$activities'
+          },
+
+          {
+            $addFields: {
+              activityDate: {
+                $convert: {
+                  input: {
+                    $ifNull: [
+                      '$activities.startTime',
+                      {
+                        $ifNull: [
+                          '$activities.endTime',
+                          {
+                            $ifNull: [
+                              '$activities.createdTime',
+                              {
+                                $ifNull: [
+                                  '$activities.modifiedTime',
+                                  '$activities.dueTime'
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  },
+
+                  to: 'date',
+                  onError: null,
+                  onNull: null
+                }
+              },
+
+              activityOwner: {
+                $ifNull: [
+                  '$activities.loggedBy.name',
+                  {
+                    $ifNull: [
+                      '$activities.user.name',
+                      {
+                        $ifNull: [
+                          '$activities.owner.name',
+                          {
+                            $ifNull: [
+                              '$activities.assignee.name',
+                              {
+                                $arrayElemAt: [
+                                  '$activities.participants.name',
+                                  0
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          },
+
+          {
+            $facet: {
+              allStored: [
+                {
+                  $count: 'total'
+                }
+              ],
+
+              insidePeriod: [
+                {
+                  $match: {
+                    activityDate: {
+                      $gte: start,
+                      $lt: end
+                    }
+                  }
+                },
+                {
+                  $count: 'total'
+                }
+              ],
+
+              missingDate: [
+                {
+                  $match: {
+                    activityDate: null
+                  }
+                },
+                {
+                  $count: 'total'
+                }
+              ],
+
+              missingOwner: [
+                {
+                  $match: {
+                    $or: [
+                      {
+                        activityOwner: null
+                      },
+                      {
+                        activityOwner: ''
+                      }
+                    ]
+                  }
+                },
+                {
+                  $count: 'total'
+                }
+              ],
+
+              ownersInsidePeriod: [
+                {
+                  $match: {
+                    activityDate: {
+                      $gte: start,
+                      $lt: end
+                    }
+                  }
+                },
+                {
+                  $group: {
+                    _id: '$activityOwner',
+                    total: {
+                      $sum: 1
+                    }
+                  }
+                },
+                {
+                  $sort: {
+                    total: -1
+                  }
+                }
+              ],
+
+              samples: [
+                {
+                  $limit: 10
+                },
+                {
+                  $project: {
+                    _id: 0,
+                    activityDate: 1,
+                    activityOwner: 1,
+                    activity: '$activities'
+                  }
+                }
+              ]
+            }
+          }
+        ]);
+
+      const result =
+        storedActivities[0] || {};
+
+      res.json({
+        sucesso: true,
+        period,
+        range: {
+          start,
+          end
+        },
+
+        totalLeadsWithActivities,
+
+        allStored:
+          result.allStored?.[0]?.total || 0,
+
+        insidePeriod:
+          result.insidePeriod?.[0]?.total ||
+          0,
+
+        missingDate:
+          result.missingDate?.[0]?.total ||
+          0,
+
+        missingOwner:
+          result.missingOwner?.[0]?.total ||
+          0,
+
+        ownersInsidePeriod:
+          result.ownersInsidePeriod || [],
+
+        samples:
+          result.samples || []
+      });
+    } catch (error) {
+      console.error(
+        'ERRO DEBUG ATIVIDADES:',
+        error
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro: error.message
+      });
+    }
+  }
+);
+
 app.get(
   '/api/sync/nutshell/activities-period',
   async (req, res) => {
