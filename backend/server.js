@@ -7116,7 +7116,7 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
       }
     ]);
 
-    // ========================================
+   // ========================================
 // ATIVIDADES REALIZADAS NO MÊS
 // AGRUPADAS POR QUEM EXECUTOU
 // INDEPENDENTE DO ASSIGNEE DA LEAD
@@ -7126,11 +7126,6 @@ const activitiesByAssignee =
   await Lead.aggregate([
     {
       $match: {
-        'stageset.name': {
-          $ne:
-            'Processo de Vendas - Global Alliance'
-        },
-
         activities: {
           $exists: true,
           $ne: []
@@ -7216,22 +7211,98 @@ const activitiesByAssignee =
                   '$activities.activityType.name',
                   ''
                 ]
-              },
-              ' ',
-              {
-                $ifNull: [
-                  '$activities.type.name',
-                  ''
-                ]
-              },
-              ' ',
-              {
-                $ifNull: [
-                  '$activities.description',
-                  ''
-                ]
               }
             ]
+          }
+        }
+      }
+    },
+
+    {
+      $addFields: {
+        activityCategory: {
+          $switch: {
+            branches: [
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'reuni|meeting|call de diagnostico|call de diagnóstico',
+                    options: 'i'
+                  }
+                },
+                then: 'meeting'
+              },
+
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'whatsapp.*mensagem pontual',
+                    options: 'i'
+                  }
+                },
+                then: 'whatsappMessage'
+              },
+
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'whatsapp.*houve dialogo|whatsapp.*houve diálogo',
+                    options: 'i'
+                  }
+                },
+                then: 'whatsappDialogue'
+              },
+
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'ligacao.*nao efetiva|ligação.*não efetiva',
+                    options: 'i'
+                  }
+                },
+                then: 'nonEffectiveCall'
+              },
+
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'ligacao.*efetiva|ligação.*efetiva',
+                    options: 'i'
+                  }
+                },
+                then: 'effectiveCall'
+              },
+
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'e-mail.*prospeccao|e-mail.*prospecção|email.*prospeccao|email.*prospecção',
+                    options: 'i'
+                  }
+                },
+                then: 'prospectingEmail'
+              }
+            ],
+
+            default: 'other'
           }
         }
       }
@@ -7264,13 +7335,10 @@ const activitiesByAssignee =
           $sum: {
             $cond: [
               {
-                $regexMatch: {
-                  input:
-                    '$activityDescription',
-                  regex:
-                    'reuni|meeting|call de diagnostico|call de diagnóstico',
-                  options: 'i'
-                }
+                $eq: [
+                  '$activityCategory',
+                  'meeting'
+                ]
               },
               1,
               0
@@ -7282,13 +7350,10 @@ const activitiesByAssignee =
           $sum: {
             $cond: [
               {
-                $regexMatch: {
-                  input:
-                    '$activityDescription',
-                  regex:
-                    'ligacao efetiva|ligação efetiva|houve dialogo|houve diálogo',
-                  options: 'i'
-                }
+                $eq: [
+                  '$activityCategory',
+                  'effectiveCall'
+                ]
               },
               1,
               0
@@ -7300,13 +7365,10 @@ const activitiesByAssignee =
           $sum: {
             $cond: [
               {
-                $regexMatch: {
-                  input:
-                    '$activityDescription',
-                  regex:
-                    'ligacao nao efetiva|ligação não efetiva|nao efetiva|não efetiva',
-                  options: 'i'
-                }
+                $eq: [
+                  '$activityCategory',
+                  'nonEffectiveCall'
+                ]
               },
               1,
               0
@@ -7318,13 +7380,10 @@ const activitiesByAssignee =
           $sum: {
             $cond: [
               {
-                $regexMatch: {
-                  input:
-                    '$activityDescription',
-                  regex:
-                    'whatsapp.*houve dialogo|whatsapp.*houve diálogo',
-                  options: 'i'
-                }
+                $eq: [
+                  '$activityCategory',
+                  'whatsappDialogue'
+                ]
               },
               1,
               0
@@ -7336,13 +7395,10 @@ const activitiesByAssignee =
           $sum: {
             $cond: [
               {
-                $regexMatch: {
-                  input:
-                    '$activityDescription',
-                  regex:
-                    'whatsapp.*mensagem pontual|mensagem pontual',
-                  options: 'i'
-                }
+                $eq: [
+                  '$activityCategory',
+                  'whatsappMessage'
+                ]
               },
               1,
               0
@@ -7354,56 +7410,31 @@ const activitiesByAssignee =
           $sum: {
             $cond: [
               {
-                $regexMatch: {
-                  input:
-                    '$activityDescription',
-                  regex:
-                    'e-mail de prospeccao|e-mail de prospecção|email de prospeccao|email de prospecção',
-                  options: 'i'
-                }
+                $eq: [
+                  '$activityCategory',
+                  'prospectingEmail'
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        otherActivitiesCount: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$activityCategory',
+                  'other'
+                ]
               },
               1,
               0
             ]
           }
         }
-      }
-    },
-
-    {
-      $addFields: {
-        classifiedActivities: {
-          $add: [
-            '$meetingsCount',
-            '$effectiveCallsCount',
-            '$nonEffectiveCallsCount',
-            '$whatsappDialogueCount',
-            '$whatsappMessageCount',
-            '$prospectingEmailCount'
-          ]
-        }
-      }
-    },
-
-    {
-      $addFields: {
-        otherActivitiesCount: {
-          $max: [
-            {
-              $subtract: [
-                '$activitiesCount',
-                '$classifiedActivities'
-              ]
-            },
-            0
-          ]
-        }
-      }
-    },
-
-    {
-      $project: {
-        classifiedActivities: 0
       }
     },
 
