@@ -11374,6 +11374,36 @@ app.get('/api/reports/road-to-glory', async (req, res) => {
     referenceLabel: '30/06/2026'
   }
 };
+
+const campaignPeriods = {
+  'All Hands - Road to the Glory': {
+    start: new Date(
+      '2026-04-30T03:00:00.000Z'
+    ),
+    end: new Date(
+      '2026-05-01T03:00:00.000Z'
+    )
+  },
+
+  'Road to the Glory - Maio': {
+    start: new Date(
+      '2026-05-25T03:00:00.000Z'
+    ),
+    end: new Date(
+      '2026-05-31T03:00:00.000Z'
+    )
+  },
+
+  'Road to the Glory - Junho': {
+    start: new Date(
+      '2026-06-30T03:00:00.000Z'
+    ),
+    end: new Date(
+      '2026-07-01T03:00:00.000Z'
+    )
+  }
+};
+
     /*
      * Composição dos times válida para os três períodos.
      */
@@ -11467,6 +11497,8 @@ app.get('/api/reports/road-to-glory', async (req, res) => {
 
         activitiesCount: 0,
         meetingsCount: 0,
+        wonRevenue: 0,
+
 
         conversionRate: 0,
 
@@ -11503,6 +11535,49 @@ function getManualPoints(
       0
     );
 }  
+
+function getLeadOpenDate(lead) {
+  const processes = Array.isArray(
+    lead?.processes
+  )
+    ? lead.processes
+    : [];
+
+  const commercialProcess =
+    processes.find((process) => {
+      const processName =
+        normalizeName(
+          process?.name || ''
+        );
+
+      return (
+        processName.includes(
+          'processo comercial'
+        ) ||
+        processName.includes(
+          'novos negocios'
+        ) ||
+        processName.includes('sdr')
+      );
+    });
+
+  const rawDate =
+    commercialProcess?.startedTime ||
+    lead?.createdTime ||
+    lead?.rawData?.createdTime ||
+    null;
+
+  if (!rawDate) {
+    return null;
+  }
+
+  const date = new Date(rawDate);
+
+  return Number.isNaN(date.getTime())
+    ? null
+    : date;
+}
+
     const campaigns = [];
 
     for (const campaignTag of campaignTags) {
@@ -11524,6 +11599,8 @@ function getManualPoints(
           tags: 1,
           activities: 1,
           value: 1,
+          createdTime: 1,
+          processes: 1,
           rawData: 1
         })
         .lean();
@@ -11541,6 +11618,7 @@ function getManualPoints(
       let canceledLeads = 0;
       let activitiesCount = 0;
       let meetingsCount = 0;
+      let wonRevenue = 0;
 
       for (const lead of leads) {
         const assigneeName =
@@ -11548,6 +11626,43 @@ function getManualPoints(
 
         const leadTeamKey =
           getTeamKeyByPerson(assigneeName);
+
+        const campaignPeriod =
+  campaignPeriods[campaignTag];
+
+const openDate =
+  getLeadOpenDate(lead);
+
+const openedDuringCampaign =
+  Boolean(
+    campaignPeriod &&
+    openDate &&
+    openDate >= campaignPeriod.start &&
+    openDate < campaignPeriod.end
+  );
+
+const isWon =
+  Number(lead.status) === 10;
+
+const leadRevenue =
+  Number(
+    lead?.value?.amount ||
+    lead?.rawData?.value?.amount ||
+    0
+  );
+
+if (
+  isWon &&
+  openedDuringCampaign
+) {
+  wonRevenue += leadRevenue;
+
+  if (leadTeamKey) {
+    teamsResult[
+      leadTeamKey
+    ].wonRevenue += leadRevenue;
+  }
+}
 
         /*
          * Leads sem responsável ou de pessoas fora dos três
@@ -11759,6 +11874,9 @@ function getManualPoints(
         lostLeads,
         canceledLeads,
 
+
+        wonRevenue,
+        
         activitiesCount,
         meetingsCount,
 
