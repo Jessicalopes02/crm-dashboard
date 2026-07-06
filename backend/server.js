@@ -6953,131 +6953,302 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
     ]);
 
     // ========================================
-    // ATIVIDADES REALIZADAS NO MÊS
-    // ========================================
+// ATIVIDADES REALIZADAS NO MÊS
+// AGRUPADAS POR QUEM EXECUTOU
+// INDEPENDENTE DO ASSIGNEE DA LEAD
+// ========================================
 
-    const activitiesByAssignee = await Lead.aggregate([
-  {
-    $match: {
-      'stageset.name': {
-        $ne: 'Processo de Vendas - Global Alliance'
-      },
+const activitiesByAssignee =
+  await Lead.aggregate([
+    {
+      $match: {
+        'stageset.name': {
+          $ne:
+            'Processo de Vendas - Global Alliance'
+        },
 
-      activities: {
-        $exists: true,
-        $ne: []
+        activities: {
+          $exists: true,
+          $ne: []
+        }
       }
-    }
-  },
+    },
 
-  {
-    $unwind: '$activities'
-  },
+    {
+      $unwind: '$activities'
+    },
 
-  {
-    $addFields: {
-      activityDate: {
-        $convert: {
-          input: {
-            $ifNull: [
-              '$activities.createdTime',
+    {
+      $addFields: {
+        activityDate: {
+          $convert: {
+            input: {
+              $ifNull: [
+                '$activities.startTime',
+                {
+                  $ifNull: [
+                    '$activities.endTime',
+                    {
+                      $ifNull: [
+                        '$activities.createdTime',
+                        {
+                          $ifNull: [
+                            '$activities.modifiedTime',
+                            '$activities.dueTime'
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+
+            to: 'date',
+            onError: null,
+            onNull: null
+          }
+        },
+
+        activityOwner: {
+          $ifNull: [
+            '$activities.loggedBy.name',
+            {
+              $ifNull: [
+                '$activities.user.name',
+                {
+                  $ifNull: [
+                    '$activities.owner.name',
+                    {
+                      $ifNull: [
+                        '$activities.assignee.name',
+                        {
+                          $arrayElemAt: [
+                            '$activities.participants.name',
+                            0
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+
+        activityDescription: {
+          $toLower: {
+            $concat: [
               {
                 $ifNull: [
-                  '$activities.endTime',
-                  {
-                    $ifNull: [
-                      '$activities.startTime',
-                      '$activities.modifiedTime'
-                    ]
-                  }
+                  '$activities.name',
+                  ''
+                ]
+              },
+              ' ',
+              {
+                $ifNull: [
+                  '$activities.activityType.name',
+                  ''
+                ]
+              },
+              ' ',
+              {
+                $ifNull: [
+                  '$activities.type.name',
+                  ''
+                ]
+              },
+              ' ',
+              {
+                $ifNull: [
+                  '$activities.description',
+                  ''
                 ]
               }
             ]
-          },
-
-          to: 'date',
-          onError: null,
-          onNull: null
+          }
         }
-      },
+      }
+    },
 
-      activityOwner: {
-        $ifNull: [
-          '$activities.loggedBy.name',
-          {
-            $arrayElemAt: [
-              '$activities.participants.name',
+    {
+      $match: {
+        activityDate: {
+          $gte: start,
+          $lt: end,
+          $ne: null
+        },
+
+        activityOwner: {
+          $exists: true,
+          $nin: [null, '']
+        }
+      }
+    },
+
+    {
+      $group: {
+        _id: '$activityOwner',
+
+        activitiesCount: {
+          $sum: 1
+        },
+
+        meetingsCount: {
+          $sum: {
+            $cond: [
+              {
+                $regexMatch: {
+                  input:
+                    '$activityDescription',
+                  regex:
+                    'reuni|meeting|call de diagnostico|call de diagnóstico',
+                  options: 'i'
+                }
+              },
+              1,
               0
             ]
           }
-        ]
+        },
+
+        effectiveCallsCount: {
+          $sum: {
+            $cond: [
+              {
+                $regexMatch: {
+                  input:
+                    '$activityDescription',
+                  regex:
+                    'ligacao efetiva|ligação efetiva|houve dialogo|houve diálogo',
+                  options: 'i'
+                }
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        nonEffectiveCallsCount: {
+          $sum: {
+            $cond: [
+              {
+                $regexMatch: {
+                  input:
+                    '$activityDescription',
+                  regex:
+                    'ligacao nao efetiva|ligação não efetiva|nao efetiva|não efetiva',
+                  options: 'i'
+                }
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        whatsappDialogueCount: {
+          $sum: {
+            $cond: [
+              {
+                $regexMatch: {
+                  input:
+                    '$activityDescription',
+                  regex:
+                    'whatsapp.*houve dialogo|whatsapp.*houve diálogo',
+                  options: 'i'
+                }
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        whatsappMessageCount: {
+          $sum: {
+            $cond: [
+              {
+                $regexMatch: {
+                  input:
+                    '$activityDescription',
+                  regex:
+                    'whatsapp.*mensagem pontual|mensagem pontual',
+                  options: 'i'
+                }
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        prospectingEmailCount: {
+          $sum: {
+            $cond: [
+              {
+                $regexMatch: {
+                  input:
+                    '$activityDescription',
+                  regex:
+                    'e-mail de prospeccao|e-mail de prospecção|email de prospeccao|email de prospecção',
+                  options: 'i'
+                }
+              },
+              1,
+              0
+            ]
+          }
+        }
       }
-    }
-  },
-
-  {
-    $match: {
-      activityDate: {
-        $gte: start,
-        $lt: end,
-        $ne: null
-      },
-
-      activityOwner: {
-        $exists: true,
-        $nin: [null, '']
-      }
-    }
-  },
-
- {
-  $group: {
-    _id: '$activityOwner',
-
-    activitiesCount: {
-      $sum: 1
     },
 
-    meetingsCount: {
-      $sum: {
-        $cond: [
-          {
-            $regexMatch: {
-              input: {
-                $concat: [
-                  {
-                    $ifNull: [
-                      '$activities.name',
-                      ''
-                    ]
-                  },
-                  ' ',
-                  {
-                    $ifNull: [
-                      '$activities.activityType.name',
-                      ''
-                    ]
-                  }
-                ]
-              },
-              regex: 'reuni',
-              options: 'i'
-            }
-          },
-          1,
-          0
-        ]
+    {
+      $addFields: {
+        classifiedActivities: {
+          $add: [
+            '$meetingsCount',
+            '$effectiveCallsCount',
+            '$nonEffectiveCallsCount',
+            '$whatsappDialogueCount',
+            '$whatsappMessageCount',
+            '$prospectingEmailCount'
+          ]
+        }
+      }
+    },
+
+    {
+      $addFields: {
+        otherActivitiesCount: {
+          $max: [
+            {
+              $subtract: [
+                '$activitiesCount',
+                '$classifiedActivities'
+              ]
+            },
+            0
+          ]
+        }
+      }
+    },
+
+    {
+      $project: {
+        classifiedActivities: 0
+      }
+    },
+
+    {
+      $sort: {
+        activitiesCount: -1
       }
     }
-  }
-},
-
-  {
-    $sort: {
-      activitiesCount: -1
-    }
-  }
-]);
+  ]);
 
     // ========================================
     // OPEN OU PENDING SEM ATUALIZAÇÃO
@@ -7125,14 +7296,49 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
     const activitiesMap = new Map(
   activitiesByAssignee.map((item) => [
     normalizeName(item._id),
+
     {
+      displayName:
+        item._id ||
+        'Sem responsável',
+
       activitiesCount: Number(
         item.activitiesCount || 0
       ),
 
       meetingsCount: Number(
         item.meetingsCount || 0
-      )
+      ),
+
+      activityBreakdown: {
+        effectiveCall: Number(
+          item.effectiveCallsCount || 0
+        ),
+
+        nonEffectiveCall: Number(
+          item.nonEffectiveCallsCount || 0
+        ),
+
+        whatsappDialogue: Number(
+          item.whatsappDialogueCount || 0
+        ),
+
+        whatsappMessage: Number(
+          item.whatsappMessageCount || 0
+        ),
+
+        prospectingEmail: Number(
+          item.prospectingEmailCount || 0
+        ),
+
+        meetings: Number(
+          item.meetingsCount || 0
+        ),
+
+        other: Number(
+          item.otherActivitiesCount || 0
+        )
+      }
     }
   ])
 );
@@ -7144,53 +7350,144 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
       ])
     );
 
-    const completePerformance =
-      performance.map((item) => {
-        const normalizedName =
-          normalizeName(item._id);
+    const performanceMap = new Map(
+  performance.map((item) => [
+    normalizeName(item._id),
+    item
+  ])
+);
 
-        return {
-          ...item,
+/*
+ * Junta responsáveis encontrados na pipeline
+ * com responsáveis encontrados nas atividades.
+ *
+ * Assim, mesmo quem não teve lead no período,
+ * mas realizou atividades, aparece no módulo.
+ */
+const allResponsibleNames = new Set([
+  ...performanceMap.keys(),
+  ...activitiesMap.keys()
+]);
 
-          activitiesCount:
-  activitiesMap.get(normalizedName)
-    ?.activitiesCount || 0,
+const completePerformance = Array.from(
+  allResponsibleNames
+).map((normalizedName) => {
+  const pipeline =
+    performanceMap.get(normalizedName);
 
-meetingsCount:
-  activitiesMap.get(normalizedName)
-    ?.meetingsCount || 0,
+  const activity =
+    activitiesMap.get(normalizedName);
 
-staleOpenPending:
-  staleMap.get(normalizedName) || 0
-        };
-      });
+  return {
+    _id:
+      pipeline?._id ||
+      activity?.displayName ||
+      'Sem responsável',
 
+    totalLeads: Number(
+      pipeline?.totalLeads || 0
+    ),
+
+    wonLeads: Number(
+      pipeline?.wonLeads || 0
+    ),
+
+    lostLeads: Number(
+      pipeline?.lostLeads || 0
+    ),
+
+    openLeads: Number(
+      pipeline?.openLeads || 0
+    ),
+
+    pendingLeads: Number(
+      pipeline?.pendingLeads || 0
+    ),
+
+    canceledLeads: Number(
+      pipeline?.canceledLeads || 0
+    ),
+
+    totalRevenue: Number(
+      pipeline?.totalRevenue || 0
+    ),
+
+    averageTicket: Number(
+      pipeline?.averageTicket || 0
+    ),
+
+    conversionRate: Number(
+      pipeline?.conversionRate || 0
+    ),
+
+    activitiesCount: Number(
+      activity?.activitiesCount || 0
+    ),
+
+    meetingsCount: Number(
+      activity?.meetingsCount || 0
+    ),
+
+    activityBreakdown:
+      activity?.activityBreakdown || {
+        effectiveCall: 0,
+        nonEffectiveCall: 0,
+        whatsappDialogue: 0,
+        whatsappMessage: 0,
+        prospectingEmail: 0,
+        meetings: 0,
+        other: 0
+      },
+
+    staleOpenPending: Number(
+      staleMap.get(normalizedName) || 0
+    )
+  };
+});
     // ========================================
     // SEPARAÇÃO CLOSERS E SDRS
     // ========================================
 
-    const closers =
-      completePerformance.filter((item) =>
-        normalizedCloserNames.has(
-          normalizeName(item._id)
-        )
-      );
+    const closers = completePerformance
+  .filter((item) =>
+    normalizedCloserNames.has(
+      normalizeName(item._id)
+    )
+  )
+  .sort(
+    (first, second) =>
+      Number(
+        second.activitiesCount || 0
+      ) -
+      Number(
+        first.activitiesCount || 0
+      )
+  );
 
-    const sdrs =
-      completePerformance.filter((item) => {
-        const normalizedName =
-          normalizeName(item._id);
+const sdrs = completePerformance
+  .filter((item) => {
+    const normalizedName =
+      normalizeName(item._id);
 
-        return (
-          normalizedName &&
-          !normalizedCloserNames.has(
-            normalizedName
-          ) &&
-          !ignoredNames.has(
-            normalizedName
-          )
-        );
-      });
+    return (
+      normalizedName &&
+      !normalizedCloserNames.has(
+        normalizedName
+      ) &&
+      !ignoredNames.has(
+        normalizedName
+      )
+    );
+  })
+  .sort(
+    (first, second) =>
+      Number(
+        second.activitiesCount || 0
+      ) -
+      Number(
+        first.activitiesCount || 0
+      )
+  );
 
     res.json({
       sucesso: true,
