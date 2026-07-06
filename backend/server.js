@@ -1812,7 +1812,7 @@ async function getLeadActivities(leadId) {
       {
         method: 'findActivities',
         params: {
-          query: {},
+          query: String(leadId),
           limit: 100
         },
         id: 1
@@ -1825,17 +1825,18 @@ async function getLeadActivities(leadId) {
       }
     );
 
-    const activities = response.data.result || [];
+    const activities = Array.isArray(
+      response.data?.result
+    )
+      ? response.data.result
+      : [];
 
-    return activities.filter((activity) => {
-      const note = JSON.stringify(activity || {}).toLowerCase();
-      return note.includes(`lead/${leadId}`);
-    });
-
+    return activities;
   } catch (error) {
     console.error(
-      `Erro ao buscar atividades do lead ${leadId}:`,
-      error.response?.data || error.message
+      `Erro ao buscar atividades da lead ${leadId}:`,
+      error.response?.data ||
+        error.message
     );
 
     return [];
@@ -12438,7 +12439,182 @@ app.use((req, res, next) => {
   res.sendFile(path.join(frontendPath, 'index.html'));
 });
 
+app.get(
+  '/api/sync/nutshell/activities-period',
+  async (req, res) => {
+    try {
+      const {
+        period = '2026-07'
+      } = req.query;
 
+      const match = String(period).match(
+        /^(\d{4})-(\d{2})$/
+      );
+
+      if (!match) {
+        return res.status(400).json({
+          sucesso: false,
+          erro:
+            'Período inválido. Utilize YYYY-MM.'
+        });
+      }
+
+      const year = Number(match[1]);
+      const month = Number(match[2]);
+
+      const start = new Date(
+        Date.UTC(
+          year,
+          month - 1,
+          1,
+          3,
+          0,
+          0,
+          0
+        )
+      );
+
+      const end = new Date(
+        Date.UTC(
+          year,
+          month,
+          1,
+          3,
+          0,
+          0,
+          0
+        )
+      );
+
+      /*
+       * Busca leads criadas, fechadas ou
+       * modificadas dentro do período.
+       */
+      const leads = await Lead.find({
+        $or: [
+          {
+            createdTime: {
+              $gte: start,
+              $lt: end
+            }
+          },
+          {
+            closedTime: {
+              $gte: start,
+              $lt: end
+            }
+          },
+          {
+            modifiedTime: {
+              $gte: start,
+              $lt: end
+            }
+          }
+        ],
+
+        nutshell_id: {
+          $exists: true,
+          $ne: null
+        }
+      })
+        .select({
+          nutshell_id: 1,
+          name: 1
+        })
+        .lean();
+
+      let checked = 0;
+      let updated = 0;
+      let activitiesFound = 0;
+      let errors = 0;
+
+      const details = [];
+
+      for (const lead of leads) {
+        checked++;
+
+        try {
+          const activities =
+            await getLeadActivities(
+              lead.nutshell_id
+            );
+
+          await Lead.updateOne(
+            {
+              nutshell_id:
+                lead.nutshell_id
+            },
+            {
+              $set: {
+                activities,
+                activitiesSyncedAt:
+                  new Date()
+              }
+            }
+          );
+
+          updated++;
+          activitiesFound +=
+            activities.length;
+
+          details.push({
+            nutshell_id:
+              lead.nutshell_id,
+            name: lead.name,
+            activities:
+              activities.length
+          });
+
+          /*
+           * Pequena pausa para não sobrecarregar
+           * a API do Nutshell.
+           */
+          await new Promise((resolve) =>
+            setTimeout(resolve, 120)
+          );
+        } catch (leadError) {
+          errors++;
+
+          details.push({
+            nutshell_id:
+              lead.nutshell_id,
+            name: lead.name,
+            activities: 0,
+            erro:
+              leadError.response?.data ||
+              leadError.message
+          });
+        }
+      }
+
+      res.json({
+        sucesso: true,
+        period,
+        range: {
+          start,
+          end
+        },
+        checked,
+        updated,
+        activitiesFound,
+        errors,
+        details
+      });
+    } catch (error) {
+      console.error(
+        'ERRO SYNC ATIVIDADES DO PERÍODO:',
+        error
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro:
+          error.response?.data ||
+          error.message
+      });
+    }
+  }
+);
 
 
 // ========================================
