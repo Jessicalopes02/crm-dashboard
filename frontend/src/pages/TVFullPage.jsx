@@ -6,8 +6,8 @@ import TVCloserPage from './TVCloserPage';
 const TEMPO_POR_TV = 60_000;
 
 /*
- * false = TV Closer desligada no link TV Full
- * true = TV Closer ligada no link TV Full
+ * false = TV Closer desligada no TV Full
+ * true = TV Closer ligada no TV Full
  */
 const ENABLE_CLOSER_TV = false;
 
@@ -21,8 +21,10 @@ function TVFullPage() {
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentIndex((current) =>
-        (current + 1) % TV_SEQUENCE.length
+      setCurrentIndex(
+        (current) =>
+          (current + 1) %
+          TV_SEQUENCE.length
       );
     }, TEMPO_POR_TV);
 
@@ -35,25 +37,25 @@ function TVFullPage() {
     TV_SEQUENCE[currentIndex];
 
   return (
-    <div className="tv-fullscreen relative h-screen w-screen overflow-hidden">
+    <div className="tv-fullscreen relative h-screen w-screen overflow-hidden bg-slate-950">
 
-      {/* Mantém a TV Geral carregada */}
+      {/* TV Geral */}
       <div
         className={
           currentTv === 'general'
-            ? 'absolute inset-0 block'
+            ? 'absolute inset-0 z-10 block'
             : 'absolute inset-0 hidden'
         }
       >
         <TVGeneralPage tvMode />
       </div>
 
-      {/* Mantém a TV Closer carregada, mas pode ficar desligada da sequência */}
+      {/* TV Closer desligada quando ENABLE_CLOSER_TV = false */}
       {ENABLE_CLOSER_TV && (
         <div
           className={
             currentTv === 'closer'
-              ? 'absolute inset-0 block'
+              ? 'absolute inset-0 z-10 block'
               : 'absolute inset-0 hidden'
           }
         >
@@ -61,22 +63,22 @@ function TVFullPage() {
         </div>
       )}
 
-      {/* Nova tela somente com background */}
-     <div
-  className={
-    currentTv === 'background'
-      ? 'absolute inset-0 block'
-      : 'absolute inset-0 hidden'
-  }
->
-  <div
-    className="h-full w-full bg-cover bg-center bg-no-repeat"
-    style={{
-      backgroundImage:
-        "url('/campaign-tv/campeao.png')"
-    }}
-  />
-</div>
+      {/* Background */}
+      <div
+        className={
+          currentTv === 'background'
+            ? 'absolute inset-0 z-20 block'
+            : 'absolute inset-0 hidden'
+        }
+      >
+        <img
+          src="/campaign-tv/campeao.png"
+          alt=""
+          className="h-full w-full object-cover"
+        />
+      </div>
+
+    </div>
   );
 }
 
