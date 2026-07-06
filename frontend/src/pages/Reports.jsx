@@ -16,7 +16,7 @@ const OFFICIAL_CAMPAIGN_DATA = {
     wonLeads: 4,
     lostLeads: 77,
     meetingsCount: 16,
-    wonRevenue: 21500,
+   // wonRevenue: 21500,
     referenceLabel: '30/04/2026'
   },
 
@@ -26,7 +26,7 @@ const OFFICIAL_CAMPAIGN_DATA = {
     wonLeads: 8,
     lostLeads: 103,
     meetingsCount: 57,
-    wonRevenue: 69165.25,
+   // wonRevenue: 69165.25,
     referenceLabel:
       '25/05/2026 a 29/05/2026'
   },
@@ -37,30 +37,30 @@ const OFFICIAL_CAMPAIGN_DATA = {
     wonLeads: 2,
     lostLeads: 21,
     meetingsCount: 12,
-    wonRevenue: 6500,
+   // wonRevenue: 6500,
     referenceLabel: '30/06/2026'
   }
 };
 
-const WON_REVENUE_BY_TEAM = {
-  'All Hands - Road to the Glory': {
-    ferrari: 0,
-    mercedes: 0,
-    redbull: 21500
-  },
+//const WON_REVENUE_BY_TEAM = {
+  //'All Hands - Road to the Glory': {
+  //  ferrari: 0,
+  //  mercedes: 0,
+  //  redbull: 21500
+  //},
 
-  'Road to the Glory - Maio': {
-    ferrari: 0,
-    mercedes: 15000,
-    redbull: 54165.25
-  },
+  //'Road to the Glory - Maio': {
+  //  ferrari: 0,
+  //  mercedes: 15000,
+  //  redbull: 54165.25
+  //},
 
-  'Road to the Glory - Junho': {
-    ferrari: 4500,
-    mercedes: 0,
-    redbull: 2000
-  }
-};
+  //'Road to the Glory - Junho': {
+  //  ferrari: 4500,
+  //  mercedes: 0,
+  //  redbull: 2000
+ // }
+//};
 
 function formatPercent(value) {
   return `${Number(value || 0).toFixed(2)}%`;
@@ -278,9 +278,7 @@ function Reports() {
             campaign.meetingsCount,
 
           wonRevenue:
-            official.wonRevenue ??
-            campaign.wonRevenue ??
-            0,
+            campaign.wonRevenue ?? 0,
 
           referenceLabel:
             official.referenceLabel ||
@@ -288,9 +286,18 @@ function Reports() {
         };
 
         const mergedCampaign = {
-          ...baseCampaign,
-          ...campaignOverride
-        };
+  ...baseCampaign,
+  ...campaignOverride,
+
+  /*
+   * Receita Won sempre vem da API.
+   * Não permite que ajustes manuais antigos
+   * sobrescrevam esse valor.
+   */
+  wonRevenue: safeNumber(
+    campaign.wonRevenue
+  )
+};
 
         mergedCampaign.conversionRate =
           calculateConversion(
@@ -313,8 +320,15 @@ function Reports() {
 
             const adjustedTeam = {
               ...team,
-              ...teamOverride
-            };
+              ...teamOverride,
+
+            /*
+            * Receita Won por time sempre vem da API.
+            */
+            wonRevenue: safeNumber(
+              team.wonRevenue
+            )
+          };
 
             adjustedTeam.automaticPoints =
               safeNumber(
@@ -1502,10 +1516,31 @@ function WonRevenuePanel({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
 
         {campaigns.map((campaign) => {
-          const revenue =
-            WON_REVENUE_BY_TEAM[
-              campaign.tag
-            ] || {};
+  const teams = Array.isArray(
+    campaign.teams
+  )
+    ? campaign.teams
+    : [];
+
+  const revenue = {
+    ferrari:
+      teams.find(
+        (team) =>
+          team.teamKey === 'ferrari'
+      )?.wonRevenue || 0,
+
+    mercedes:
+      teams.find(
+        (team) =>
+          team.teamKey === 'mercedes'
+      )?.wonRevenue || 0,
+
+    redbull:
+      teams.find(
+        (team) =>
+          team.teamKey === 'redbull'
+      )?.wonRevenue || 0
+  };
 
           return (
             <div
