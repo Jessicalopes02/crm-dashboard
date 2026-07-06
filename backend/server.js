@@ -1812,8 +1812,14 @@ async function getLeadActivities(leadId) {
       {
         method: 'findActivities',
         params: {
-          query: String(leadId),
-          limit: 100
+          query: {
+            leadId: Number(leadId)
+          },
+          orderBy: 'startTime',
+          orderDirection: 'ASC',
+          limit: 100,
+          page: 1,
+          stubResponses: false
         },
         id: 1
       },
@@ -1825,13 +1831,11 @@ async function getLeadActivities(leadId) {
       }
     );
 
-    const activities = Array.isArray(
+    return Array.isArray(
       response.data?.result
     )
       ? response.data.result
       : [];
-
-    return activities;
   } catch (error) {
     console.error(
       `Erro ao buscar atividades da lead ${leadId}:`,
@@ -1842,7 +1846,6 @@ async function getLeadActivities(leadId) {
     return [];
   }
 }
-
 function getActivityDate(activity) {
   const rawDate =
     activity?.startTime ||
@@ -1895,20 +1898,61 @@ function getActivityLeadIds(activity) {
   return [...new Set(ids)];
 }
 
+function formatNutshellDate(date) {
+  const value = new Date(date);
+
+  const year = value.getUTCFullYear();
+  const month = String(
+    value.getUTCMonth() + 1
+  ).padStart(2, '0');
+
+  const day = String(
+    value.getUTCDate()
+  ).padStart(2, '0');
+
+  const hours = String(
+    value.getUTCHours()
+  ).padStart(2, '0');
+
+  const minutes = String(
+    value.getUTCMinutes()
+  ).padStart(2, '0');
+
+  const seconds = String(
+    value.getUTCSeconds()
+  ).padStart(2, '0');
+
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+}
+
 async function findActivitiesPage({
   page,
+  start,
+  end,
   limit = 100
 }) {
   const response = await axios.post(
     'https://app.nutshell.com/api/v1/json',
     {
       method: 'findActivities',
+
       params: {
-        query: {},
+        query: {
+          startTime:
+            `>= ${formatNutshellDate(start)}`,
+
+          endTime:
+            `< ${formatNutshellDate(end)}`
+        },
+
+        orderBy: 'startTime',
+        orderDirection: 'ASC',
+        limit,
         page,
-        limit
+        stubResponses: false
       },
-      id: 1
+
+      id: String(page)
     },
     {
       auth: {
@@ -1917,6 +1961,13 @@ async function findActivitiesPage({
       }
     }
   );
+
+  if (response.data?.error) {
+    throw new Error(
+      response.data.error.message ||
+        'Erro retornado pelo Nutshell'
+    );
+  }
 
   return Array.isArray(
     response.data?.result
@@ -13282,6 +13333,8 @@ app.get(
         const pageActivities =
           await findActivitiesPage({
             page,
+            start,
+            end,
             limit: PAGE_LIMIT
           });
 
@@ -13598,11 +13651,17 @@ app.get(
       );
 
       res.status(500).json({
-        sucesso: false,
-        erro:
-          error.response?.data ||
-          error.message
-      });
+  sucesso: false,
+
+  erro:
+    error.response?.data?.error
+      ?.message ||
+    error.response?.data ||
+    error.message,
+
+  detalhes:
+    error.response?.data || null
+});
     }
   }
 );
