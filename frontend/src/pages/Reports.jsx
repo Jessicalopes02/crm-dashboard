@@ -11,20 +11,20 @@ const STORAGE_KEY =
 
 const OFFICIAL_CAMPAIGN_DATA = {
   'All Hands - Road to the Glory': {
-    totalLeads: 107,
-    openLeads: 26,
-    wonLeads: 4,
-    lostLeads: 77,
+    totalLeads: 22,
+    openLeads: 3,
+    wonLeads: 2,
+    lostLeads: 17,
     meetingsCount: 16,
     wonRevenue: 11000,
     referenceLabel: '30/04/2026'
   },
 
   'Road to the Glory - Maio': {
-    totalLeads: 140,
-    openLeads: 29,
-    wonLeads: 8,
-    lostLeads: 103,
+    totalLeads: 113,
+    openLeads: 19,
+    wonLeads: 3,
+    lostLeads: 91,
     meetingsCount: 57,
     wonRevenue: 22000,
     referenceLabel:
@@ -32,10 +32,10 @@ const OFFICIAL_CAMPAIGN_DATA = {
   },
 
   'Road to the Glory - Junho': {
-    totalLeads: 65,
-    openLeads: 42,
-    wonLeads: 2,
-    lostLeads: 21,
+    totalLeads: 57,
+    openLeads: 15,
+    wonLeads: 0,
+    lostLeads: 42,
     meetingsCount: 12,
     wonRevenue: 0,
     referenceLabel: '30/06/2026'
