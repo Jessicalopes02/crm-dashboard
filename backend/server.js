@@ -1843,6 +1843,119 @@ async function getLeadActivities(leadId) {
   }
 }
 
+function getActivityDate(activity) {
+  const rawDate =
+    activity?.startTime ||
+    activity?.endTime ||
+    activity?.createdTime ||
+    activity?.modifiedTime ||
+    activity?.dueTime ||
+    null;
+
+  if (!rawDate) {
+    return null;
+  }
+
+  const date = new Date(rawDate);
+
+  return Number.isNaN(date.getTime())
+    ? null
+    : date;
+}
+
+function getActivityLeadIds(activity) {
+  const ids = [
+    activity?.lead?.id,
+    activity?.relatedLead?.id,
+    activity?.entity?.entityType === 'Leads'
+      ? activity?.entity?.id
+      : null,
+    activity?.relatedEntity?.entityType ===
+    'Leads'
+      ? activity?.relatedEntity?.id
+      : null,
+    activity?.record?.entityType === 'Leads'
+      ? activity?.record?.id
+      : null,
+    activity?.leadId,
+
+    ...(Array.isArray(activity?.leads)
+      ? activity.leads.map(
+          (lead) => lead?.id
+        )
+      : [])
+  ]
+    .map((value) => Number(value))
+    .filter(
+      (value) =>
+        Number.isFinite(value) &&
+        value > 0
+    );
+
+  return [...new Set(ids)];
+}
+
+async function findActivitiesPage({
+  page,
+  limit = 100
+}) {
+  const response = await axios.post(
+    'https://app.nutshell.com/api/v1/json',
+    {
+      method: 'findActivities',
+      params: {
+        query: {},
+        page,
+        limit
+      },
+      id: 1
+    },
+    {
+      auth: {
+        username: NUTSHELL_EMAIL,
+        password: NUTSHELL_API_KEY
+      }
+    }
+  );
+
+  return Array.isArray(
+    response.data?.result
+  )
+    ? response.data.result
+    : [];
+}
+
+async function getActivityDetail(activityId) {
+  try {
+    const response = await axios.post(
+      'https://app.nutshell.com/api/v1/json',
+      {
+        method: 'getActivity',
+        params: {
+          activityId: Number(activityId)
+        },
+        id: 1
+      },
+      {
+        auth: {
+          username: NUTSHELL_EMAIL,
+          password: NUTSHELL_API_KEY
+        }
+      }
+    );
+
+    return response.data?.result || null;
+  } catch (error) {
+    console.error(
+      `Erro ao detalhar atividade ${activityId}:`,
+      error.response?.data ||
+        error.message
+    );
+
+    return null;
+  }
+}
+
 async function getLeadActivitiesByLeadId(leadId) {
   try {
     const response = await axios.post(
@@ -13110,11 +13223,11 @@ app.get(
   '/api/sync/nutshell/activities-period',
   async (req, res) => {
     try {
-      const {
-        period = '2026-07'
-      } = req.query;
+      const period = String(
+        req.query.period || '2026-06'
+      );
 
-      const match = String(period).match(
+      const match = period.match(
         /^(\d{4})-(\d{2})$/
       );
 
@@ -13153,124 +13266,335 @@ app.get(
         )
       );
 
-      /*
-       * Busca leads criadas, fechadas ou
-       * modificadas dentro do período.
-       */
-      const leads = await Lead.find({
-        $or: [
-          {
-            createdTime: {
-              $gte: start,
-              $lt: end
-            }
-          },
-          {
-            closedTime: {
-              $gte: start,
-              $lt: end
-            }
-          },
-          {
-            modifiedTime: {
-              $gte: start,
-              $lt: end
-            }
-          }
-        ],
+      const PAGE_LIMIT = 100;
+      const MAX_PAGES = 200;
 
+      let page = 1;
+      let checked = 0;
+      let activitiesInsidePeriod = 0;
+      let activitiesWithoutLead = 0;
+      let detailsRequested = 0;
+
+      const seenActivityIds = new Set();
+      const activitiesByLead = new Map();
+
+      while (page <= MAX_PAGES) {
+        const pageActivities =
+          await findActivitiesPage({
+            page,
+            limit: PAGE_LIMIT
+          });
+
+        if (pageActivities.length === 0) {
+          break;
+        }
+
+        /*
+         * Proteção caso a API ignore o parâmetro
+         * page e retorne sempre a mesma página.
+         */
+        const pageIds = pageActivities
+          .map((activity) =>
+            String(activity?.id || '')
+          )
+          .filter(Boolean);
+
+        const newIds = pageIds.filter(
+          (id) =>
+            !seenActivityIds.has(id)
+        );
+
+        if (
+          page > 1 &&
+          newIds.length === 0
+        ) {
+          console.log(
+            `Página ${page} repetida. Encerrando paginação.`
+          );
+
+          break;
+        }
+
+        for (
+          const activitySummary of
+          pageActivities
+        ) {
+          const activityId =
+            activitySummary?.id;
+
+          if (!activityId) {
+            continue;
+          }
+
+          const activityKey =
+            String(activityId);
+
+          if (
+            seenActivityIds.has(
+              activityKey
+            )
+          ) {
+            continue;
+          }
+
+          seenActivityIds.add(
+            activityKey
+          );
+
+          checked++;
+
+          let activity =
+            activitySummary;
+
+          /*
+           * Se a listagem não trouxer a lead,
+           * buscamos o detalhe da atividade.
+           */
+          let leadIds =
+            getActivityLeadIds(activity);
+
+          if (leadIds.length === 0) {
+            const detail =
+              await getActivityDetail(
+                activityId
+              );
+
+            detailsRequested++;
+
+            if (detail) {
+              activity = detail;
+              leadIds =
+                getActivityLeadIds(
+                  activity
+                );
+            }
+
+            await new Promise(
+              (resolve) =>
+                setTimeout(
+                  resolve,
+                  40
+                )
+            );
+          }
+
+          const activityDate =
+            getActivityDate(activity);
+
+          if (!activityDate) {
+            continue;
+          }
+
+          const insidePeriod =
+            activityDate >= start &&
+            activityDate < end;
+
+          if (!insidePeriod) {
+            continue;
+          }
+
+          activitiesInsidePeriod++;
+
+          if (leadIds.length === 0) {
+            activitiesWithoutLead++;
+            continue;
+          }
+
+          for (const leadId of leadIds) {
+            if (
+              !activitiesByLead.has(
+                leadId
+              )
+            ) {
+              activitiesByLead.set(
+                leadId,
+                []
+              );
+            }
+
+            activitiesByLead
+              .get(leadId)
+              .push(activity);
+          }
+        }
+
+        console.log(
+          `Atividades página ${page}:`,
+          {
+            recebidas:
+              pageActivities.length,
+            checked,
+            activitiesInsidePeriod
+          }
+        );
+
+        if (
+          pageActivities.length <
+          PAGE_LIMIT
+        ) {
+          break;
+        }
+
+        page++;
+
+        await new Promise((resolve) =>
+          setTimeout(resolve, 100)
+        );
+      }
+
+      const nutshellLeadIds = [
+        ...activitiesByLead.keys()
+      ];
+
+      const leads = await Lead.find({
         nutshell_id: {
-          $exists: true,
-          $ne: null
+          $in: nutshellLeadIds
         }
       })
         .select({
+          _id: 1,
           nutshell_id: 1,
-          name: 1
+          activities: 1
         })
         .lean();
 
-      let checked = 0;
-      let updated = 0;
-      let activitiesFound = 0;
-      let errors = 0;
+      const bulkOperations = [];
 
-      const details = [];
+      let leadsUpdated = 0;
+      let activitiesSaved = 0;
 
       for (const lead of leads) {
-        checked++;
+        const leadId = Number(
+          lead.nutshell_id
+        );
 
-        try {
-          const activities =
-            await getLeadActivities(
-              lead.nutshell_id
-            );
+        const newActivities =
+          activitiesByLead.get(
+            leadId
+          ) || [];
 
-          await Lead.updateOne(
-            {
-              nutshell_id:
-                lead.nutshell_id
+        const currentActivities =
+          Array.isArray(
+            lead.activities
+          )
+            ? lead.activities
+            : [];
+
+        /*
+         * Mantém atividades de outros meses.
+         * Remove apenas as atividades do período
+         * que será novamente sincronizado.
+         */
+        const activitiesOutsidePeriod =
+          currentActivities.filter(
+            (activity) => {
+              const date =
+                getActivityDate(
+                  activity
+                );
+
+              if (!date) {
+                return true;
+              }
+
+              return !(
+                date >= start &&
+                date < end
+              );
+            }
+          );
+
+        const uniqueActivities =
+          new Map();
+
+        for (
+          const activity of [
+            ...activitiesOutsidePeriod,
+            ...newActivities
+          ]
+        ) {
+          const key = String(
+            activity?.id ||
+              `${getActivityDate(
+                activity
+              )?.toISOString()}-${activity?.name || ''}`
+          );
+
+          uniqueActivities.set(
+            key,
+            activity
+          );
+        }
+
+        const mergedActivities = [
+          ...uniqueActivities.values()
+        ];
+
+        bulkOperations.push({
+          updateOne: {
+            filter: {
+              _id: lead._id
             },
-            {
+            update: {
               $set: {
-                activities,
+                activities:
+                  mergedActivities,
                 activitiesSyncedAt:
                   new Date()
               }
             }
-          );
+          }
+        });
 
-          updated++;
-          activitiesFound +=
-            activities.length;
+        leadsUpdated++;
+        activitiesSaved +=
+          newActivities.length;
+      }
 
-          details.push({
-            nutshell_id:
-              lead.nutshell_id,
-            name: lead.name,
-            activities:
-              activities.length
-          });
-
-          /*
-           * Pequena pausa para não sobrecarregar
-           * a API do Nutshell.
-           */
-          await new Promise((resolve) =>
-            setTimeout(resolve, 120)
-          );
-        } catch (leadError) {
-          errors++;
-
-          details.push({
-            nutshell_id:
-              lead.nutshell_id,
-            name: lead.name,
-            activities: 0,
-            erro:
-              leadError.response?.data ||
-              leadError.message
-          });
-        }
+      if (bulkOperations.length > 0) {
+        await Lead.bulkWrite(
+          bulkOperations,
+          {
+            ordered: false
+          }
+        );
       }
 
       res.json({
         sucesso: true,
         period,
+
         range: {
           start,
           end
         },
+
+        pagesProcessed:
+          page,
+
         checked,
-        updated,
-        activitiesFound,
-        errors,
-        details
+
+        activitiesInsidePeriod,
+
+        activitiesWithoutLead,
+
+        detailsRequested,
+
+        leadsWithActivities:
+          activitiesByLead.size,
+
+        leadsFoundInMongo:
+          leads.length,
+
+        leadsUpdated,
+
+        activitiesSaved
       });
     } catch (error) {
       console.error(
-        'ERRO SYNC ATIVIDADES DO PERÍODO:',
-        error
+        'ERRO AO SINCRONIZAR ATIVIDADES:',
+        error.response?.data ||
+          error.message
       );
 
       res.status(500).json({
