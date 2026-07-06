@@ -12428,17 +12428,6 @@ const frontendPath = path.join(__dirname, '../frontend/dist');
 
 app.use(express.static(frontendPath));
 
-app.use((req, res, next) => {
-  if (req.path.startsWith('/api')) {
-    return res.status(404).json({
-      sucesso: false,
-      erro: 'API não encontrada'
-    });
-  }
-
-  res.sendFile(path.join(frontendPath, 'index.html'));
-});
-
 app.get(
   '/api/sync/nutshell/activities-period',
   async (req, res) => {
@@ -12615,6 +12604,18 @@ app.get(
     }
   }
 );
+
+app.use((req, res, next) => {
+  if (req.path.startsWith('/api')) {
+    return res.status(404).json({
+      sucesso: false,
+      erro: 'API não encontrada'
+    });
+  }
+
+  res.sendFile(path.join(frontendPath, 'index.html'));
+});
+
 
 
 // ========================================
