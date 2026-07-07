@@ -7212,10 +7212,9 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
       }
     ]);
 
-   // ========================================
-// ATIVIDADES REALIZADAS NO MÊS
+// ========================================
+// ATIVIDADES REALIZADAS NO PERÍODO
 // AGRUPADAS POR QUEM EXECUTOU
-// INDEPENDENTE DO ASSIGNEE DA LEAD
 // ========================================
 
 const activitiesByAssignee =
@@ -7319,6 +7318,63 @@ const activitiesByAssignee =
         activityCategory: {
           $switch: {
             branches: [
+              // Proposta de projeto — Simulação
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'envio de proposta de projeto.*simulacao|envio de proposta de projeto.*simulação',
+                    options: 'i'
+                  }
+                },
+                then: 'simulationProposal'
+              },
+
+              // Propostas avulsas
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'envio de proposta.*desembaraco aduaneiro|envio de proposta.*desembaraço aduaneiro|envio de proposta.*frete internacional|envio de proposta.*rodoviario|envio de proposta.*rodoviário|envio de proposta de gerenciamento.*completo|envio de proposta de gerenciamento.*consultoria|envio de proposta de gerenciamento.*essencial',
+                    options: 'i'
+                  }
+                },
+                then: 'standaloneProposal'
+              },
+
+              // Reunião — Primeiro contato
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'reuni.*primeiro contato|primeiro contato.*reuni',
+                    options: 'i'
+                  }
+                },
+                then: 'firstContactMeeting'
+              },
+
+              // Reunião — Follow-up
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'reuni.*follow.?up|follow.?up.*reuni',
+                    options: 'i'
+                  }
+                },
+                then: 'followUpMeeting'
+              },
+
+              // Demais reuniões
               {
                 case: {
                   $regexMatch: {
@@ -7332,6 +7388,7 @@ const activitiesByAssignee =
                 then: 'meeting'
               },
 
+              // WhatsApp pontual
               {
                 case: {
                   $regexMatch: {
@@ -7345,6 +7402,7 @@ const activitiesByAssignee =
                 then: 'whatsappMessage'
               },
 
+              // WhatsApp com diálogo
               {
                 case: {
                   $regexMatch: {
@@ -7358,6 +7416,7 @@ const activitiesByAssignee =
                 then: 'whatsappDialogue'
               },
 
+              // Ligação não efetiva
               {
                 case: {
                   $regexMatch: {
@@ -7371,6 +7430,7 @@ const activitiesByAssignee =
                 then: 'nonEffectiveCall'
               },
 
+              // Ligação efetiva
               {
                 case: {
                   $regexMatch: {
@@ -7384,6 +7444,7 @@ const activitiesByAssignee =
                 then: 'effectiveCall'
               },
 
+              // E-mail de prospecção
               {
                 case: {
                   $regexMatch: {
@@ -7431,9 +7492,88 @@ const activitiesByAssignee =
           $sum: {
             $cond: [
               {
+                $in: [
+                  '$activityCategory',
+                  [
+                    'meeting',
+                    'firstContactMeeting',
+                    'followUpMeeting'
+                  ]
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        firstContactMeetingsCount: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$activityCategory',
+                  'firstContactMeeting'
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        followUpMeetingsCount: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$activityCategory',
+                  'followUpMeeting'
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        generalMeetingsCount: {
+          $sum: {
+            $cond: [
+              {
                 $eq: [
                   '$activityCategory',
                   'meeting'
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        simulationProposalCount: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$activityCategory',
+                  'simulationProposal'
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        standaloneProposalCount: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$activityCategory',
+                  'standaloneProposal'
                 ]
               },
               1,
@@ -7624,6 +7764,26 @@ const activitiesByAssignee =
 
         meetings: Number(
           item.meetingsCount || 0
+        ),
+
+        firstContactMeetings: Number(
+          item.firstContactMeetingsCount || 0
+        ),
+
+        followUpMeetings: Number(
+          item.followUpMeetingsCount || 0
+        ),
+
+        generalMeetings: Number(
+          item.generalMeetingsCount || 0
+        ),
+
+        simulationProposal: Number(
+          item.simulationProposalCount || 0
+        ),
+
+        standaloneProposal: Number(
+          item.standaloneProposalCount || 0
         ),
 
         other: Number(
