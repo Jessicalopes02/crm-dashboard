@@ -217,56 +217,48 @@ function Performance() {
   }
 
   async function syncPerformanceDatabase() {
-    try {
-      setSyncing(true);
-      setSyncMessage(
-        'Atualizando leads no banco...'
-      );
-      setErrorMessage('');
+  try {
+    setSyncing(true);
+    setSyncMessage(
+      'Atualizando atividades do período...'
+    );
+    setErrorMessage('');
 
-      await api.get(
-        '/sync/nutshell/leads'
-      );
+    const syncResponse = await api.get(
+      '/sync/nutshell/activities-period',
+      {
+        params: getFilterParams()
+      }
+    );
 
-      setSyncMessage(
-        'Atualizando atividades do período...'
-      );
+    const syncPayload =
+      syncResponse.data || {};
 
-      const syncResponse = await api.get(
-        '/sync/nutshell/activities-period',
-        {
-          params: getFilterParams()
-        }
-      );
+    setSyncMessage(
+      `Banco atualizado com sucesso. ${
+        syncPayload.activitiesSaved || 0
+      } atividades sincronizadas.`
+    );
 
-      const syncPayload =
-        syncResponse.data || {};
+    await loadPerformance();
+  } catch (error) {
+    console.error(
+      'Erro ao atualizar atividades:',
+      error
+    );
 
-      setSyncMessage(
-        `Banco atualizado. Atividades sincronizadas: ${
-          syncPayload.activitiesSaved ?? 0
-        }`
-      );
+    setSyncMessage('');
 
-      await loadPerformance();
-    } catch (error) {
-      console.error(
-        'Erro ao atualizar banco:',
-        error
-      );
-
-      setSyncMessage('');
-
-      setErrorMessage(
-        error.response?.data?.erro ||
-          error.response?.data?.error
-            ?.message ||
-          'Não foi possível atualizar o banco.'
-      );
-    } finally {
-      setSyncing(false);
-    }
+    setErrorMessage(
+      error.response?.data?.erro ||
+        error.response?.data?.error
+          ?.message ||
+        'Não foi possível atualizar as atividades.'
+    );
+  } finally {
+    setSyncing(false);
   }
+}
 
   const currentPerformance =
     viewMode === 'closer'
