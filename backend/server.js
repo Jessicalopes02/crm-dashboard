@@ -7213,6 +7213,166 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
     ]);
 
 // ========================================
+// SOURCES DAS LEADS POR RESPONSÁVEL
+// CONSIDERA UMA LEAD APENAS UMA VEZ
+// ========================================
+
+const sourcesByAssignee =
+  await Lead.aggregate([
+    {
+      $match: baseFilter
+    },
+
+    {
+      $addFields: {
+        performanceDate: {
+          $cond: [
+            {
+              $in: [
+                '$status',
+                [10, 11, 12]
+              ]
+            },
+            '$closedTime',
+            '$createdTime'
+          ]
+        }
+      }
+    },
+
+    {
+      $match: {
+        performanceDate: {
+          $gte: start,
+          $lt: end,
+          $ne: null
+        }
+      }
+    },
+
+    /*
+     * Usa o primeiro source válido.
+     * Dessa forma uma lead não será contada
+     * duas vezes caso tenha mais de um source.
+     */
+    {
+      $addFields: {
+        validSources: {
+          $filter: {
+            input: {
+              $ifNull: [
+                '$sources',
+                []
+              ]
+            },
+
+            as: 'source',
+
+            cond: {
+              $ne: [
+                {
+                  $trim: {
+                    input: {
+                      $ifNull: [
+                        '$$source.name',
+                        ''
+                      ]
+                    }
+                  }
+                },
+                ''
+              ]
+            }
+          }
+        }
+      }
+    },
+
+    {
+      $addFields: {
+        firstValidSource: {
+          $arrayElemAt: [
+            '$validSources',
+            0
+          ]
+        }
+      }
+    },
+
+    {
+      $addFields: {
+        sourceName: {
+          $let: {
+            vars: {
+              cleanSource: {
+                $trim: {
+                  input: {
+                    $ifNull: [
+                      '$firstValidSource.name',
+                      ''
+                    ]
+                  }
+                }
+              }
+            },
+
+            in: {
+              $cond: [
+                {
+                  $eq: [
+                    '$$cleanSource',
+                    ''
+                  ]
+                },
+                'Sem source',
+                '$$cleanSource'
+              ]
+            }
+          }
+        }
+      }
+    },
+
+    {
+      $group: {
+        _id: {
+          assignee:
+            '$assignee.name',
+
+          source:
+            '$sourceName'
+        },
+
+        total: {
+          $sum: 1
+        }
+      }
+    },
+
+    {
+      $group: {
+        _id:
+          '$_id.assignee',
+
+        sources: {
+          $push: {
+            name:
+              '$_id.source',
+
+            total:
+              '$total'
+          }
+        },
+
+        totalLeadsBySource: {
+          $sum:
+            '$total'
+        }
+      }
+    }
+  ]);
+
+// ========================================
 // ATIVIDADES REALIZADAS NO PERÍODO
 // AGRUPADAS POR QUEM EXECUTOU
 // ========================================
@@ -7720,6 +7880,33 @@ const activitiesByAssignee =
         }
       ]);
 
+
+const sourcesMap = new Map(
+  sourcesByAssignee.map((item) => [
+    normalizeName(item._id),
+
+    {
+      totalLeadsBySource: Number(
+        item.totalLeadsBySource || 0
+      ),
+
+      sources: Array.isArray(
+        item.sources
+      )
+        ? [...item.sources].sort(
+            (first, second) =>
+              Number(
+                second.total || 0
+              ) -
+              Number(
+                first.total || 0
+              )
+          )
+        : []
+    }
+  ])
+);
+      
     // ========================================
     // MAPAS AUXILIARES
     // ========================================
@@ -7828,6 +8015,9 @@ const completePerformance = Array.from(
 
   const activity =
     activitiesMap.get(normalizedName);
+  
+  const sourceData =
+    sourcesMap.get(normalizedName);  
 
   return {
     _id:
@@ -7890,6 +8080,13 @@ const completePerformance = Array.from(
         other: 0
       },
 
+    sourcesBreakdown:
+      sourceData?.sources || [],
+
+    totalLeadsBySource: Number(
+      sourceData?.totalLeadsBySource || 0
+    ),
+       
     staleOpenPending: Number(
       staleMap.get(normalizedName) || 0
     )
