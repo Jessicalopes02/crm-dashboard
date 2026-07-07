@@ -14,6 +14,33 @@ function getCurrentPeriod() {
   ).padStart(2, '0')}`;
 }
 
+function getTodayDate() {
+  const today = new Date();
+
+  return `${today.getFullYear()}-${String(
+    today.getMonth() + 1
+  ).padStart(2, '0')}-${String(
+    today.getDate()
+  ).padStart(2, '0')}`;
+}
+
+function subtractDays(dateString, days) {
+  const date = new Date(
+    `${dateString}T12:00:00`
+  );
+
+  date.setDate(
+    date.getDate() -
+      Math.max(Number(days || 1) - 1, 0)
+  );
+
+  return `${date.getFullYear()}-${String(
+    date.getMonth() + 1
+  ).padStart(2, '0')}-${String(
+    date.getDate()
+  ).padStart(2, '0')}`;
+}
+
 function normalizeName(value) {
   return String(value || '')
     .normalize('NFD')
@@ -49,8 +76,29 @@ function Performance() {
   const [loading, setLoading] =
     useState(true);
 
+  const [syncing, setSyncing] =
+    useState(false);
+
+  const [syncMessage, setSyncMessage] =
+    useState('');
+
   const [selectedPeriod, setSelectedPeriod] =
     useState(getCurrentPeriod());
+
+  const [filterMode, setFilterMode] =
+    useState('month');
+
+  const [selectedDate, setSelectedDate] =
+    useState(getTodayDate());
+
+  const [startDate, setStartDate] =
+    useState(getTodayDate());
+
+  const [endDate, setEndDate] =
+    useState(getTodayDate());
+
+  const [daysCount, setDaysCount] =
+    useState(7);
 
   const [viewMode, setViewMode] =
     useState('closer');
@@ -69,7 +117,60 @@ function Performance() {
 
   useEffect(() => {
     loadPerformance();
-  }, [selectedPeriod]);
+  }, [
+    selectedPeriod,
+    selectedDate,
+    startDate,
+    endDate,
+    daysCount,
+    filterMode
+  ]);
+
+  function getFilterParams() {
+    if (filterMode === 'day') {
+      return {
+        startDate: selectedDate,
+        endDate: selectedDate
+      };
+    }
+
+    if (filterMode === 'range') {
+      return {
+        startDate,
+        endDate
+      };
+    }
+
+    if (filterMode === 'days') {
+      return {
+        startDate: subtractDays(
+          endDate,
+          daysCount
+        ),
+        endDate
+      };
+    }
+
+    return {
+      period: selectedPeriod
+    };
+  }
+
+  function getCurrentFilterLabel() {
+    if (filterMode === 'day') {
+      return `Dia ${selectedDate}`;
+    }
+
+    if (filterMode === 'range') {
+      return `${startDate} até ${endDate}`;
+    }
+
+    if (filterMode === 'days') {
+      return `Últimos ${daysCount} dias até ${endDate}`;
+    }
+
+    return `Mês ${selectedPeriod}`;
+  }
 
   async function loadPerformance() {
     try {
@@ -79,9 +180,7 @@ function Performance() {
       const response = await api.get(
         '/dashboard/performance-by-assignee',
         {
-          params: {
-            period: selectedPeriod
-          }
+          params: getFilterParams()
         }
       );
 
@@ -114,6 +213,58 @@ function Performance() {
       );
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function syncPerformanceDatabase() {
+    try {
+      setSyncing(true);
+      setSyncMessage(
+        'Atualizando leads no banco...'
+      );
+      setErrorMessage('');
+
+      await api.get(
+        '/sync/nutshell/leads'
+      );
+
+      setSyncMessage(
+        'Atualizando atividades do período...'
+      );
+
+      const syncResponse = await api.get(
+        '/sync/nutshell/activities-period',
+        {
+          params: getFilterParams()
+        }
+      );
+
+      const syncPayload =
+        syncResponse.data || {};
+
+      setSyncMessage(
+        `Banco atualizado. Atividades sincronizadas: ${
+          syncPayload.activitiesSaved ?? 0
+        }`
+      );
+
+      await loadPerformance();
+    } catch (error) {
+      console.error(
+        'Erro ao atualizar banco:',
+        error
+      );
+
+      setSyncMessage('');
+
+      setErrorMessage(
+        error.response?.data?.erro ||
+          error.response?.data?.error
+            ?.message ||
+          'Não foi possível atualizar o banco.'
+      );
+    } finally {
+      setSyncing(false);
     }
   }
 
@@ -260,7 +411,7 @@ function Performance() {
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
 
-      <div className="mb-6 flex flex-col gap-4 xl:flex-row xl:items-center xl:justify-between">
+      <div className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
 
         <div>
           <h1 className="text-3xl font-bold text-white md:text-4xl">
@@ -270,40 +421,184 @@ function Performance() {
           <p className="mt-1 text-slate-400">
             Pipeline e atividades por responsável
           </p>
+
+          <p className="mt-2 text-sm font-semibold text-blue-400">
+            Filtro atual: {getCurrentFilterLabel()}
+          </p>
         </div>
 
-        <div className="flex flex-col gap-3 sm:flex-row">
+        <div className="flex flex-col gap-3">
 
-          <input
-            type="month"
-            value={selectedPeriod}
-            onChange={(event) =>
-              setSelectedPeriod(
-                event.target.value
-              )
-            }
-            className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
-          />
+          <div className="flex flex-wrap gap-2">
 
-          <input
-            type="text"
-            value={search}
-            onChange={(event) =>
-              setSearch(
-                event.target.value
-              )
-            }
-            placeholder="Buscar responsável..."
-            className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
-          />
+            <FilterButton
+              active={
+                filterMode === 'day'
+              }
+              onClick={() =>
+                setFilterMode('day')
+              }
+            >
+              Dia
+            </FilterButton>
 
-          <button
-            type="button"
-            onClick={loadPerformance}
-            className="rounded-xl bg-blue-600 px-5 py-3 font-semibold text-white transition hover:bg-blue-500"
-          >
-            Atualizar
-          </button>
+            <FilterButton
+              active={
+                filterMode === 'days'
+              }
+              onClick={() =>
+                setFilterMode('days')
+              }
+            >
+              Últimos dias
+            </FilterButton>
+
+            <FilterButton
+              active={
+                filterMode === 'range'
+              }
+              onClick={() =>
+                setFilterMode('range')
+              }
+            >
+              Intervalo
+            </FilterButton>
+
+            <FilterButton
+              active={
+                filterMode === 'month'
+              }
+              onClick={() =>
+                setFilterMode('month')
+              }
+            >
+              Mês inteiro
+            </FilterButton>
+
+          </div>
+
+          <div className="flex flex-wrap gap-3">
+
+            {filterMode === 'month' && (
+              <input
+                type="month"
+                value={selectedPeriod}
+                onChange={(event) =>
+                  setSelectedPeriod(
+                    event.target.value
+                  )
+                }
+                className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+              />
+            )}
+
+            {filterMode === 'day' && (
+              <input
+                type="date"
+                value={selectedDate}
+                onChange={(event) =>
+                  setSelectedDate(
+                    event.target.value
+                  )
+                }
+                className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+              />
+            )}
+
+            {filterMode === 'days' && (
+              <>
+                <input
+                  type="number"
+                  min="1"
+                  max="365"
+                  value={daysCount}
+                  onChange={(event) =>
+                    setDaysCount(
+                      event.target.value
+                    )
+                  }
+                  placeholder="Quantidade de dias"
+                  className="w-44 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+                />
+
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(event) =>
+                    setEndDate(
+                      event.target.value
+                    )
+                  }
+                  title="Data final"
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+                />
+              </>
+            )}
+
+            {filterMode === 'range' && (
+              <>
+                <input
+                  type="date"
+                  value={startDate}
+                  onChange={(event) =>
+                    setStartDate(
+                      event.target.value
+                    )
+                  }
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+                />
+
+                <input
+                  type="date"
+                  value={endDate}
+                  onChange={(event) =>
+                    setEndDate(
+                      event.target.value
+                    )
+                  }
+                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+                />
+              </>
+            )}
+
+            <input
+              type="text"
+              value={search}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value
+                )
+              }
+              placeholder="Buscar responsável..."
+              className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
+            />
+
+            <button
+              type="button"
+              onClick={loadPerformance}
+              className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 font-semibold text-white transition hover:bg-slate-700"
+            >
+              Consultar
+            </button>
+
+            <button
+              type="button"
+              onClick={syncPerformanceDatabase}
+              disabled={syncing}
+              className="rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {syncing
+                ? 'Atualizando banco...'
+                : 'Atualizar banco'}
+            </button>
+
+          </div>
+
+          {syncMessage && (
+            <p className="text-sm font-semibold text-emerald-400">
+              {syncMessage}
+            </p>
+          )}
 
         </div>
 
@@ -484,20 +779,11 @@ function Performance() {
 
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
-
-        {sortedPerformance.map(
-          (item, index) => (
-            <PersonPerformanceCard
-              key={`${item._id}-${index}`}
-              item={item}
-              position={index + 1}
-              viewMode={viewMode}
-            />
-          )
-        )}
-
-      </div>
+      {loading && (
+        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-12 text-center text-slate-400">
+          Carregando performance...
+        </div>
+      )}
 
       {!loading &&
         sortedPerformance.length === 0 && (
@@ -506,21 +792,52 @@ function Performance() {
           </div>
         )}
 
-      {loading && (
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-12 text-center text-slate-400">
-          Carregando performance...
-        </div>
-      )}
-
       {!loading &&
         sortedPerformance.length > 0 && (
-          <PerformanceTable
-            items={sortedPerformance}
-            viewMode={viewMode}
-          />
+          <>
+            <div className="mb-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
+
+              {sortedPerformance.map(
+                (item, index) => (
+                  <PersonPerformanceCard
+                    key={`${item._id}-${index}`}
+                    item={item}
+                    position={index + 1}
+                    viewMode={viewMode}
+                  />
+                )
+              )}
+
+            </div>
+
+            <PerformanceTable
+              items={sortedPerformance}
+              viewMode={viewMode}
+            />
+          </>
         )}
 
     </div>
+  );
+}
+
+function FilterButton({
+  active,
+  onClick,
+  children
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+        active
+          ? 'bg-blue-600 text-white'
+          : 'border border-slate-700 bg-slate-900 text-slate-300 hover:bg-slate-800'
+      }`}
+    >
+      {children}
+    </button>
   );
 }
 
