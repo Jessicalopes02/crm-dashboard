@@ -465,13 +465,17 @@ function Performance() {
         );
     }, [filteredPerformance]);
 
-  const generalConversion =
-    summary.totalLeads > 0
-      ? (
-          summary.wonLeads /
-          summary.totalLeads
-        ) * 100
-      : 0;
+  const totalClosedDecisions =
+  summary.wonLeads +
+  summary.lostLeads;
+
+const generalConversion =
+  totalClosedDecisions > 0
+    ? (
+        summary.wonLeads /
+        totalClosedDecisions
+      ) * 100
+    : 0;
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
