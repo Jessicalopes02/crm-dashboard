@@ -115,6 +115,9 @@ function Performance() {
   const [errorMessage, setErrorMessage] =
     useState('');
 
+  const [sourcesModal, setSourcesModal] =
+    useState(null);
+
   useEffect(() => {
     loadPerformance();
   }, [
@@ -367,6 +370,30 @@ function Performance() {
               ?.prospectingEmail
           );
 
+        total.firstContactMeetings +=
+          safeNumber(
+            item.activityBreakdown
+              ?.firstContactMeetings
+          );
+
+        total.followUpMeetings +=
+          safeNumber(
+            item.activityBreakdown
+              ?.followUpMeetings
+          );
+
+        total.simulationProposal +=
+          safeNumber(
+            item.activityBreakdown
+              ?.simulationProposal
+          );
+
+        total.standaloneProposal +=
+          safeNumber(
+            item.activityBreakdown
+              ?.standaloneProposal
+          );
+
         total.other += safeNumber(
           item.activityBreakdown?.other
         );
@@ -387,10 +414,56 @@ function Performance() {
         whatsappDialogue: 0,
         whatsappMessage: 0,
         prospectingEmail: 0,
+        firstContactMeetings: 0,
+        followUpMeetings: 0,
+        simulationProposal: 0,
+        standaloneProposal: 0,
         other: 0
       }
     );
   }, [filteredPerformance]);
+
+  const generalSourcesBreakdown =
+    useMemo(() => {
+      const sourceTotals = new Map();
+
+      filteredPerformance.forEach((item) => {
+        const sources = Array.isArray(
+          item.sourcesBreakdown
+        )
+          ? item.sourcesBreakdown
+          : [];
+
+        sources.forEach((source) => {
+          const sourceName =
+            String(
+              source?.name ||
+                'Sem source'
+            ).trim() ||
+            'Sem source';
+
+          sourceTotals.set(
+            sourceName,
+            safeNumber(
+              sourceTotals.get(sourceName)
+            ) +
+              safeNumber(source?.total)
+          );
+        });
+      });
+
+      return Array.from(
+        sourceTotals.entries()
+      )
+        .map(([name, total]) => ({
+          name,
+          total
+        }))
+        .sort(
+          (first, second) =>
+            second.total - first.total
+        );
+    }, [filteredPerformance]);
 
   const generalConversion =
     summary.totalLeads > 0
@@ -657,6 +730,18 @@ function Performance() {
         <SummaryCard
           title="Total de Leads"
           value={summary.totalLeads}
+          clickable
+          onClick={() =>
+            setSourcesModal({
+              title:
+                viewMode === 'closer'
+                  ? 'Sources das leads dos Closers'
+                  : 'Sources das leads dos SDRs',
+              total: summary.totalLeads,
+              sources:
+                generalSourcesBreakdown
+            })
+          }
         />
 
         <SummaryCard
@@ -722,8 +807,13 @@ function Performance() {
 
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-7">
-
+      <div
+        className={`mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 ${
+          viewMode === 'closer'
+            ? 'xl:grid-cols-10'
+            : 'xl:grid-cols-7'
+        }`}
+      >
         <ActivitySummaryCard
           title="Ligações efetivas"
           value={summary.effectiveCall}
@@ -757,18 +847,49 @@ function Performance() {
           }
         />
 
-        <ActivitySummaryCard
-          title="Reuniões"
-          value={
-            summary.meetingsCount
-          }
-        />
+        {viewMode === 'closer' ? (
+          <>
+            <ActivitySummaryCard
+              title="Reuniões primeiro contato"
+              value={
+                summary.firstContactMeetings
+              }
+            />
+
+            <ActivitySummaryCard
+              title="Reuniões follow-up"
+              value={
+                summary.followUpMeetings
+              }
+            />
+
+            <ActivitySummaryCard
+              title="Propostas simulação"
+              value={
+                summary.simulationProposal
+              }
+            />
+
+            <ActivitySummaryCard
+              title="Propostas avulsas"
+              value={
+                summary.standaloneProposal
+              }
+            />
+          </>
+        ) : (
+          <ActivitySummaryCard
+            title="Reuniões"
+            value={
+              summary.meetingsCount
+            }
+          />
+        )}
 
         <ActivitySummaryCard
           title="Outras"
           value={summary.other}
         />
-
       </div>
 
       {loading && (
@@ -796,6 +917,24 @@ function Performance() {
                     item={item}
                     position={index + 1}
                     viewMode={viewMode}
+                    onOpenSources={() =>
+                      setSourcesModal({
+                        title:
+                          `Sources das leads — ${
+                            item._id ||
+                            'Sem responsável'
+                          }`,
+                        total: safeNumber(
+                          item.totalLeads
+                        ),
+                        sources:
+                          Array.isArray(
+                            item.sourcesBreakdown
+                          )
+                            ? item.sourcesBreakdown
+                            : []
+                      })
+                    }
                   />
                 )
               )}
@@ -808,6 +947,15 @@ function Performance() {
             />
           </>
         )}
+
+      {sourcesModal && (
+        <SourcesModal
+          data={sourcesModal}
+          onClose={() =>
+            setSourcesModal(null)
+          }
+        />
+      )}
 
     </div>
   );
@@ -836,7 +984,9 @@ function FilterButton({
 function SummaryCard({
   title,
   value,
-  accent = 'default'
+  accent = 'default',
+  clickable = false,
+  onClick = undefined
 }) {
   const accentClasses = {
     default: 'text-white',
@@ -848,8 +998,15 @@ function SummaryCard({
   };
 
   return (
-    <div className="min-w-0 rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
-
+    <button
+      type="button"
+      onClick={clickable ? onClick : undefined}
+      className={`min-w-0 rounded-2xl border border-slate-800 bg-slate-900 p-5 text-left shadow-lg transition ${
+        clickable
+          ? 'cursor-pointer hover:border-blue-500 hover:bg-slate-800'
+          : 'cursor-default'
+      }`}
+    >
       <p className="text-xs text-slate-400">
         {title}
       </p>
@@ -863,7 +1020,12 @@ function SummaryCard({
         {value}
       </p>
 
-    </div>
+      {clickable && (
+        <p className="mt-2 text-xs font-semibold text-blue-400">
+          Ver sources
+        </p>
+      )}
+    </button>
   );
 }
 
@@ -886,10 +1048,89 @@ function ActivitySummaryCard({
   );
 }
 
+function SourcesModal({
+  data,
+  onClose
+}) {
+  const sources = Array.isArray(
+    data?.sources
+  )
+    ? data.sources
+    : [];
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
+    >
+      <div className="max-h-[85vh] w-full max-w-xl overflow-hidden rounded-2xl border border-slate-700 bg-slate-900 shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-800 p-5">
+          <div>
+            <h2 className="text-xl font-bold text-white">
+              {data?.title ||
+                'Sources das leads'}
+            </h2>
+
+            <p className="mt-1 text-sm text-slate-400">
+              Total de leads: {safeNumber(
+                data?.total
+              )}
+            </p>
+          </div>
+
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-sm font-semibold text-white transition hover:bg-slate-700"
+          >
+            Fechar
+          </button>
+        </div>
+
+        <div className="max-h-[65vh] overflow-y-auto p-5">
+          {sources.length === 0 ? (
+            <div className="rounded-xl border border-slate-800 bg-slate-950 p-6 text-center text-slate-400">
+              Nenhum source encontrado.
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sources.map(
+                (source, index) => (
+                  <div
+                    key={`${source.name}-${index}`}
+                    className="flex items-center justify-between gap-4 rounded-xl border border-slate-800 bg-slate-950 p-4"
+                  >
+                    <span className="text-sm font-semibold text-slate-200">
+                      {source.name ||
+                        'Sem source'}
+                    </span>
+
+                    <span className="rounded-full bg-blue-950 px-3 py-1 text-sm font-bold text-blue-300">
+                      {safeNumber(
+                        source.total
+                      )}
+                    </span>
+                  </div>
+                )
+              )}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+
 function PersonPerformanceCard({
   item,
   position,
-  viewMode
+  viewMode,
+  onOpenSources = undefined
 }) {
   const breakdown =
     item.activityBreakdown || {};
@@ -897,50 +1138,114 @@ function PersonPerformanceCard({
   const totalActivities =
     safeNumber(item.activitiesCount);
 
-  const activityItems = [
-    {
-      label: 'Ligação efetiva',
-      value: safeNumber(
-        breakdown.effectiveCall
-      )
-    },
-    {
-      label: 'Ligação não efetiva',
-      value: safeNumber(
-        breakdown.nonEffectiveCall
-      )
-    },
-    {
-      label: 'WhatsApp com diálogo',
-      value: safeNumber(
-        breakdown.whatsappDialogue
-      )
-    },
-    {
-      label: 'WhatsApp pontual',
-      value: safeNumber(
-        breakdown.whatsappMessage
-      )
-    },
-    {
-      label: 'E-mail de prospecção',
-      value: safeNumber(
-        breakdown.prospectingEmail
-      )
-    },
-    {
-      label: 'Reuniões',
-      value: safeNumber(
-        breakdown.meetings
-      )
-    },
-    {
-      label: 'Outras',
-      value: safeNumber(
-        breakdown.other
-      )
-    }
-  ];
+  const activityItems =
+    viewMode === 'closer'
+      ? [
+          {
+            label: 'Ligação efetiva',
+            value: safeNumber(
+              breakdown.effectiveCall
+            )
+          },
+          {
+            label: 'Ligação não efetiva',
+            value: safeNumber(
+              breakdown.nonEffectiveCall
+            )
+          },
+          {
+            label: 'WhatsApp com diálogo',
+            value: safeNumber(
+              breakdown.whatsappDialogue
+            )
+          },
+          {
+            label: 'WhatsApp pontual',
+            value: safeNumber(
+              breakdown.whatsappMessage
+            )
+          },
+          {
+            label: 'E-mail de prospecção',
+            value: safeNumber(
+              breakdown.prospectingEmail
+            )
+          },
+          {
+            label: 'Reunião primeiro contato',
+            value: safeNumber(
+              breakdown.firstContactMeetings
+            )
+          },
+          {
+            label: 'Reunião follow-up',
+            value: safeNumber(
+              breakdown.followUpMeetings
+            )
+          },
+          {
+            label: 'Proposta simulação',
+            value: safeNumber(
+              breakdown.simulationProposal
+            )
+          },
+          {
+            label: 'Proposta avulsa',
+            value: safeNumber(
+              breakdown.standaloneProposal
+            )
+          },
+          {
+            label: 'Outras',
+            value: safeNumber(
+              breakdown.other
+            )
+          }
+        ]
+      : [
+          {
+            label: 'Ligação efetiva',
+            value: safeNumber(
+              breakdown.effectiveCall
+            )
+          },
+          {
+            label: 'Ligação não efetiva',
+            value: safeNumber(
+              breakdown.nonEffectiveCall
+            )
+          },
+          {
+            label: 'WhatsApp com diálogo',
+            value: safeNumber(
+              breakdown.whatsappDialogue
+            )
+          },
+          {
+            label: 'WhatsApp pontual',
+            value: safeNumber(
+              breakdown.whatsappMessage
+            )
+          },
+          {
+            label: 'E-mail de prospecção',
+            value: safeNumber(
+              breakdown.prospectingEmail
+            )
+          },
+          {
+            label: 'Reuniões',
+            value: safeNumber(
+              breakdown.meetings
+            )
+          },
+          {
+            label: 'Outras',
+            value: safeNumber(
+              breakdown.other
+            )
+          }
+        ];
 
   return (
     <div className="rounded-2xl border border-slate-800 bg-slate-900 p-5 shadow-lg">
@@ -996,6 +1301,8 @@ function PersonPerformanceCard({
         <Metric
           label="Total Leads"
           value={item.totalLeads}
+          clickable
+          onClick={onOpenSources}
         />
 
         <Metric
@@ -1073,7 +1380,9 @@ function PersonPerformanceCard({
 function Metric({
   label,
   value,
-  accent = 'default'
+  accent = 'default',
+  clickable = false,
+  onClick = undefined
 }) {
   const accentClasses = {
     default: 'text-white',
@@ -1084,8 +1393,15 @@ function Metric({
   };
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
-
+    <button
+      type="button"
+      onClick={clickable ? onClick : undefined}
+      className={`rounded-xl border border-slate-800 bg-slate-950 p-3 text-left transition ${
+        clickable
+          ? 'cursor-pointer hover:border-blue-500 hover:bg-slate-900'
+          : 'cursor-default'
+      }`}
+    >
       <p className="text-xs text-slate-500">
         {label}
       </p>
@@ -1099,7 +1415,12 @@ function Metric({
         {value}
       </p>
 
-    </div>
+      {clickable && (
+        <p className="mt-1 text-[10px] font-semibold text-blue-400">
+          Ver sources
+        </p>
+      )}
+    </button>
   );
 }
 
@@ -1154,9 +1475,7 @@ function PerformanceTable({
 }) {
   return (
     <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 shadow-lg">
-
       <div className="border-b border-slate-800 p-5">
-
         <h2 className="text-xl font-bold text-white">
           Ranking completo
         </h2>
@@ -1164,197 +1483,141 @@ function PerformanceTable({
         <p className="mt-1 text-sm text-slate-400">
           Ordenado pelo total de atividades
         </p>
-
       </div>
 
       <div className="overflow-x-auto">
-
-        <table className="w-full min-w-[1200px]">
-
+        <table className="w-full min-w-[1400px]">
           <thead className="bg-slate-800">
-
             <tr className="text-left text-xs text-slate-300">
+              <th className="px-3 py-4 text-center">#</th>
+              <th className="px-3 py-4">Responsável</th>
+              <th className="px-3 py-4 text-center">Leads</th>
+              <th className="px-3 py-4 text-center">Open</th>
+              <th className="px-3 py-4 text-center">Won</th>
+              <th className="px-3 py-4 text-center">Lost</th>
+              <th className="px-3 py-4 text-center">Atividades</th>
+              <th className="px-3 py-4 text-center">Efetivas</th>
+              <th className="px-3 py-4 text-center">Não efetivas</th>
+              <th className="px-3 py-4 text-center">WhatsApp diálogo</th>
+              <th className="px-3 py-4 text-center">WhatsApp pontual</th>
+              <th className="px-3 py-4 text-center">E-mails</th>
 
-              <th className="px-3 py-4 text-center">
-                #
-              </th>
-
-              <th className="px-3 py-4">
-                Responsável
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                Leads
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                Open
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                Won
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                Lost
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                Atividades
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                Efetivas
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                Não efetivas
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                WhatsApp diálogo
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                WhatsApp pontual
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                E-mails
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                Reuniões
-              </th>
-
-              <th className="px-3 py-4 text-center">
-                Outras
-              </th>
-
-              {viewMode === 'closer' && (
-                <th className="px-3 py-4 text-right">
-                  Receita
-                </th>
+              {viewMode === 'closer' ? (
+                <>
+                  <th className="px-3 py-4 text-center">Reunião 1º contato</th>
+                  <th className="px-3 py-4 text-center">Reunião follow-up</th>
+                  <th className="px-3 py-4 text-center">Proposta simulação</th>
+                  <th className="px-3 py-4 text-center">Proposta avulsa</th>
+                </>
+              ) : (
+                <th className="px-3 py-4 text-center">Reuniões</th>
               )}
 
-            </tr>
+              <th className="px-3 py-4 text-center">Outras</th>
 
+              {viewMode === 'closer' && (
+                <th className="px-3 py-4 text-right">Receita</th>
+              )}
+            </tr>
           </thead>
 
           <tbody>
+            {items.map((item, index) => {
+              const breakdown =
+                item.activityBreakdown || {};
 
-            {items.map(
-              (item, index) => {
-                const breakdown =
-                  item.activityBreakdown ||
-                  {};
+              return (
+                <tr
+                  key={`${item._id}-${index}`}
+                  className="border-t border-slate-800 text-sm text-slate-200 transition hover:bg-slate-800/60"
+                >
+                  <td className="px-3 py-4 text-center font-bold text-slate-400">
+                    {index + 1}
+                  </td>
 
-                return (
-                  <tr
-                    key={`${item._id}-${index}`}
-                    className="border-t border-slate-800 text-sm text-slate-200 transition hover:bg-slate-800/60"
-                  >
+                  <td className="whitespace-nowrap px-3 py-4 font-semibold text-white">
+                    {item._id}
+                  </td>
 
-                    <td className="px-3 py-4 text-center font-bold text-slate-400">
-                      {index + 1}
-                    </td>
+                  <td className="px-3 py-4 text-center">
+                    {safeNumber(item.totalLeads)}
+                  </td>
 
-                    <td className="whitespace-nowrap px-3 py-4 font-semibold text-white">
-                      {item._id}
-                    </td>
+                  <td className="px-3 py-4 text-center font-semibold text-blue-400">
+                    {safeNumber(item.openLeads)}
+                  </td>
 
-                    <td className="px-3 py-4 text-center">
-                      {safeNumber(
-                        item.totalLeads
-                      )}
-                    </td>
+                  <td className="px-3 py-4 text-center font-semibold text-emerald-400">
+                    {safeNumber(item.wonLeads)}
+                  </td>
 
-                    <td className="px-3 py-4 text-center font-semibold text-blue-400">
-                      {safeNumber(
-                        item.openLeads
-                      )}
-                    </td>
+                  <td className="px-3 py-4 text-center font-semibold text-red-400">
+                    {safeNumber(item.lostLeads)}
+                  </td>
 
-                    <td className="px-3 py-4 text-center font-semibold text-emerald-400">
-                      {safeNumber(
-                        item.wonLeads
-                      )}
-                    </td>
+                  <td className="px-3 py-4 text-center font-bold text-violet-300">
+                    {safeNumber(item.activitiesCount)}
+                  </td>
 
-                    <td className="px-3 py-4 text-center font-semibold text-red-400">
-                      {safeNumber(
-                        item.lostLeads
-                      )}
-                    </td>
+                  <td className="px-3 py-4 text-center">
+                    {safeNumber(breakdown.effectiveCall)}
+                  </td>
 
-                    <td className="px-3 py-4 text-center font-bold text-violet-300">
-                      {safeNumber(
-                        item.activitiesCount
-                      )}
-                    </td>
+                  <td className="px-3 py-4 text-center">
+                    {safeNumber(breakdown.nonEffectiveCall)}
+                  </td>
 
-                    <td className="px-3 py-4 text-center">
-                      {safeNumber(
-                        breakdown.effectiveCall
-                      )}
-                    </td>
+                  <td className="px-3 py-4 text-center">
+                    {safeNumber(breakdown.whatsappDialogue)}
+                  </td>
 
-                    <td className="px-3 py-4 text-center">
-                      {safeNumber(
-                        breakdown.nonEffectiveCall
-                      )}
-                    </td>
+                  <td className="px-3 py-4 text-center">
+                    {safeNumber(breakdown.whatsappMessage)}
+                  </td>
 
-                    <td className="px-3 py-4 text-center">
-                      {safeNumber(
-                        breakdown.whatsappDialogue
-                      )}
-                    </td>
+                  <td className="px-3 py-4 text-center">
+                    {safeNumber(breakdown.prospectingEmail)}
+                  </td>
 
-                    <td className="px-3 py-4 text-center">
-                      {safeNumber(
-                        breakdown.whatsappMessage
-                      )}
-                    </td>
-
-                    <td className="px-3 py-4 text-center">
-                      {safeNumber(
-                        breakdown.prospectingEmail
-                      )}
-                    </td>
-
-                    <td className="px-3 py-4 text-center text-amber-300">
-                      {safeNumber(
-                        breakdown.meetings
-                      )}
-                    </td>
-
-                    <td className="px-3 py-4 text-center">
-                      {safeNumber(
-                        breakdown.other
-                      )}
-                    </td>
-
-                    {viewMode ===
-                      'closer' && (
-                      <td className="whitespace-nowrap px-3 py-4 text-right font-semibold text-emerald-300">
-                        {formatBRL(
-                          item.totalRevenue
-                        )}
+                  {viewMode === 'closer' ? (
+                    <>
+                      <td className="px-3 py-4 text-center text-amber-300">
+                        {safeNumber(breakdown.firstContactMeetings)}
                       </td>
-                    )}
 
-                  </tr>
-                );
-              }
-            )}
+                      <td className="px-3 py-4 text-center text-amber-300">
+                        {safeNumber(breakdown.followUpMeetings)}
+                      </td>
 
+                      <td className="px-3 py-4 text-center text-cyan-300">
+                        {safeNumber(breakdown.simulationProposal)}
+                      </td>
+
+                      <td className="px-3 py-4 text-center text-cyan-300">
+                        {safeNumber(breakdown.standaloneProposal)}
+                      </td>
+                    </>
+                  ) : (
+                    <td className="px-3 py-4 text-center text-amber-300">
+                      {safeNumber(breakdown.meetings)}
+                    </td>
+                  )}
+
+                  <td className="px-3 py-4 text-center">
+                    {safeNumber(breakdown.other)}
+                  </td>
+
+                  {viewMode === 'closer' && (
+                    <td className="whitespace-nowrap px-3 py-4 text-right font-semibold text-emerald-300">
+                      {formatBRL(item.totalRevenue)}
+                    </td>
+                  )}
+                </tr>
+              );
+            })}
           </tbody>
-
         </table>
-
       </div>
-
     </div>
   );
 }
