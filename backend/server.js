@@ -1200,121 +1200,112 @@ async function getSourcesDashboard(startDate, endDate) {
   };
 
   const sources = await Lead.aggregate([
-    {
-      $match: {
-        ...ignoredPipelineFilter
-      }
-    },
-    {
-      $addFields: {
-        sourceDate: {
-          $cond: [
-            {
-              $in: ['$status', [10, 11, 12]]
-            },
-            '$closedTime',
-            '$createdTime'
-          ]
-        }
-      }
-    },
-    {
-      $match: hasDateFilter
+  {
+    $match: {
+      ...ignoredPipelineFilter,
+
+      status: 10,
+
+      closedTime: hasDateFilter
         ? {
-            sourceDate: {
-              ...dateConditions,
-              $ne: null
-            }
+            ...dateConditions,
+            $ne: null
           }
         : {
-            sourceDate: {
-              $ne: null
-            }
+            $ne: null
           }
-    },
-    {
-      $unwind: {
-        path: '$sources',
-        preserveNullAndEmptyArrays: true
-      }
-    },
-    {
-      $group: {
-        _id: {
-          $ifNull: ['$sources.name', 'Sem source']
-        },
+    }
+  },
 
-        totalLeads: {
-          $sum: 1
-        },
+  {
+    $unwind: {
+      path: '$sources',
+      preserveNullAndEmptyArrays: true
+    }
+  },
 
-        wonLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 10] }, 1, 0]
-          }
-        },
-
-        openLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 0] }, 1, 0]
-          }
-        },
-
-        lostLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 11] }, 1, 0]
-          }
-        },
-
-        canceledLeads: {
-          $sum: {
-            $cond: [{ $eq: ['$status', 12] }, 1, 0]
-          }
-        },
-
-        revenue: {
-          $sum: {
-            $cond: [
-              {
-                $and: [
-                  { $eq: ['$status', 10] },
-                  { $ne: ['$value.amount', null] }
-                ]
-              },
-              '$value.amount',
-              0
+  {
+    $addFields: {
+      sourceName: {
+        $trim: {
+          input: {
+            $ifNull: [
+              '$sources.name',
+              ''
             ]
           }
         }
       }
-    },
-    {
-      $addFields: {
-        conversionRate: {
-          $cond: [
-            { $gt: ['$totalLeads', 0] },
+    }
+  },
+
+  {
+    $group: {
+      _id: {
+        $cond: [
+          {
+            $eq: [
+              '$sourceName',
+              ''
+            ]
+          },
+          'Sem source',
+          '$sourceName'
+        ]
+      },
+
+      totalLeads: {
+        $sum: 1
+      },
+
+      wonLeads: {
+        $sum: 1
+      },
+
+      openLeads: {
+        $sum: 0
+      },
+
+      lostLeads: {
+        $sum: 0
+      },
+
+      canceledLeads: {
+        $sum: 0
+      },
+
+      revenue: {
+        $sum: {
+          $ifNull: [
+            '$value.amount',
             {
-              $multiply: [
-                {
-                  $divide: ['$wonLeads', '$totalLeads']
-                },
-                100
+              $ifNull: [
+                '$rawData.value.amount',
+                0
               ]
-            },
-            0
+            }
           ]
         }
       }
-    },
-    {
-      $sort: {
-        revenue: -1
-      }
-    },
-    {
-      $limit: 15
     }
-  ]);
+  },
+
+  {
+    $addFields: {
+      conversionRate: 100
+    }
+  },
+
+  {
+    $sort: {
+      revenue: -1
+    }
+  },
+
+  {
+    $limit: 15
+  }
+]);
 
   return sources;
 }
@@ -7863,121 +7854,112 @@ app.get('/api/dashboard/by-source', async (req, res) => {
     };
 
     const sources = await Lead.aggregate([
-      {
-        $match: {
-          ...ignoredPipelineFilter
-        }
-      },
-      {
-        $addFields: {
-          sourceDate: {
-            $cond: [
-              {
-                $in: ['$status', [10, 11, 12]]
-              },
-              '$closedTime',
-              '$createdTime'
+  {
+    $match: {
+      ...ignoredPipelineFilter,
+
+      status: 10,
+
+      closedTime: hasDateFilter
+        ? {
+            ...dateConditions,
+            $ne: null
+          }
+        : {
+            $ne: null
+          }
+    }
+  },
+
+  {
+    $unwind: {
+      path: '$sources',
+      preserveNullAndEmptyArrays: true
+    }
+  },
+
+  {
+    $addFields: {
+      sourceName: {
+        $trim: {
+          input: {
+            $ifNull: [
+              '$sources.name',
+              ''
             ]
           }
         }
+      }
+    }
+  },
+
+  {
+    $group: {
+      _id: {
+        $cond: [
+          {
+            $eq: [
+              '$sourceName',
+              ''
+            ]
+          },
+          'Sem source',
+          '$sourceName'
+        ]
       },
-      {
-        $match: hasDateFilter
-          ? {
-              sourceDate: {
-                ...dateConditions,
-                $ne: null
-              }
-            }
-          : {
-              sourceDate: {
-                $ne: null
-              }
-            }
+
+      totalLeads: {
+        $sum: 1
       },
-      {
-        $unwind: {
-          path: '$sources',
-          preserveNullAndEmptyArrays: true
-        }
+
+      wonLeads: {
+        $sum: 1
       },
-      {
-        $group: {
-          _id: {
-            $ifNull: ['$sources.name', 'Sem source']
-          },
 
-          totalLeads: {
-            $sum: 1
-          },
+      openLeads: {
+        $sum: 0
+      },
 
-          wonLeads: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 10] }, 1, 0]
-            }
-          },
+      lostLeads: {
+        $sum: 0
+      },
 
-          openLeads: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 0] }, 1, 0]
-            }
-          },
+      canceledLeads: {
+        $sum: 0
+      },
 
-          lostLeads: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 11] }, 1, 0]
-            }
-          },
-
-          canceledLeads: {
-            $sum: {
-              $cond: [{ $eq: ['$status', 12] }, 1, 0]
-            }
-          },
-
-          revenue: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    { $eq: ['$status', 10] },
-                    { $ne: ['$value.amount', null] }
-                  ]
-                },
-                '$value.amount',
+      revenue: {
+        $sum: {
+          $ifNull: [
+            '$value.amount',
+            {
+              $ifNull: [
+                '$rawData.value.amount',
                 0
               ]
             }
-          }
+          ]
         }
-      },
-      {
-        $addFields: {
-          conversionRate: {
-            $cond: [
-              { $gt: ['$totalLeads', 0] },
-              {
-                $multiply: [
-                  {
-                    $divide: ['$wonLeads', '$totalLeads']
-                  },
-                  100
-                ]
-              },
-              0
-            ]
-          }
-        }
-      },
-      {
-        $sort: {
-          revenue: -1
-        }
-      },
-      {
-        $limit: 15
       }
-    ]);
+    }
+  },
+
+  {
+    $addFields: {
+      conversionRate: 100
+    }
+  },
+
+  {
+    $sort: {
+      revenue: -1
+    }
+  },
+
+  {
+    $limit: 15
+  }
+]);
 
     res.json({
       sucesso: true,
@@ -13844,6 +13826,267 @@ function getCurrentMonthPeriod() {
   detalhes:
     error.response?.data || null
 });
+    }
+  }
+);
+
+// ========================================
+// SINCRONIZAR WON SEM SOURCE POR CLOSE DATE
+// ========================================
+
+app.get(
+  '/api/sync/nutshell/won-sources-period',
+  async (req, res) => {
+    try {
+      const {
+        startDate,
+        endDate,
+        limit = 500
+      } = req.query;
+
+      if (!startDate || !endDate) {
+        return res.status(400).json({
+          sucesso: false,
+          erro:
+            'Informe startDate e endDate no formato YYYY-MM-DD.'
+        });
+      }
+
+      const start = new Date(
+        `${startDate}T00:00:00.000`
+      );
+
+      const end = new Date(
+        `${endDate}T23:59:59.999`
+      );
+
+      const missingSourceFilter = {
+        status: 10,
+
+        closedTime: {
+          $gte: start,
+          $lte: end,
+          $ne: null
+        },
+
+        'stageset.name': {
+          $ne:
+            'Processo de Vendas - Global Alliance'
+        },
+
+        $or: [
+          {
+            sources: {
+              $exists: false
+            }
+          },
+          {
+            sources: null
+          },
+          {
+            sources: {
+              $size: 0
+            }
+          },
+          {
+            sources: {
+              $elemMatch: {
+                name: {
+                  $in: [
+                    null,
+                    ''
+                  ]
+                }
+              }
+            }
+          }
+        ]
+      };
+
+      const leads =
+        await Lead.find(
+          missingSourceFilter
+        )
+          .select({
+            nutshell_id: 1,
+            name: 1,
+            closedTime: 1,
+            sources: 1
+          })
+          .limit(
+            Math.min(
+              Math.max(
+                Number(limit) || 500,
+                1
+              ),
+              2000
+            )
+          )
+          .lean();
+
+      let checked = 0;
+      let updated = 0;
+      let stillWithoutSource = 0;
+      let errors = 0;
+
+      const details = [];
+
+      for (const lead of leads) {
+        checked++;
+
+        try {
+          const response =
+            await axios.post(
+              'https://app.nutshell.com/api/v1/json',
+              {
+                method: 'getLead',
+
+                params: {
+                  leadId: Number(
+                    lead.nutshell_id
+                  )
+                },
+
+                id: 1
+              },
+              {
+                auth: {
+                  username:
+                    NUTSHELL_EMAIL,
+
+                  password:
+                    NUTSHELL_API_KEY
+                }
+              }
+            );
+
+          const fullLead =
+            response.data?.result;
+
+          if (!fullLead) {
+            errors++;
+
+            details.push({
+              nutshell_id:
+                lead.nutshell_id,
+
+              name:
+                lead.name,
+
+              updated: false,
+
+              reason:
+                'Lead não encontrada no Nutshell'
+            });
+
+            continue;
+          }
+
+          await saveFullLead(
+            fullLead
+          );
+
+          const sourceNames =
+            Array.isArray(
+              fullLead.sources
+            )
+              ? fullLead.sources
+                  .map(
+                    (source) =>
+                      String(
+                        source?.name || ''
+                      ).trim()
+                  )
+                  .filter(Boolean)
+              : [];
+
+          if (
+            sourceNames.length > 0
+          ) {
+            updated++;
+          } else {
+            stillWithoutSource++;
+          }
+
+          details.push({
+            nutshell_id:
+              fullLead.id,
+
+            name:
+              fullLead.name,
+
+            closedTime:
+              fullLead.closedTime ||
+              null,
+
+            sources:
+              sourceNames,
+
+            updated: true
+          });
+
+          await sleep(120);
+        } catch (leadError) {
+          errors++;
+
+          details.push({
+            nutshell_id:
+              lead.nutshell_id,
+
+            name:
+              lead.name,
+
+            updated: false,
+
+            error:
+              leadError.response?.data ||
+              leadError.message
+          });
+        }
+      }
+
+      const remaining =
+        await Lead.countDocuments(
+          missingSourceFilter
+        );
+
+      res.json({
+        sucesso: true,
+
+        routeVersion:
+          'won-sources-period-v1',
+
+        filters: {
+          status: 10,
+          dateField:
+            'closedTime',
+          startDate,
+          endDate
+        },
+
+        beforeSync:
+          leads.length,
+
+        checked,
+        updated,
+        stillWithoutSource,
+        errors,
+        remaining,
+        details
+      });
+    } catch (error) {
+      console.error(
+        'ERRO SYNC WON SOURCES:',
+        error.response?.data ||
+          error.message
+      );
+
+      res.status(500).json({
+        sucesso: false,
+        erro:
+          error.response?.data ||
+          error.message
+      });
     }
   }
 );
