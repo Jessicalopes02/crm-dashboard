@@ -5219,6 +5219,63 @@ cron.schedule('0 6 * * *', async () => {
   }
 });
 
+cron.schedule(
+  '0 3 * * *',
+  async () => {
+    try {
+      const period =
+        getCurrentMonthPeriod();
+
+      console.log(
+        `Iniciando sincronização diária de atividades: ${period}`
+      );
+
+      const backendUrl =
+        process.env.BACKEND_PUBLIC_URL;
+
+      if (!backendUrl) {
+        console.error(
+          'BACKEND_PUBLIC_URL não configurada.'
+        );
+
+        return;
+      }
+
+      const response = await axios.get(
+        `${backendUrl}/api/sync/nutshell/activities-period`,
+        {
+          params: {
+            period
+          },
+          timeout: 15 * 60 * 1000
+        }
+      );
+
+      console.log(
+        'Sincronização diária concluída:',
+        {
+          period,
+          activitiesSaved:
+            response.data?.activitiesSaved,
+          activitiesInsidePeriod:
+            response.data
+              ?.activitiesInsidePeriod,
+          leadsUpdated:
+            response.data?.leadsUpdated
+        }
+      );
+    } catch (error) {
+      console.error(
+        'Erro na sincronização diária de atividades:',
+        error.response?.data ||
+          error.message
+      );
+    }
+  },
+  {
+    timezone: 'America/Sao_Paulo'
+  }
+);
 
 // ========================================
 // SYNC INCREMENTAL AUTOMÁTICA
@@ -13375,6 +13432,30 @@ if (startDate && endDate) {
       0
     )
   );
+}
+
+function getCurrentMonthPeriod() {
+  const now = new Date();
+
+  const formatter =
+    new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'America/Sao_Paulo',
+      year: 'numeric',
+      month: '2-digit'
+    });
+
+  const parts =
+    formatter.formatToParts(now);
+
+  const year = parts.find(
+    (part) => part.type === 'year'
+  )?.value;
+
+  const month = parts.find(
+    (part) => part.type === 'month'
+  )?.value;
+
+  return `${year}-${month}`;
 }
 
       const PAGE_LIMIT = 100;
