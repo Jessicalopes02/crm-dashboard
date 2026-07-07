@@ -22,7 +22,54 @@ const path = require('path');
 
 const upload = multer({ dest: 'uploads/' });
 
-app.use(cors());
+const allowedOrigins = [
+  'http://localhost:5173',
+  'http://localhost:3000',
+  'https://crm-dashboard-1-rtpd.onrender.com',
+  'https://crm-dashboard-ex08.onrender.com'
+];
+
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+
+      if (allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+
+      console.error(
+        'Origem bloqueada pelo CORS:',
+        origin
+      );
+
+      return callback(
+        new Error(
+          `Origem não permitida pelo CORS: ${origin}`
+        )
+      );
+    },
+
+    credentials: true,
+
+    methods: [
+      'GET',
+      'POST',
+      'PUT',
+      'PATCH',
+      'DELETE',
+      'OPTIONS'
+    ],
+
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization'
+    ]
+  })
+);
+
 app.use(express.json());
 
 // ========================================
