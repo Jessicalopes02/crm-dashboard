@@ -6994,224 +6994,289 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
       baseFilter.status = Number(status);
     }
 
-    // ========================================
-    // PERFORMANCE MENSAL
-    // ========================================
+   // ========================================
+// LEADS ABERTAS NO PERÍODO
+// TOTAL LEADS, OPEN E PENDING
+// REGRA: CREATED TIME
+// ========================================
 
-    const performance = await Lead.aggregate([
-      {
-        $match: baseFilter
-      },
+const openedPerformance =
+  await Lead.aggregate([
+    {
+      $match: {
+        ...baseFilter,
 
-      {
-        $addFields: {
-          performanceDate: {
-            $cond: [
-              {
-                $in: [
-                  '$status',
-                  [10, 11, 12]
-                ]
-              },
-              '$closedTime',
-              '$createdTime'
-            ]
-          }
-        }
-      },
-
-      {
-        $match: {
-          performanceDate: {
-            $gte: start,
-            $lt: end,
-            $ne: null
-          }
-        }
-      },
-
-      {
-        $group: {
-          _id: '$assignee.name',
-
-          totalLeads: {
-            $sum: 1
-          },
-
-          wonLeads: {
-            $sum: {
-              $cond: [
-                {
-                  $eq: ['$status', 10]
-                },
-                1,
-                0
-              ]
-            }
-          },
-
-          lostLeads: {
-            $sum: {
-              $cond: [
-                {
-                  $eq: ['$status', 11]
-                },
-                1,
-                0
-              ]
-            }
-          },
-
-          openLeads: {
-            $sum: {
-              $cond: [
-                {
-                  $eq: ['$status', 0]
-                },
-                1,
-                0
-              ]
-            }
-          },
-
-          pendingLeads: {
-            $sum: {
-              $cond: [
-                {
-                  $eq: ['$status', 1]
-                },
-                1,
-                0
-              ]
-            }
-          },
-
-          canceledLeads: {
-            $sum: {
-              $cond: [
-                {
-                  $eq: ['$status', 12]
-                },
-                1,
-                0
-              ]
-            }
-          },
-
-          totalRevenue: {
-            $sum: {
-              $cond: [
-                {
-                  $eq: ['$status', 10]
-                },
-                {
-                  $ifNull: [
-                    '$value.amount',
-                    {
-                      $ifNull: [
-                        '$rawData.value.amount',
-                        0
-                      ]
-                    }
-                  ]
-                },
-                0
-              ]
-            }
-          },
-
-          totalWonWithValue: {
-            $sum: {
-              $cond: [
-                {
-                  $and: [
-                    {
-                      $eq: ['$status', 10]
-                    },
-                    {
-                      $gt: [
-                        {
-                          $ifNull: [
-                            '$value.amount',
-                            {
-                              $ifNull: [
-                                '$rawData.value.amount',
-                                0
-                              ]
-                            }
-                          ]
-                        },
-                        0
-                      ]
-                    }
-                  ]
-                },
-                1,
-                0
-              ]
-            }
-          }
-        }
-      },
-
-      {
-        $addFields: {
-          averageTicket: {
-            $cond: [
-              {
-                $gt: [
-                  '$totalWonWithValue',
-                  0
-                ]
-              },
-              {
-                $divide: [
-                  '$totalRevenue',
-                  '$totalWonWithValue'
-                ]
-              },
-              0
-            ]
-          },
-
-          conversionRate: {
-            $cond: [
-              {
-                $gt: [
-                  '$totalLeads',
-                  0
-                ]
-              },
-              {
-                $multiply: [
-                  {
-                    $divide: [
-                      '$wonLeads',
-                      '$totalLeads'
-                    ]
-                  },
-                  100
-                ]
-              },
-              0
-            ]
-          }
-        }
-      },
-
-      {
-        $project: {
-          totalWonWithValue: 0
-        }
-      },
-
-      {
-        $sort: {
-          totalRevenue: -1
+        createdTime: {
+          $gte: start,
+          $lt: end,
+          $ne: null
         }
       }
-    ]);
+    },
 
+    {
+      $group: {
+        _id: '$assignee.name',
+
+        /*
+         * Total de leads abertas no período,
+         * independentemente do status atual.
+         */
+        totalLeads: {
+          $sum: 1
+        },
+
+        /*
+         * Leads abertas no período
+         * que permanecem Open.
+         */
+        openLeads: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$status',
+                  0
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        /*
+         * Leads abertas no período
+         * que permanecem Pending.
+         */
+        pendingLeads: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$status',
+                  1
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      $sort: {
+        totalLeads: -1
+      }
+    }
+  ]);
+// ========================================
+// FECHAMENTOS NO PERÍODO
+// WON / LOST / CANCELADO
+// REGRA: CLOSED TIME
+// ========================================
+
+const closedPerformance =
+  await Lead.aggregate([
+    {
+      $match: {
+        ...baseFilter,
+
+        status: {
+          $in: [
+            10,
+            11,
+            12
+          ]
+        },
+
+        closedTime: {
+          $gte: start,
+          $lt: end,
+          $ne: null
+        }
+      }
+    },
+
+    {
+      $group: {
+        _id: '$assignee.name',
+
+        wonLeads: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$status',
+                  10
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        lostLeads: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$status',
+                  11
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        canceledLeads: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$status',
+                  12
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        totalRevenue: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$status',
+                  10
+                ]
+              },
+
+              {
+                $ifNull: [
+                  '$value.amount',
+                  {
+                    $ifNull: [
+                      '$rawData.value.amount',
+                      0
+                    ]
+                  }
+                ]
+              },
+
+              0
+            ]
+          }
+        },
+
+        totalWonWithValue: {
+          $sum: {
+            $cond: [
+              {
+                $and: [
+                  {
+                    $eq: [
+                      '$status',
+                      10
+                    ]
+                  },
+
+                  {
+                    $gt: [
+                      {
+                        $ifNull: [
+                          '$value.amount',
+                          {
+                            $ifNull: [
+                              '$rawData.value.amount',
+                              0
+                            ]
+                          }
+                        ]
+                      },
+                      0
+                    ]
+                  }
+                ]
+              },
+
+              1,
+              0
+            ]
+          }
+        }
+      }
+    },
+
+    {
+      $addFields: {
+
+        averageTicket: {
+          $cond: [
+            {
+              $gt: [
+                '$totalWonWithValue',
+                0
+              ]
+            },
+
+            {
+              $divide: [
+                '$totalRevenue',
+                '$totalWonWithValue'
+              ]
+            },
+
+            0
+          ]
+        },
+
+        conversionRate: {
+          $cond: [
+            {
+              $gt: [
+                {
+                  $add: [
+                    '$wonLeads',
+                    '$lostLeads'
+                  ]
+                },
+
+                0
+              ]
+            },
+
+            {
+              $multiply: [
+                {
+                  $divide: [
+                    '$wonLeads',
+                    {
+                      $add: [
+                        '$wonLeads',
+                        '$lostLeads'
+                      ]
+                    }
+                  ]
+                },
+
+                100
+              ]
+            },
+
+            0
+          ]
+        }
+      }
+    }
+  ]);
 // ========================================
 // SOURCES DAS LEADS POR RESPONSÁVEL
 // CONSIDERA UMA LEAD APENAS UMA VEZ
@@ -7224,21 +7289,10 @@ const sourcesByAssignee =
     },
 
     {
-      $addFields: {
-        performanceDate: {
-          $cond: [
-            {
-              $in: [
-                '$status',
-                [10, 11, 12]
-              ]
-            },
-            '$closedTime',
-            '$createdTime'
-          ]
-        }
-      }
-    },
+  $addFields: {
+    performanceDate: '$createdTime'
+  }
+},
 
     {
       $match: {
@@ -7988,12 +8042,78 @@ const sourcesMap = new Map(
       ])
     );
 
-    const performanceMap = new Map(
-  performance.map((item) => [
-    normalizeName(item._id),
-    item
-  ])
-);
+ 
+   // ========================================
+// MAPA DAS LEADS ABERTAS
+// CREATED TIME
+// ========================================
+
+const openedPerformanceMap =
+  new Map(
+    openedPerformance.map((item) => [
+      normalizeName(item._id),
+
+      {
+        _id:
+          item._id ||
+          'Sem responsável',
+
+        totalLeads: Number(
+          item.totalLeads || 0
+        ),
+
+        openLeads: Number(
+          item.openLeads || 0
+        ),
+
+        pendingLeads: Number(
+          item.pendingLeads || 0
+        )
+      }
+    ])
+  );
+
+// ========================================
+// MAPA DOS FECHAMENTOS
+// CLOSED TIME
+// ========================================
+
+const closedPerformanceMap =
+  new Map(
+    closedPerformance.map((item) => [
+      normalizeName(item._id),
+
+      {
+        _id:
+          item._id ||
+          'Sem responsável',
+
+        wonLeads: Number(
+          item.wonLeads || 0
+        ),
+
+        lostLeads: Number(
+          item.lostLeads || 0
+        ),
+
+        canceledLeads: Number(
+          item.canceledLeads || 0
+        ),
+
+        totalRevenue: Number(
+          item.totalRevenue || 0
+        ),
+
+        averageTicket: Number(
+          item.averageTicket || 0
+        ),
+
+        conversionRate: Number(
+          item.conversionRate || 0
+        )
+      }
+    ])
+  );
 
 /*
  * Junta responsáveis encontrados na pipeline
@@ -8003,94 +8123,138 @@ const sourcesMap = new Map(
  * mas realizou atividades, aparece no módulo.
  */
 const allResponsibleNames = new Set([
-  ...performanceMap.keys(),
-  ...activitiesMap.keys()
+  ...openedPerformanceMap.keys(),
+  ...closedPerformanceMap.keys(),
+  ...activitiesMap.keys(),
+  ...sourcesMap.keys()
 ]);
 
 const completePerformance = Array.from(
   allResponsibleNames
 ).map((normalizedName) => {
-  const pipeline =
-    performanceMap.get(normalizedName);
+  const openedData =
+    openedPerformanceMap.get(
+      normalizedName
+    );
+
+  const closedData =
+    closedPerformanceMap.get(
+      normalizedName
+    );
 
   const activity =
-    activitiesMap.get(normalizedName);
-  
+    activitiesMap.get(
+      normalizedName
+    );
+
   const sourceData =
-    sourcesMap.get(normalizedName);  
+    sourcesMap.get(
+      normalizedName
+    ); 
 
-  return {
-    _id:
-      pipeline?._id ||
-      activity?.displayName ||
-      'Sem responsável',
+return {
+  _id:
+    openedData?._id ||
+    closedData?._id ||
+    activity?.displayName ||
+    'Sem responsável',
 
-    totalLeads: Number(
-      pipeline?.totalLeads || 0
-    ),
+  /*
+   * LEADS ABERTAS NO PERÍODO
+   * createdTime
+   */
+  totalLeads: Number(
+    openedData?.totalLeads || 0
+  ),
 
-    wonLeads: Number(
-      pipeline?.wonLeads || 0
-    ),
+  openLeads: Number(
+    openedData?.openLeads || 0
+  ),
 
-    lostLeads: Number(
-      pipeline?.lostLeads || 0
-    ),
+  pendingLeads: Number(
+    openedData?.pendingLeads || 0
+  ),
 
-    openLeads: Number(
-      pipeline?.openLeads || 0
-    ),
+  /*
+   * LEADS FECHADAS NO PERÍODO
+   * closedTime
+   */
+  wonLeads: Number(
+    closedData?.wonLeads || 0
+  ),
 
-    pendingLeads: Number(
-      pipeline?.pendingLeads || 0
-    ),
+  lostLeads: Number(
+    closedData?.lostLeads || 0
+  ),
 
-    canceledLeads: Number(
-      pipeline?.canceledLeads || 0
-    ),
+  canceledLeads: Number(
+    closedData?.canceledLeads || 0
+  ),
 
-    totalRevenue: Number(
-      pipeline?.totalRevenue || 0
-    ),
+  totalRevenue: Number(
+    closedData?.totalRevenue || 0
+  ),
 
-    averageTicket: Number(
-      pipeline?.averageTicket || 0
-    ),
+  averageTicket: Number(
+    closedData?.averageTicket || 0
+  ),
 
-    conversionRate: Number(
-      pipeline?.conversionRate || 0
-    ),
+  conversionRate: Number(
+    closedData?.conversionRate || 0
+  ),
 
-    activitiesCount: Number(
-      activity?.activitiesCount || 0
-    ),
+  /*
+   * Mantido para compatibilidade,
+   * mas representa os Won por closedTime.
+   */
+  wonLeadsByCloseDate: Number(
+    closedData?.wonLeads || 0
+  ),
 
-    meetingsCount: Number(
-      activity?.meetingsCount || 0
-    ),
+  /*
+   * ATIVIDADES
+   */
+  activitiesCount: Number(
+    activity?.activitiesCount || 0
+  ),
 
-    activityBreakdown:
-      activity?.activityBreakdown || {
-        effectiveCall: 0,
-        nonEffectiveCall: 0,
-        whatsappDialogue: 0,
-        whatsappMessage: 0,
-        prospectingEmail: 0,
-        meetings: 0,
-        other: 0
-      },
+  meetingsCount: Number(
+    activity?.meetingsCount || 0
+  ),
 
-    sourcesBreakdown:
-      sourceData?.sources || [],
+  activityBreakdown:
+    activity?.activityBreakdown || {
+      effectiveCall: 0,
+      nonEffectiveCall: 0,
+      whatsappDialogue: 0,
+      whatsappMessage: 0,
+      prospectingEmail: 0,
 
-    totalLeadsBySource: Number(
-      sourceData?.totalLeadsBySource || 0
-    ),
-       
-    staleOpenPending: Number(
-      staleMap.get(normalizedName) || 0
-    )
-  };
+      meetings: 0,
+      firstContactMeetings: 0,
+      followUpMeetings: 0,
+      generalMeetings: 0,
+
+      simulationProposal: 0,
+      standaloneProposal: 0,
+
+      other: 0
+    },
+
+  /*
+   * SOURCES DAS LEADS ABERTAS
+   */
+  sourcesBreakdown:
+    sourceData?.sources || [],
+
+  totalLeadsBySource: Number(
+    sourceData?.totalLeadsBySource || 0
+  ),
+
+  staleOpenPending: Number(
+    staleMap.get(normalizedName) || 0
+  )
+};
 });
     // ========================================
     // SEPARAÇÃO CLOSERS E SDRS
