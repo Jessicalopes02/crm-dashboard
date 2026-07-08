@@ -478,7 +478,7 @@ const generalConversion =
     : 0;
 
   return (
-    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
+    <div className="min-h-screen w-[calc(100vw-96px)] min-w-0 max-w-[calc(100vw-96px)] overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
 
       <div className="mb-6 flex flex-col gap-5">
 
