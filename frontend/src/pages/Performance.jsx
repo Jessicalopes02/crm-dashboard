@@ -478,7 +478,7 @@ const generalConversion =
     : 0;
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
+    <div className="min-h-screen bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
 
       <div className="mb-6 flex flex-col gap-5">
 
@@ -729,7 +729,8 @@ const generalConversion =
 
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 2xl:grid-cols-8">
+      <div className="mb-6 overflow-x-auto pb-2">
+        <div className="grid min-w-[1180px] grid-cols-8 gap-3">
 
         <SummaryCard
           title="Total de Leads"
@@ -810,14 +811,16 @@ const generalConversion =
         />
 
       </div>
+     </div> 
 
-      <div
-  className={`mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5 ${
-    viewMode === 'closer'
-      ? '2xl:grid-cols-5'
-      : '2xl:grid-cols-5'
-  }`}
->
+      <div className="mb-6 overflow-x-auto pb-2">
+        <div
+          className={`grid gap-3 ${
+            viewMode === 'closer'
+              ? 'min-w-[1320px] grid-cols-10'
+              : 'min-w-[920px] grid-cols-7'
+          }`}
+        >
         <ActivitySummaryCard
           title="Ligações efetivas"
           value={summary.effectiveCall}
@@ -895,6 +898,7 @@ const generalConversion =
           value={summary.other}
         />
       </div>
+      </div>
 
       {loading && (
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-12 text-center text-slate-400">
@@ -912,7 +916,7 @@ const generalConversion =
       {!loading &&
         sortedPerformance.length > 0 && (
           <>
-            <div className="mb-6 grid grid-cols-1 gap-5 2xl:grid-cols-2">
+            <div className="mb-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
 
               {sortedPerformance.map(
                 (item, index) => (
@@ -1005,7 +1009,7 @@ function SummaryCard({
     <button
       type="button"
       onClick={clickable ? onClick : undefined}
-      className={`min-w-0 rounded-2xl border border-slate-800 bg-slate-900 p-4 text-left shadow-lg transition ${
+      className={`min-h-[90px] min-w-0 rounded-xl border border-slate-800 bg-slate-900 p-3 text-left shadow-lg transition ${
         clickable
           ? 'cursor-pointer hover:border-blue-500 hover:bg-slate-800'
           : 'cursor-default'
@@ -1016,7 +1020,7 @@ function SummaryCard({
       </p>
 
       <p
-        className={`mt-2 truncate text-xl font-bold ${
+        className={`mt-1 truncate text-lg font-bold ${
           accentClasses[accent]
         }`}
         title={String(value)}
@@ -1038,13 +1042,13 @@ function ActivitySummaryCard({
   value
 }) {
   return (
-    <div className="min-h-[88px] rounded-xl border border-slate-800 bg-slate-900 p-4">
+    <div className="min-h-[78px] rounded-xl border border-slate-800 bg-slate-900 p-3">
 
-      <p className="min-h-[30px] text-xs leading-snug text-slate-400">
+      <p className="min-h-[28px] text-[11px] leading-snug text-slate-400">
         {title}
       </p>
 
-      <p className="mt-1 text-xl font-bold text-violet-300">
+      <p className="mt-1 text-lg font-bold text-violet-300">
         {safeNumber(value)}
       </p>
 
@@ -1301,7 +1305,7 @@ function PersonPerformanceCard({
 
       </div>
 
-      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid grid-cols-4 gap-2">
 
         <Metric
           label="Total Leads"
@@ -1363,7 +1367,7 @@ function PersonPerformanceCard({
 
       </div>
 
-      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-5 gap-2">
 
         {activityItems.map(
           (activity) => (
@@ -1401,18 +1405,18 @@ function Metric({
     <button
       type="button"
       onClick={clickable ? onClick : undefined}
-      className={`rounded-xl border border-slate-800 bg-slate-950 p-3 text-left transition ${
+      className={`min-h-[78px] rounded-xl border border-slate-800 bg-slate-950 p-2 text-left transition ${
         clickable
           ? 'cursor-pointer hover:border-blue-500 hover:bg-slate-900'
           : 'cursor-default'
       }`}
     >
-      <p className="text-xs text-slate-500">
+      <p className="text-[11px] leading-snug text-slate-500">
         {label}
       </p>
 
       <p
-        className={`mt-1 break-words text-lg font-bold ${
+        className={`mt-1 break-words text-base font-bold ${
           accentClasses[accent]
         }`}
         title={String(value)}
@@ -1445,15 +1449,15 @@ function ActivityMetric({
       : 0;
 
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
+    <div className="min-h-[76px] rounded-xl border border-slate-800 bg-slate-950 p-2">
 
       <div className="mb-2 flex items-start justify-between gap-3">
 
-        <p className="min-h-[32px] text-xs leading-snug text-slate-400">
+        <p className="min-h-[28px] text-[11px] leading-snug text-slate-400">
           {label}
         </p>
 
-        <span className="shrink-0 text-sm font-bold text-violet-300">
+        <span className="shrink-0 text-xs font-bold text-violet-300">
           {safeNumber(value)}
         </span>
 
