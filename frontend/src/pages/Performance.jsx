@@ -478,7 +478,7 @@ const generalConversion =
     : 0;
 
   return (
-    <div className="min-h-screen bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
+    <div className="min-h-screen max-w-full overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
 
       <div className="mb-6 flex flex-col gap-5">
 
@@ -729,8 +729,8 @@ const generalConversion =
 
       </div>
 
-      <div className="mb-6 overflow-x-auto pb-2">
-        <div className="grid min-w-[1180px] grid-cols-8 gap-3">
+      <div className="mb-6 w-full max-w-full overflow-x-auto pb-2">
+        <div className="grid min-w-[980px] grid-cols-8 gap-2">
 
         <SummaryCard
           title="Total de Leads"
@@ -813,12 +813,12 @@ const generalConversion =
       </div>
      </div> 
 
-      <div className="mb-6 overflow-x-auto pb-2">
+      <div className="mb-6 w-full max-w-full overflow-x-auto pb-2">
         <div
-          className={`grid gap-3 ${
+          className={`grid gap-2 ${
             viewMode === 'closer'
-              ? 'min-w-[1320px] grid-cols-10'
-              : 'min-w-[920px] grid-cols-7'
+              ? 'min-w-[1080px] grid-cols-10'
+              : 'min-w-[780px] grid-cols-7'
           }`}
         >
         <ActivitySummaryCard
@@ -1257,7 +1257,7 @@ function PersonPerformanceCard({
         ];
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-lg">
+    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-lg">
 
       <div className="mb-4 flex items-start justify-between gap-3">
 
@@ -1367,7 +1367,7 @@ function PersonPerformanceCard({
 
       </div>
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-5 gap-1.5">
 
         {activityItems.map(
           (activity) => (
@@ -1405,18 +1405,18 @@ function Metric({
     <button
       type="button"
       onClick={clickable ? onClick : undefined}
-      className={`min-h-[78px] rounded-xl border border-slate-800 bg-slate-950 p-2 text-left transition ${
+      className={`min-h-[62px] rounded-lg border border-slate-800 bg-slate-950 p-1.5 text-left transition ${
         clickable
           ? 'cursor-pointer hover:border-blue-500 hover:bg-slate-900'
           : 'cursor-default'
       }`}
     >
-      <p className="text-[11px] leading-snug text-slate-500">
+      <p className="text-[9px] leading-tight text-slate-500">
         {label}
       </p>
 
       <p
-        className={`mt-1 break-words text-base font-bold ${
+        className={`mt-0.5 break-words text-sm font-bold ${
           accentClasses[accent]
         }`}
         title={String(value)}
@@ -1449,21 +1449,21 @@ function ActivityMetric({
       : 0;
 
   return (
-    <div className="min-h-[76px] rounded-xl border border-slate-800 bg-slate-950 p-2">
+    <div className="min-h-[62px] rounded-lg border border-slate-800 bg-slate-950 p-1.5">
 
-      <div className="mb-2 flex items-start justify-between gap-2">
+      <div className="mb-1 flex items-start justify-between gap-1">
 
-        <p className="min-h-[28px] text-[11px] leading-snug text-slate-400">
+        <p className="min-h-[22px] text-[9px] leading-tight text-slate-400">
           {label}
         </p>
 
-        <span className="shrink-0 text-xs font-bold text-violet-300">
+        <span className="shrink-0 text-[10px] font-bold text-violet-300">
           {safeNumber(value)}
         </span>
 
       </div>
 
-      <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
+      <div className="h-1 overflow-hidden rounded-full bg-slate-800">
 
         <div
           className="h-full rounded-full bg-violet-500"
