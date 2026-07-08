@@ -7791,12 +7791,36 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
     let end;
 
     if (startDate && endDate) {
-      start = new Date(startDate);
-      start.setHours(0, 0, 0, 0);
+  const [startYear, startMonth, startDay] =
+    startDate.split('-').map(Number);
 
-      end = new Date(endDate);
-      end.setHours(23, 59, 59, 999);
-    } else {
+  const [endYear, endMonth, endDay] =
+    endDate.split('-').map(Number);
+
+  start = new Date(
+    Date.UTC(
+      startYear,
+      startMonth - 1,
+      startDay,
+      3,
+      0,
+      0,
+      0
+    )
+  );
+
+  end = new Date(
+    Date.UTC(
+      endYear,
+      endMonth - 1,
+      endDay + 1,
+      3,
+      0,
+      0,
+      0
+    )
+  );
+} else {
       /*
        * Início do mês no horário de Brasília.
        * O MongoDB armazena em UTC.
