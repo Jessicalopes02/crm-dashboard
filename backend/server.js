@@ -7532,6 +7532,19 @@ const activitiesByAssignee =
         activityCategory: {
           $switch: {
             branches: [
+              // No Show
+              {
+                case: {
+                  $regexMatch: {
+                    input:
+                      '$activityDescription',
+                    regex:
+                      'no\\s*show|no-show|nao\\s*compareceu|não\\s*compareceu',
+                    options: 'i'
+                  }
+                },
+                then: 'noShow'
+              },
               // Proposta de projeto — Simulação
               {
                 case: {
@@ -7871,6 +7884,20 @@ const activitiesByAssignee =
           }
         },
 
+        noShowCount: {
+          $sum: {
+            $cond: [
+              {
+                $eq: [
+                  '$activityCategory',
+                  'noShow'
+                ]
+              },
+              1,
+              0
+            ]
+          }
+        },
         otherActivitiesCount: {
           $sum: {
             $cond: [
@@ -7997,6 +8024,10 @@ const sourcesMap = new Map(
 
         whatsappMessage: Number(
           item.whatsappMessageCount || 0
+        ),
+
+        noShow: Number(
+          item.noShowCount || 0
         ),
 
         prospectingEmail: Number(
@@ -8229,6 +8260,7 @@ return {
       whatsappDialogue: 0,
       whatsappMessage: 0,
       prospectingEmail: 0,
+      noShow: 0,
 
       meetings: 0,
       firstContactMeetings: 0,
