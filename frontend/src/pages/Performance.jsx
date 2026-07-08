@@ -480,7 +480,7 @@ const generalConversion =
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
 
-      <div className="mb-6 flex flex-col gap-5 xl:flex-row xl:items-start xl:justify-between">
+      <div className="mb-6 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(320px,1fr)_minmax(620px,auto)] 2xl:items-start">
 
         <div>
           <h1 className="text-3xl font-bold text-white md:text-4xl">
@@ -496,7 +496,7 @@ const generalConversion =
           </p>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex w-full min-w-0 flex-col gap-3 2xl:max-w-[760px]">
 
           <div className="flex flex-wrap gap-2">
 
@@ -546,7 +546,7 @@ const generalConversion =
 
           </div>
 
-<div className="flex w-full flex-wrap items-center gap-3">
+<div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:flex 2xl:flex-wrap 2xl:items-center">
 
   {filterMode === 'month' && (
     <input
@@ -673,7 +673,7 @@ const generalConversion =
 
       </div>
 
-      <div className="mb-6 flex flex-wrap gap-3">
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2 md:flex md:flex-wrap">
 
         <button
           type="button"
@@ -729,7 +729,7 @@ const generalConversion =
 
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-8">
+      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
 
         <SummaryCard
           title="Total de Leads"
@@ -812,12 +812,12 @@ const generalConversion =
       </div>
 
       <div
-        className={`mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 ${
-          viewMode === 'closer'
-            ? 'xl:grid-cols-10'
-            : 'xl:grid-cols-7'
-        }`}
-      >
+  className={`mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${
+    viewMode === 'closer'
+      ? '2xl:grid-cols-5'
+      : '2xl:grid-cols-4'
+  }`}
+>
         <ActivitySummaryCard
           title="Ligações efetivas"
           value={summary.effectiveCall}
@@ -912,7 +912,7 @@ const generalConversion =
       {!loading &&
         sortedPerformance.length > 0 && (
           <>
-            <div className="mb-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
+            <div className="mb-6 grid grid-cols-1 gap-5 2xl:grid-cols-2">
 
               {sortedPerformance.map(
                 (item, index) => (
@@ -1038,9 +1038,9 @@ function ActivitySummaryCard({
   value
 }) {
   return (
-    <div className="rounded-xl border border-slate-800 bg-slate-900 p-4">
+    <div className="min-h-[96px] rounded-xl border border-slate-800 bg-slate-900 p-4">
 
-      <p className="text-xs text-slate-400">
+      <p className="min-h-[32px] text-xs leading-snug text-slate-400">
         {title}
       </p>
 
@@ -1300,7 +1300,7 @@ function PersonPerformanceCard({
 
       </div>
 
-      <div className="mb-5 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-5 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
         <Metric
           label="Total Leads"
@@ -1362,7 +1362,7 @@ function PersonPerformanceCard({
 
       </div>
 
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
 
         {activityItems.map(
           (activity) => (
@@ -1411,7 +1411,7 @@ function Metric({
       </p>
 
       <p
-        className={`mt-1 truncate text-lg font-bold ${
+        className={`mt-1 break-words text-lg font-bold ${
           accentClasses[accent]
         }`}
         title={String(value)}
@@ -1446,17 +1446,17 @@ function ActivityMetric({
   return (
     <div className="rounded-xl border border-slate-800 bg-slate-950 p-3">
 
-      <div className="mb-2 flex items-center justify-between gap-3">
+      <div className="mb-2 flex items-start justify-between gap-3">
 
-        <p className="truncate text-xs text-slate-400">
+        <p className="min-h-[32px] text-xs leading-snug text-slate-400">
           {label}
         </p>
 
-        <span className="text-sm font-bold text-violet-300">
+        <span className="shrink-0 text-sm font-bold text-violet-300">
           {safeNumber(value)}
         </span>
 
-      </div>
+    </div>
 
       <div className="h-2 overflow-hidden rounded-full bg-slate-800">
 
