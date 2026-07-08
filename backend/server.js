@@ -6852,6 +6852,225 @@ app.get('/api/sync/nutshell/enrich-missing-assignee', async (req, res) => {
   }
 });
 
+// ========================================
+// AUDITORIA - LEADS SEM SOURCE NA PERFORMANCE
+// ========================================
+
+app.get('/api/audit/performance-missing-sources', async (req, res) => {
+  try {
+    const {
+      period,
+      assignee,
+      showAll = 'false'
+    } = req.query;
+
+    const now = new Date();
+
+    const defaultPeriod = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, '0')}`;
+
+    const selectedPeriod =
+      period || defaultPeriod;
+
+    const [year, month] = selectedPeriod
+      .split('-')
+      .map(Number);
+
+    const start = new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        1,
+        3,
+        0,
+        0,
+        0
+      )
+    );
+
+    const end = new Date(
+      Date.UTC(
+        year,
+        month,
+        1,
+        3,
+        0,
+        0,
+        0
+      )
+    );
+
+    const filter = {
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      },
+
+      'assignee.name': {
+        $exists: true,
+        $nin: [null, '']
+      },
+
+      createdTime: {
+        $gte: start,
+        $lt: end,
+        $ne: null
+      }
+    };
+
+    if (assignee) {
+      filter['assignee.name'] = {
+        $regex: assignee,
+        $options: 'i'
+      };
+    }
+
+    const leads = await Lead.find(filter)
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        createdTime: 1,
+        modifiedTime: 1,
+        closedTime: 1,
+        assignee: 1,
+        sources: 1,
+        rawData: 1,
+        htmlUrl: 1
+      })
+      .sort({
+        createdTime: -1
+      })
+      .lean();
+
+    const formatted = leads.map((lead) => {
+      const topSources = Array.isArray(
+        lead.sources
+      )
+        ? lead.sources
+        : [];
+
+      const rawSources = Array.isArray(
+        lead.rawData?.sources
+      )
+        ? lead.rawData.sources
+        : [];
+
+      const allSources = [
+        ...topSources,
+        ...rawSources
+      ];
+
+      const sourceNames = allSources
+        .map((source) => {
+          if (typeof source === 'string') {
+            return source;
+          }
+
+          return source?.name || '';
+        })
+        .map((name) =>
+          String(name || '')
+            .replace(/\s+/g, ' ')
+            .trim()
+        )
+        .filter(Boolean);
+
+      const sourceName =
+        sourceNames[0] || 'Sem source';
+
+      return {
+        nutshell_id: lead.nutshell_id,
+        name: lead.name,
+        status: lead.status,
+
+        assignee:
+          lead.assignee?.name || null,
+
+        createdTime:
+          lead.createdTime || null,
+
+        modifiedTime:
+          lead.modifiedTime || null,
+
+        closedTime:
+          lead.closedTime || null,
+
+        sourceName,
+
+        sources: topSources,
+        rawSources,
+
+        topSourcesCount:
+          topSources.length,
+
+        rawSourcesCount:
+          rawSources.length,
+
+        htmlUrl:
+          lead.htmlUrl ||
+          lead.rawData?.htmlUrl ||
+          null
+      };
+    });
+
+    const result =
+      showAll === 'true'
+        ? formatted
+        : formatted.filter(
+            (lead) =>
+              lead.sourceName === 'Sem source'
+          );
+
+    res.json({
+      sucesso: true,
+      routeVersion:
+        'performance-missing-sources-v1',
+
+      period: selectedPeriod,
+
+      filters: {
+        assignee: assignee || null,
+        showAll
+      },
+
+      periodRange: {
+        startDate: start,
+        endDate: end
+      },
+
+      summary: {
+        totalLeadsCreatedInPeriod:
+          formatted.length,
+
+        totalWithoutSource:
+          formatted.filter(
+            (lead) =>
+              lead.sourceName === 'Sem source'
+          ).length,
+
+        totalWithSource:
+          formatted.filter(
+            (lead) =>
+              lead.sourceName !== 'Sem source'
+          ).length
+      },
+
+      leads: result
+    });
+
+  } catch (error) {
+    console.error(
+      'ERRO AUDIT PERFORMANCE MISSING SOURCES:',
+      error
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
 
 // ========================================
 // DASHBOARD - PERFORMANCE POR RESPONSÁVEL
