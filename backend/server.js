@@ -7309,38 +7309,60 @@ const sourcesByAssignee =
      * Dessa forma uma lead não será contada
      * duas vezes caso tenha mais de um source.
      */
-    {
-      $addFields: {
-        validSources: {
-          $filter: {
-            input: {
-              $ifNull: [
-                '$sources',
-                []
-              ]
+   {
+  $addFields: {
+    allSources: {
+      $concatArrays: [
+        {
+          $cond: [
+            {
+              $isArray: '$sources'
             },
+            '$sources',
+            []
+          ]
+        },
+        {
+          $cond: [
+            {
+              $isArray: '$rawData.sources'
+            },
+            '$rawData.sources',
+            []
+          ]
+        }
+      ]
+    }
+  }
+},
 
-            as: 'source',
+{
+  $addFields: {
+    validSources: {
+      $filter: {
+        input: '$allSources',
 
-            cond: {
-              $ne: [
-                {
-                  $trim: {
-                    input: {
-                      $ifNull: [
-                        '$$source.name',
-                        ''
-                      ]
-                    }
-                  }
-                },
-                ''
-              ]
-            }
-          }
+        as: 'source',
+
+        cond: {
+          $ne: [
+            {
+              $trim: {
+                input: {
+                  $ifNull: [
+                    '$$source.name',
+                    ''
+                  ]
+                }
+              }
+            },
+            ''
+          ]
         }
       }
-    },
+    }
+  }
+},
 
     {
       $addFields: {
