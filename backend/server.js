@@ -7073,6 +7073,290 @@ app.get('/api/audit/performance-missing-sources', async (req, res) => {
 });
 
 // ========================================
+// SYNC - COMPLETAR SOURCES DAS LEADS DA PERFORMANCE
+// ========================================
+
+app.get('/api/sync/nutshell/performance-missing-sources', async (req, res) => {
+  try {
+    const {
+      period,
+      assignee,
+      limit = 100
+    } = req.query;
+
+    const now = new Date();
+
+    const defaultPeriod = `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(2, '0')}`;
+
+    const selectedPeriod =
+      period || defaultPeriod;
+
+    const [year, month] = selectedPeriod
+      .split('-')
+      .map(Number);
+
+    const start = new Date(
+      Date.UTC(
+        year,
+        month - 1,
+        1,
+        3,
+        0,
+        0,
+        0
+      )
+    );
+
+    const end = new Date(
+      Date.UTC(
+        year,
+        month,
+        1,
+        3,
+        0,
+        0,
+        0
+      )
+    );
+
+    const missingSourceFilter = {
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      },
+
+      'assignee.name': {
+        $exists: true,
+        $nin: [null, '']
+      },
+
+      createdTime: {
+        $gte: start,
+        $lt: end,
+        $ne: null
+      },
+
+      $or: [
+        {
+          sources: {
+            $exists: false
+          }
+        },
+        {
+          sources: null
+        },
+        {
+          sources: {
+            $size: 0
+          }
+        },
+        {
+          rawData: {
+            $exists: false
+          }
+        },
+        {
+          'rawData.sources': {
+            $exists: false
+          }
+        },
+        {
+          'rawData.sources': null
+        },
+        {
+          'rawData.sources': {
+            $size: 0
+          }
+        }
+      ]
+    };
+
+    if (assignee) {
+      missingSourceFilter['assignee.name'] = {
+        $regex: assignee,
+        $options: 'i'
+      };
+    }
+
+    const leads = await Lead.find(
+      missingSourceFilter
+    )
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        assignee: 1,
+        createdTime: 1,
+        sources: 1,
+        rawData: 1
+      })
+      .sort({
+        createdTime: -1
+      })
+      .limit(
+        Math.min(
+          Math.max(Number(limit) || 100, 1),
+          500
+        )
+      )
+      .lean();
+
+    let checked = 0;
+    let updatedWithSource = 0;
+    let stillWithoutSource = 0;
+    let errors = 0;
+
+    const details = [];
+
+    for (const lead of leads) {
+      checked++;
+
+      try {
+        const response = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: {
+              leadId: Number(
+                lead.nutshell_id
+              )
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const fullLead =
+          response.data?.result;
+
+        if (!fullLead) {
+          errors++;
+
+          details.push({
+            nutshell_id:
+              lead.nutshell_id,
+            name: lead.name,
+            updated: false,
+            reason:
+              'Lead não encontrada no Nutshell'
+          });
+
+          continue;
+        }
+
+        await saveFullLead(fullLead);
+
+        const sourceNames =
+          Array.isArray(fullLead.sources)
+            ? fullLead.sources
+                .map((source) =>
+                  String(
+                    source?.name || ''
+                  ).trim()
+                )
+                .filter(Boolean)
+            : [];
+
+        if (sourceNames.length > 0) {
+          updatedWithSource++;
+        } else {
+          stillWithoutSource++;
+        }
+
+        details.push({
+          nutshell_id:
+            fullLead.id,
+
+          name:
+            fullLead.name,
+
+          status:
+            fullLead.status,
+
+          assignee:
+            fullLead.assignee?.name || null,
+
+          createdTime:
+            fullLead.createdTime || null,
+
+          sources:
+            sourceNames,
+
+          updated: true
+        });
+
+        await sleep(120);
+      } catch (leadError) {
+        errors++;
+
+        details.push({
+          nutshell_id:
+            lead.nutshell_id,
+
+          name:
+            lead.name,
+
+          updated: false,
+
+          error:
+            leadError.response?.data ||
+            leadError.message
+        });
+      }
+    }
+
+    res.json({
+      sucesso: true,
+
+      routeVersion:
+        'performance-missing-sources-sync-v1',
+
+      period: selectedPeriod,
+
+      filters: {
+        assignee: assignee || null,
+        limit: Number(limit) || 100
+      },
+
+      periodRange: {
+        startDate: start,
+        endDate: end
+      },
+
+      beforeSync:
+        leads.length,
+
+      checked,
+      updatedWithSource,
+      stillWithoutSource,
+      errors,
+
+      details
+    });
+
+  } catch (error) {
+    console.error(
+      'ERRO SYNC PERFORMANCE MISSING SOURCES:',
+      error.response?.data ||
+        error.message
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro:
+        error.response?.data ||
+        error.message
+    });
+  }
+});
+
+// ========================================
 // DASHBOARD - PERFORMANCE POR RESPONSÁVEL
 // ========================================
 
