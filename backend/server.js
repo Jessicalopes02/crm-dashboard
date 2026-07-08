@@ -7370,6 +7370,392 @@ app.get('/api/sync/nutshell/performance-missing-sources', async (req, res) => {
   }
 });
 
+
+// ========================================
+// SYNC - ATUALIZAR LEADS DA PERFORMANCE
+// STATUS / ASSIGNEE / CLOSED TIME / VALUE / SOURCES
+// ========================================
+
+app.get('/api/sync/nutshell/performance-period', async (req, res) => {
+  try {
+    const {
+      period,
+      startDate,
+      endDate,
+      assignee,
+      limit = 300,
+      pagesBack = 15
+    } = req.query;
+
+    let start;
+    let end;
+    let selectedPeriod = null;
+
+    if (startDate && endDate) {
+      start = new Date(`${startDate}T00:00:00`);
+      start.setHours(0, 0, 0, 0);
+
+      end = new Date(`${endDate}T23:59:59.999`);
+      end.setHours(23, 59, 59, 999);
+    } else {
+      const now = new Date();
+
+      selectedPeriod =
+        period ||
+        `${now.getFullYear()}-${String(
+          now.getMonth() + 1
+        ).padStart(2, '0')}`;
+
+      const [year, month] = selectedPeriod
+        .split('-')
+        .map(Number);
+
+      start = new Date(
+        Date.UTC(
+          year,
+          month - 1,
+          1,
+          3,
+          0,
+          0,
+          0
+        )
+      );
+
+      end = new Date(
+        Date.UTC(
+          year,
+          month,
+          1,
+          3,
+          0,
+          0,
+          0
+        )
+      );
+    }
+
+    if (
+      Number.isNaN(start.getTime()) ||
+      Number.isNaN(end.getTime())
+    ) {
+      return res.status(400).json({
+        sucesso: false,
+        erro:
+          'Datas inválidas. Use period=YYYY-MM ou startDate/endDate.'
+      });
+    }
+
+    /*
+     * Primeiro puxa leads recentes.
+     * Isso ajuda quando uma lead acabou de ser criada
+     * e ainda nem entrou completa no Mongo.
+     */
+    const recentSync =
+      await syncRecentLeads({
+        limit: 20,
+        pagesBack:
+          Math.min(
+            Math.max(Number(pagesBack) || 15, 1),
+            50
+          )
+      });
+
+    const baseFilter = {
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      },
+
+      'assignee.name': {
+        $exists: true,
+        $nin: [null, '']
+      },
+
+      $or: [
+        {
+          createdTime: {
+            $gte: start,
+            $lt: end,
+            $ne: null
+          }
+        },
+        {
+          closedTime: {
+            $gte: start,
+            $lt: end,
+            $ne: null
+          }
+        },
+        {
+          modifiedTime: {
+            $gte: start,
+            $lt: end,
+            $ne: null
+          }
+        },
+        {
+          status: {
+            $in: [0, 1]
+          },
+          createdTime: {
+            $lt: end,
+            $ne: null
+          }
+        }
+      ]
+    };
+
+    if (assignee) {
+      baseFilter['assignee.name'] = {
+        $regex: assignee,
+        $options: 'i'
+      };
+    }
+
+    const leads = await Lead.find(baseFilter)
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        assignee: 1,
+        createdTime: 1,
+        modifiedTime: 1,
+        closedTime: 1,
+        value: 1,
+        sources: 1,
+        htmlUrl: 1
+      })
+      .sort({
+        modifiedTime: -1,
+        createdTime: -1
+      })
+      .limit(
+        Math.min(
+          Math.max(Number(limit) || 300, 1),
+          1000
+        )
+      )
+      .lean();
+
+    let checked = 0;
+    let updated = 0;
+    let changedStatus = 0;
+    let changedAssignee = 0;
+    let changedClosedTime = 0;
+    let changedValue = 0;
+    let errors = 0;
+
+    const details = [];
+
+    for (const lead of leads) {
+      checked++;
+
+      try {
+        const beforeStatus =
+          Number(lead.status);
+
+        const beforeAssignee =
+          lead.assignee?.name || null;
+
+        const beforeClosedTime =
+          lead.closedTime
+            ? new Date(lead.closedTime).toISOString()
+            : null;
+
+        const beforeValue =
+          Number(lead.value?.amount || 0);
+
+        const response = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: {
+              leadId: Number(
+                lead.nutshell_id
+              )
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const fullLead =
+          response.data?.result;
+
+        if (!fullLead) {
+          errors++;
+
+          details.push({
+            nutshell_id:
+              lead.nutshell_id,
+            name: lead.name,
+            updated: false,
+            reason:
+              'Lead não encontrada no Nutshell'
+          });
+
+          continue;
+        }
+
+        const afterStatus =
+          Number(fullLead.status);
+
+        const afterAssignee =
+          fullLead.assignee?.name || null;
+
+        const afterClosedTime =
+          fullLead.closedTime
+            ? new Date(fullLead.closedTime).toISOString()
+            : null;
+
+        const afterValue =
+          Number(fullLead.value?.amount || 0);
+
+        if (beforeStatus !== afterStatus) {
+          changedStatus++;
+        }
+
+        if (
+          String(beforeAssignee || '').trim() !==
+          String(afterAssignee || '').trim()
+        ) {
+          changedAssignee++;
+        }
+
+        if (
+          String(beforeClosedTime || '') !==
+          String(afterClosedTime || '')
+        ) {
+          changedClosedTime++;
+        }
+
+        if (beforeValue !== afterValue) {
+          changedValue++;
+        }
+
+        await saveFullLead(fullLead);
+
+        updated++;
+
+        details.push({
+          nutshell_id:
+            fullLead.id,
+
+          name:
+            fullLead.name,
+
+          updated: true,
+
+          before: {
+            status: beforeStatus,
+            assignee: beforeAssignee,
+            closedTime: beforeClosedTime,
+            value: beforeValue
+          },
+
+          after: {
+            status: afterStatus,
+            assignee: afterAssignee,
+            closedTime: afterClosedTime,
+            value: afterValue,
+            sources:
+              Array.isArray(fullLead.sources)
+                ? fullLead.sources
+                    .map((source) =>
+                      source?.name
+                    )
+                    .filter(Boolean)
+                : []
+          },
+
+          htmlUrl:
+            fullLead.htmlUrl ||
+            lead.htmlUrl ||
+            null
+        });
+
+        await sleep(120);
+      } catch (leadError) {
+        errors++;
+
+        details.push({
+          nutshell_id:
+            lead.nutshell_id,
+
+          name:
+            lead.name,
+
+          updated: false,
+
+          error:
+            leadError.response?.data ||
+            leadError.message
+        });
+      }
+    }
+
+    res.json({
+      sucesso: true,
+
+      routeVersion:
+        'performance-period-sync-v1',
+
+      period:
+        selectedPeriod || null,
+
+      filters: {
+        startDate: startDate || null,
+        endDate: endDate || null,
+        assignee: assignee || null,
+        limit: Number(limit) || 300,
+        pagesBack: Number(pagesBack) || 15
+      },
+
+      periodRange: {
+        startDate: start,
+        endDate: end
+      },
+
+      recentSync,
+
+      candidatesFound:
+        leads.length,
+
+      checked,
+      updated,
+      errors,
+
+      changes: {
+        changedStatus,
+        changedAssignee,
+        changedClosedTime,
+        changedValue
+      },
+
+      details
+    });
+
+  } catch (error) {
+    console.error(
+      'ERRO SYNC PERFORMANCE PERIOD:',
+      error.response?.data ||
+        error.message
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro:
+        error.response?.data ||
+        error.message
+    });
+  }
+});
+
 // ========================================
 // DASHBOARD - PERFORMANCE POR RESPONSÁVEL
 // ========================================
