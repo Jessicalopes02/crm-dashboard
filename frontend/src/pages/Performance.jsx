@@ -478,7 +478,7 @@ const generalConversion =
     : 0;
 
   return (
-    <div className="min-h-screen max-w-full overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
+    <div className="min-h-screen w-full min-w-0 max-w-full overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
 
       <div className="mb-6 flex flex-col gap-5">
 
@@ -729,7 +729,7 @@ const generalConversion =
 
       </div>
 
-      <div className="mb-6 w-full max-w-full overflow-x-auto pb-2">
+      <div className="mb-6 w-full min-w-0 max-w-full overflow-x-auto pb-2">
         <div className="grid min-w-[980px] grid-cols-8 gap-2">
 
         <SummaryCard
@@ -813,7 +813,7 @@ const generalConversion =
       </div>
      </div> 
 
-      <div className="mb-6 w-full max-w-full overflow-x-auto pb-2">
+      <div className="mb-6 w-full min-w-0 max-w-full overflow-x-auto pb-2">
         <div
           className={`grid gap-2 ${
             viewMode === 'closer'
@@ -916,7 +916,7 @@ const generalConversion =
       {!loading &&
         sortedPerformance.length > 0 && (
           <>
-            <div className="mb-6 grid grid-cols-1 gap-5 xl:grid-cols-2">
+            <div className="mb-6 grid w-full min-w-0 max-w-full grid-cols-1 gap-4 grid-cols-4 2xl:grid-cols-5">
 
               {sortedPerformance.map(
                 (item, index) => (
@@ -1257,7 +1257,7 @@ function PersonPerformanceCard({
         ];
 
   return (
-    <div className="min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-lg">
+    <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-lg">
 
       <div className="mb-4 flex items-start justify-between gap-3">
 
@@ -1305,7 +1305,7 @@ function PersonPerformanceCard({
 
       </div>
 
-      <div className="mb-4 grid grid-cols-4 gap-2">
+      <div className="mb-4 grid w-full min-w-0 grid-cols-4 gap-2">
 
         <Metric
           label="Total Leads"
@@ -1367,7 +1367,7 @@ function PersonPerformanceCard({
 
       </div>
 
-      <div className="grid grid-cols-5 gap-1.5">
+      <div className="grid w-full min-w-0 grid-cols-4 gap-1.5 2xl:grid-cols-5">
 
         {activityItems.map(
           (activity) => (
@@ -1405,18 +1405,18 @@ function Metric({
     <button
       type="button"
       onClick={clickable ? onClick : undefined}
-      className={`min-h-[62px] rounded-lg border border-slate-800 bg-slate-950 p-1.5 text-left transition ${
+      className={`min-h-[62px] min-w-0 overflow-hidden rounded-lg border border-slate-800 bg-slate-950 p-1.5 text-left transition ${
         clickable
           ? 'cursor-pointer hover:border-blue-500 hover:bg-slate-900'
           : 'cursor-default'
       }`}
     >
-      <p className="text-[9px] leading-tight text-slate-500">
+      <p className="min-w-0 truncate text-[9px] leading-tight text-slate-500">
         {label}
       </p>
 
       <p
-        className={`mt-0.5 break-words text-sm font-bold ${
+        className={`mt-0.5 min-w-0 truncate text-sm font-bold ${
           accentClasses[accent]
         }`}
         title={String(value)}
@@ -1449,11 +1449,14 @@ function ActivityMetric({
       : 0;
 
   return (
-    <div className="min-h-[62px] rounded-lg border border-slate-800 bg-slate-950 p-1.5">
+    <div className="min-h-[62px] min-w-0 overflow-hidden rounded-lg border border-slate-800 bg-slate-950 p-1.5">
 
       <div className="mb-1 flex items-start justify-between gap-1">
 
-        <p className="min-h-[22px] text-[9px] leading-tight text-slate-400">
+        <p
+          className="min-w-0 truncate text-[9px] leading-tight text-slate-400"
+          title={label}
+        >
           {label}
         </p>
 
