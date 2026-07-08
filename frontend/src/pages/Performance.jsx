@@ -546,122 +546,122 @@ const generalConversion =
 
           </div>
 
-          <div className="flex flex-wrap gap-3">
+<div className="flex w-full flex-wrap items-center gap-3">
 
-            {filterMode === 'month' && (
-              <input
-                type="month"
-                value={selectedPeriod}
-                onChange={(event) =>
-                  setSelectedPeriod(
-                    event.target.value
-                  )
-                }
-                className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
-              />
-            )}
+  {filterMode === 'month' && (
+    <input
+      type="month"
+      value={selectedPeriod}
+      onChange={(event) =>
+        setSelectedPeriod(
+          event.target.value
+        )
+      }
+      className="min-w-[210px] rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+    />
+  )}
 
-            {filterMode === 'day' && (
-              <input
-                type="date"
-                value={selectedDate}
-                onChange={(event) =>
-                  setSelectedDate(
-                    event.target.value
-                  )
-                }
-                className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
-              />
-            )}
+  {filterMode === 'day' && (
+    <input
+      type="date"
+      value={selectedDate}
+      onChange={(event) =>
+        setSelectedDate(
+          event.target.value
+        )
+      }
+      className="min-w-[210px] rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+    />
+  )}
 
-            {filterMode === 'days' && (
-              <>
-                <input
-                  type="number"
-                  min="1"
-                  max="365"
-                  value={daysCount}
-                  onChange={(event) =>
-                    setDaysCount(
-                      event.target.value
-                    )
-                  }
-                  placeholder="Quantidade de dias"
-                  className="w-44 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
-                />
+  {filterMode === 'days' && (
+    <>
+      <input
+        type="number"
+        min="1"
+        max="365"
+        value={daysCount}
+        onChange={(event) =>
+          setDaysCount(
+            event.target.value
+          )
+        }
+        placeholder="Quantidade de dias"
+        className="min-w-[160px] rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+      />
 
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(event) =>
-                    setEndDate(
-                      event.target.value
-                    )
-                  }
-                  title="Data final"
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
-                />
-              </>
-            )}
+      <input
+        type="date"
+        value={endDate}
+        onChange={(event) =>
+          setEndDate(
+            event.target.value
+          )
+        }
+        title="Data final"
+        className="min-w-[210px] rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+      />
+    </>
+  )}
 
-            {filterMode === 'range' && (
-              <>
-                <input
-                  type="date"
-                  value={startDate}
-                  onChange={(event) =>
-                    setStartDate(
-                      event.target.value
-                    )
-                  }
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
-                />
+  {filterMode === 'range' && (
+    <>
+      <input
+        type="date"
+        value={startDate}
+        onChange={(event) =>
+          setStartDate(
+            event.target.value
+          )
+        }
+        className="min-w-[210px] rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+      />
 
-                <input
-                  type="date"
-                  value={endDate}
-                  onChange={(event) =>
-                    setEndDate(
-                      event.target.value
-                    )
-                  }
-                  className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
-                />
-              </>
-            )}
+      <input
+        type="date"
+        value={endDate}
+        onChange={(event) =>
+          setEndDate(
+            event.target.value
+          )
+        }
+        className="min-w-[210px] rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none focus:border-blue-500"
+      />
+    </>
+  )}
 
-            <input
-              type="text"
-              value={search}
-              onChange={(event) =>
-                setSearch(
-                  event.target.value
-                )
-              }
-              placeholder="Buscar responsável..."
-              className="rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
-            />
+  <input
+    type="text"
+    value={search}
+    onChange={(event) =>
+      setSearch(
+        event.target.value
+      )
+    }
+    placeholder="Buscar responsável..."
+    className="min-w-[220px] flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
+  />
 
-            <button
-              type="button"
-              onClick={loadPerformance}
-              className="rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 font-semibold text-white transition hover:bg-slate-700"
-            >
-              Consultar
-            </button>
+  <button
+    type="button"
+    onClick={loadPerformance}
+    className="min-w-[130px] rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 font-semibold text-white transition hover:bg-slate-700"
+  >
+    Consultar
+  </button>
 
-            <button
-              type="button"
-              onClick={syncPerformanceDatabase}
-              disabled={syncing}
-              className="rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {syncing
-                ? 'Atualizando banco...'
-                : 'Atualizar banco'}
-            </button>
+  <button
+    type="button"
+    onClick={syncPerformanceDatabase}
+    disabled={syncing}
+    className="min-w-[170px] rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+  >
+    {syncing
+      ? 'Atualizando banco...'
+      : 'Atualizar banco'}
+  </button>
 
-          </div>
+</div>
 
           {syncMessage && (
             <p className="text-sm font-semibold text-emerald-400">
