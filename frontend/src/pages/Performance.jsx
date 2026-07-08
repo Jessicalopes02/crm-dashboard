@@ -369,6 +369,12 @@ function Performance() {
             item.activityBreakdown
               ?.prospectingEmail
           );
+        
+        total.noShow +=
+          safeNumber(
+            item.activityBreakdown
+              ?.noShow
+          );  
 
         total.firstContactMeetings +=
           safeNumber(
@@ -414,6 +420,7 @@ function Performance() {
         whatsappDialogue: 0,
         whatsappMessage: 0,
         prospectingEmail: 0,
+        noShow: 0,
         firstContactMeetings: 0,
         followUpMeetings: 0,
         simulationProposal: 0,
@@ -854,6 +861,11 @@ const generalConversion =
           }
         />
 
+        <ActivitySummaryCard
+          title="No Show"
+          value={summary.noShow}
+        />
+
         {viewMode === 'closer' ? (
           <>
             <ActivitySummaryCard
@@ -1181,6 +1193,12 @@ function PersonPerformanceCard({
             )
           },
           {
+            label: 'No Show',
+            value: safeNumber(
+              breakdown.noShow
+            )
+          },
+          {
             label: 'Reunião primeiro contato',
             value: safeNumber(
               breakdown.firstContactMeetings
@@ -1240,6 +1258,12 @@ function PersonPerformanceCard({
             label: 'E-mail de prospecção',
             value: safeNumber(
               breakdown.prospectingEmail
+            )
+          },
+          {
+            label: 'No Show',
+            value: safeNumber(
+              breakdown.noShow
             )
           },
           {
