@@ -480,7 +480,7 @@ const generalConversion =
   return (
     <div className="min-h-screen overflow-x-hidden bg-slate-950 p-4 text-slate-100 md:p-6 lg:p-8">
 
-      <div className="mb-6 grid grid-cols-1 gap-5 2xl:grid-cols-[minmax(320px,1fr)_minmax(620px,auto)] 2xl:items-start">
+      <div className="mb-6 flex flex-col gap-5">
 
         <div>
           <h1 className="text-3xl font-bold text-white md:text-4xl">
@@ -496,7 +496,7 @@ const generalConversion =
           </p>
         </div>
 
-        <div className="flex w-full min-w-0 flex-col gap-3 2xl:max-w-[760px]">
+        <div className="flex w-full min-w-0 flex-col gap-3">
 
           <div className="flex flex-wrap gap-2">
 
@@ -546,7 +546,7 @@ const generalConversion =
 
           </div>
 
-<div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-3 2xl:flex 2xl:flex-wrap 2xl:items-center">
+<div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5">
 
   {filterMode === 'month' && (
     <input
@@ -631,35 +631,35 @@ const generalConversion =
   )}
 
   <input
-    type="text"
-    value={search}
-    onChange={(event) =>
-      setSearch(
-        event.target.value
-      )
-    }
-    placeholder="Buscar responsável..."
-    className="min-w-[220px] flex-1 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
-  />
+  type="text"
+  value={search}
+  onChange={(event) =>
+    setSearch(
+      event.target.value
+    )
+  }
+  placeholder="Buscar responsável..."
+  className="w-full rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-white outline-none placeholder:text-slate-500 focus:border-blue-500"
+/>
 
   <button
-    type="button"
-    onClick={loadPerformance}
-    className="min-w-[130px] rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 font-semibold text-white transition hover:bg-slate-700"
-  >
-    Consultar
-  </button>
+  type="button"
+  onClick={loadPerformance}
+  className="w-full rounded-xl border border-slate-700 bg-slate-800 px-5 py-3 font-semibold text-white transition hover:bg-slate-700"
+>
+  Consultar
+</button>
 
   <button
-    type="button"
-    onClick={syncPerformanceDatabase}
-    disabled={syncing}
-    className="min-w-[170px] rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
-  >
-    {syncing
-      ? 'Atualizando banco...'
-      : 'Atualizar banco'}
-  </button>
+  type="button"
+  onClick={syncPerformanceDatabase}
+  disabled={syncing}
+  className="w-full rounded-xl bg-emerald-600 px-5 py-3 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  {syncing
+    ? 'Atualizando banco...'
+    : 'Atualizar banco'}
+</button>
 
 </div>
 
@@ -729,7 +729,7 @@ const generalConversion =
 
       </div>
 
-      <div className="mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 2xl:grid-cols-8">
 
         <SummaryCard
           title="Total de Leads"
@@ -812,10 +812,10 @@ const generalConversion =
       </div>
 
       <div
-  className={`mb-6 grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 ${
+  className={`mb-6 grid grid-cols-2 gap-4 md:grid-cols-4 xl:grid-cols-5 ${
     viewMode === 'closer'
       ? '2xl:grid-cols-5'
-      : '2xl:grid-cols-4'
+      : '2xl:grid-cols-5'
   }`}
 >
         <ActivitySummaryCard
@@ -1005,7 +1005,7 @@ function SummaryCard({
     <button
       type="button"
       onClick={clickable ? onClick : undefined}
-      className={`min-w-0 rounded-2xl border border-slate-800 bg-slate-900 p-5 text-left shadow-lg transition ${
+      className={`min-w-0 rounded-2xl border border-slate-800 bg-slate-900 p-4 text-left shadow-lg transition ${
         clickable
           ? 'cursor-pointer hover:border-blue-500 hover:bg-slate-800'
           : 'cursor-default'
@@ -1016,7 +1016,7 @@ function SummaryCard({
       </p>
 
       <p
-        className={`mt-2 truncate text-2xl font-bold ${
+        className={`mt-2 truncate text-xl font-bold ${
           accentClasses[accent]
         }`}
         title={String(value)}
@@ -1038,9 +1038,9 @@ function ActivitySummaryCard({
   value
 }) {
   return (
-    <div className="min-h-[96px] rounded-xl border border-slate-800 bg-slate-900 p-4">
+    <div className="min-h-[88px] rounded-xl border border-slate-800 bg-slate-900 p-4">
 
-      <p className="min-h-[32px] text-xs leading-snug text-slate-400">
+      <p className="min-h-[30px] text-xs leading-snug text-slate-400">
         {title}
       </p>
 
@@ -1051,6 +1051,7 @@ function ActivitySummaryCard({
     </div>
   );
 }
+
 
 function SourcesModal({
   data,
@@ -1456,7 +1457,7 @@ function ActivityMetric({
           {safeNumber(value)}
         </span>
 
-    </div>
+      </div>
 
       <div className="h-2 overflow-hidden rounded-full bg-slate-800">
 
