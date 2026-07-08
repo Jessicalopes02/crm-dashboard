@@ -3619,7 +3619,14 @@ async function enrichNonPriorityLeads({ limit = 300 } = {}) {
       { 'assignee.name': null },
       { 'assignee.name': '' },
       { sources: { $exists: false } },
-      { products: { $exists: false } }
+      { sources: null },
+      { sources: { $size: 0 } },
+      { 'rawData.sources': { $exists: false } },
+      { 'rawData.sources': null },
+      { 'rawData.sources': { $size: 0 } },
+      { products: { $exists: false } },
+      { products: null },
+      { products: { $size: 0 } }
     ]
   })
     .sort({ synced_at: -1 })
@@ -3776,7 +3783,14 @@ async function enrichPriorityLeads({ limit = 50 } = {}) {
       { 'assignee.name': null },
       { 'assignee.name': '' },
       { sources: { $exists: false } },
-      { products: { $exists: false } }
+      { sources: null },
+      { sources: { $size: 0 } },
+      { 'rawData.sources': { $exists: false } },
+      { 'rawData.sources': null },
+      { 'rawData.sources': { $size: 0 } },
+      { products: { $exists: false } },
+      { products: null },
+      { products: { $size: 0 } }
     ]
   })
     .sort({ synced_at: -1 })
