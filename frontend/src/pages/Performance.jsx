@@ -1257,7 +1257,7 @@ function PersonPerformanceCard({
         ];
 
   return (
-    <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-3 shadow-lg">
+    <div className="w-full min-w-0 overflow-hidden rounded-2xl border border-slate-800 bg-slate-900 p-4 shadow-lg">
 
       <div className="mb-4 flex items-start justify-between gap-3">
 
@@ -1305,7 +1305,7 @@ function PersonPerformanceCard({
 
       </div>
 
-      <div className="mb-4 grid w-full min-w-0 grid-cols-4 gap-2">
+      <div className="mb-4 grid w-full min-w-0 grid-cols-4 gap-3">
 
         <Metric
           label="Total Leads"
@@ -1367,7 +1367,7 @@ function PersonPerformanceCard({
 
       </div>
 
-      <div className="grid w-full min-w-0 grid-cols-4 gap-1.5 2xl:grid-cols-5">
+      <div className="grid w-full min-w-0 grid-cols-4 gap-2">
 
         {activityItems.map(
           (activity) => (
@@ -1405,18 +1405,18 @@ function Metric({
     <button
       type="button"
       onClick={clickable ? onClick : undefined}
-      className={`min-h-[62px] min-w-0 overflow-hidden rounded-lg border border-slate-800 bg-slate-950 p-1.5 text-left transition ${
+      className={`min-h-[76px] min-w-0 overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-2.5 text-left transition ${
         clickable
           ? 'cursor-pointer hover:border-blue-500 hover:bg-slate-900'
           : 'cursor-default'
       }`}
     >
-      <p className="min-w-0 truncate text-[9px] leading-tight text-slate-500">
+      <p className="min-w-0 truncate text-[11px] leading-tight text-slate-500">
         {label}
       </p>
 
       <p
-        className={`mt-0.5 min-w-0 truncate text-sm font-bold ${
+        className={`mt-1 min-w-0 truncate text-base font-bold ${
           accentClasses[accent]
         }`}
         title={String(value)}
@@ -1425,7 +1425,7 @@ function Metric({
       </p>
 
       {clickable && (
-        <p className="mt-1 text-[10px] font-semibold text-blue-400">
+        <p className="mt-1 text-[11px] font-semibold text-blue-400">
           Ver sources
         </p>
       )}
@@ -1449,24 +1449,24 @@ function ActivityMetric({
       : 0;
 
   return (
-    <div className="min-h-[62px] min-w-0 overflow-hidden rounded-lg border border-slate-800 bg-slate-950 p-1.5">
+    <div className="min-h-[82px] min-w-0 overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-2.5">
 
-      <div className="mb-1 flex items-start justify-between gap-1">
+      <div className="mb-2 flex min-w-0 items-start justify-between gap-2">
 
         <p
-          className="min-w-0 truncate text-[9px] leading-tight text-slate-400"
+          className="min-w-0 text-[11px] leading-tight text-slate-400"
           title={label}
         >
           {label}
         </p>
 
-        <span className="shrink-0 text-[10px] font-bold text-violet-300">
+        <span className="shrink-0 text-xs font-bold text-violet-300">
           {safeNumber(value)}
         </span>
 
       </div>
 
-      <div className="h-1 overflow-hidden rounded-full bg-slate-800">
+      <div className="h-1.5 overflow-hidden rounded-full bg-slate-800">
 
         <div
           className="h-full rounded-full bg-violet-500"
