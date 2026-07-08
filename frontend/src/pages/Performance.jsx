@@ -914,47 +914,51 @@ const generalConversion =
         )}
 
       {!loading &&
-        sortedPerformance.length > 0 && (
-          <>
-            <div className="mb-6 grid w-full min-w-0 max-w-full grid-cols-1 gap-4 grid-cols-4 2xl:grid-cols-5">
+  sortedPerformance.length > 0 && (
+    <>
+      <div className="mb-6 flex w-full min-w-0 max-w-full flex-wrap gap-4 overflow-hidden">
 
-              {sortedPerformance.map(
-                (item, index) => (
-                  <PersonPerformanceCard
-                    key={`${item._id}-${index}`}
-                    item={item}
-                    position={index + 1}
-                    viewMode={viewMode}
-                    onOpenSources={() =>
-                      setSourcesModal({
-                        title:
-                          `Sources das leads — ${
-                            item._id ||
-                            'Sem responsável'
-                          }`,
-                        total: safeNumber(
-                          item.totalLeads
-                        ),
-                        sources:
-                          Array.isArray(
-                            item.sourcesBreakdown
-                          )
-                            ? item.sourcesBreakdown
-                            : []
-                      })
-                    }
-                  />
-                )
-              )}
-
+        {sortedPerformance.map(
+          (item, index) => (
+            <div
+              key={`${item._id}-${index}`}
+              className="w-full min-w-0 xl:w-[calc(50%-0.5rem)]"
+            >
+              <PersonPerformanceCard
+                item={item}
+                position={index + 1}
+                viewMode={viewMode}
+                onOpenSources={() =>
+                  setSourcesModal({
+                    title:
+                      `Sources das leads — ${
+                        item._id ||
+                        'Sem responsável'
+                      }`,
+                    total: safeNumber(
+                      item.totalLeads
+                    ),
+                    sources:
+                      Array.isArray(
+                        item.sourcesBreakdown
+                      )
+                        ? item.sourcesBreakdown
+                        : []
+                  })
+                }
+              />
             </div>
-
-            <PerformanceTable
-              items={sortedPerformance}
-              viewMode={viewMode}
-            />
-          </>
+          )
         )}
+
+      </div>
+
+      <PerformanceTable
+        items={sortedPerformance}
+        viewMode={viewMode}
+      />
+    </>
+  )}
 
       {sourcesModal && (
         <SourcesModal
