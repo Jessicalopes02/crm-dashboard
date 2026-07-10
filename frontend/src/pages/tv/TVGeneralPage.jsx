@@ -148,7 +148,7 @@ setTransportEstimate(
   startDate.getMonth() + 1
 ).padStart(2, '0')}`;
 
-const fallbackGoalPeriod = '2026-06';
+const fallbackGoalPeriod = '2026-07';
 
 let activeGoalPeriod = currentGoalPeriod;
 
