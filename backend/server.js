@@ -190,8 +190,8 @@ app.get('/api/dashboard/leads-list', async (req, res) => {
 app.get('/api/sync/refresh-may', async (req, res) => {
   try {
 
-    const startDate = new Date('2026-06-01T00:00:00');
-    const endDate = new Date('2026-06-30T23:59:59');
+    const startDate = new Date('2026-07-01T00:00:00');
+    const endDate = new Date('2026-07-31T23:59:59');
 
     const leads = await Lead.find({
       closedTime: {
@@ -3010,8 +3010,8 @@ app.get('/api/dashboard/sdr', async (req, res) => {
 
 app.get('/api/audit/won-assignees', async (req, res) => {
   try {
-    const start = new Date('2026-06-01T00:00:00');
-    const end = new Date('2026-06-30T23:59:59');
+    const start = new Date('2026-07-01T00:00:00');
+    const end = new Date('2026-07-31T23:59:59');
 
     const result = await Lead.aggregate([
       {
@@ -3149,8 +3149,8 @@ app.get('/api/audit/test-estimates', async (req, res) => {
   try {
     const { startDate, endDate } = req.query;
 
-    const start = new Date(startDate || '2026-06-01');
-    const end = new Date(endDate || '2026-06-30');
+    const start = new Date(startDate || '2026-07-01');
+    const end = new Date(endDate || '2026-07-31');
 
     const leads = await Lead.find({
       closedTime: {
@@ -3240,7 +3240,7 @@ app.get('/api/audit/person-search', async (req, res) => {
 
 app.get('/api/audit/won-current-nutshell-compare', async (req, res) => {
   try {
-    const { period = '2026-06' } = req.query;
+    const { period = '2026-07' } = req.query;
 
     const [year, month] = period.split('-').map(Number);
 
@@ -3373,7 +3373,7 @@ app.get('/api/audit/won-current-nutshell-compare', async (req, res) => {
 
 app.get('/api/sync/nutshell/won-period-current', async (req, res) => {
   try {
-    const { period = '2026-06' } = req.query;
+    const { period = '2026-07' } = req.query;
 
     const [year, month] = period.split('-').map(Number);
 
@@ -3943,7 +3943,7 @@ async function getNutshellLastPage(limit = 20) {
 
 const ROAD_TO_GLORY_TAG = 'Road to the Glory - Junho';
 
-function createMonthRange(period = '2026-06') {
+function createMonthRange(period = '2026-07') {
   const match = String(period).match(/^(\d{4})-(\d{2})$/);
 
   if (!match) {
@@ -5856,8 +5856,8 @@ app.get('/api/audit/leads-by-date-status', async (req, res) => {
 
 app.get('/api/audit/products-won', async (req, res) => {
   try {
-    const start = new Date('2026-06-01T00:00:00');
-    const end = new Date('2026-06-30T23:59:59');
+    const start = new Date('2026-07-01T00:00:00');
+    const end = new Date('2026-07-31T23:59:59');
 
     const result = await Lead.aggregate([
       {
@@ -6306,8 +6306,8 @@ app.get('/api/audit/revenue-check', async (req, res) => {
 
 app.get('/api/audit/nutshell-compare', async (req, res) => {
   try {
-    const start = new Date('2026-06-01T00:00:00');
-    const end = new Date('2026-06-30T23:59:59');
+    const start = new Date('2026-07-01T00:00:00');
+    const end = new Date('2026-07-31T23:59:59');
 
     const filter = {
       status: { $in: [0, 10] },
@@ -11116,7 +11116,7 @@ app.get('/api/audit/goals-achievement-detail', async (req, res) => {
     if (!period) {
       return res.status(400).json({
         sucesso: false,
-        erro: 'Informe o period. Exemplo: ?period=2026-06'
+        erro: 'Informe o period. Exemplo: ?period=2026-07'
       });
     }
 
@@ -11280,11 +11280,11 @@ app.get('/api/audit/goals-achievement-detail', async (req, res) => {
 
 async function getRoadToGloryProgress(req, res) {
   try {
-    const start = new Date('2026-06-30T03:00:00.000Z');
-    const end = new Date('2026-07-01T02:59:59.999Z');
+    const start = new Date('2026-07-31T03:00:00.000Z');
+    const end = new Date('2026-08-01T02:59:59.999Z');
 
     const limitMiles = 6000;
-    const campaignTag = 'Road to the Glory - Junho';
+    const campaignTag = 'Road to the Glory - Agosto';
 
     const normalizeName = (value) =>
       String(value || '')
@@ -12063,14 +12063,14 @@ app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
 
 app.get('/api/audit/road-to-glory-period', async (req, res) => {
   try {
-    const start = new Date('2026-06-30T03:00:00.000Z');
-    const end = new Date('2026-07-01T02:59:59.999Z');
+    const start = new Date('2026-07-31T03:00:00.000Z');
+    const end = new Date('2026-08-01T02:59:59.999Z');
 
     const leads = await Lead.find({
   tags: {
     $in: [
 
-      'Road to the Glory - Junho'
+      'Road to the Glory - Agosto'
     ]
   },
   $or: [
@@ -12097,8 +12097,8 @@ app.get('/api/audit/road-to-glory-period', async (req, res) => {
 });
 
 app.get('/api/audit/redbull-meetings', async (req, res) => {
-  const start = new Date('2026-06-30T03:00:00.000Z');
-  const end = new Date('2026-07-01T02:59:59.999Z');
+  const start = new Date('2026-07-31T03:00:00.000Z');
+  const end = new Date('2026-08-01T02:59:59.999Z');
 
   const normalizeName = (name) =>
     String(name || '')
@@ -12172,8 +12172,8 @@ app.get('/api/audit/redbull-meetings', async (req, res) => {
 
 app.get('/api/audit/road-to-glory-points', async (req, res) => {
   try {
-    const start = new Date('2026-06-30T03:00:00.000Z');
-    const end = new Date('2026-07-01T02:59:59.999Z');
+    const start = new Date('2026-07-31T03:00:00.000Z');
+    const end = new Date('2026-08-01T02:59:59.999Z');
 
     const normalizeName = (name) =>
       String(name || '')
@@ -12187,7 +12187,7 @@ app.get('/api/audit/road-to-glory-points', async (req, res) => {
       tags: {
         $in: [
          
-          'Road to the Glory - Junho'
+          'Road to the Glory - Agosto'
         ]
       }
     }).lean();
@@ -14202,7 +14202,7 @@ app.post(
 app.get('/api/audit/forecast-current', async (req, res) => {
   try {
     const {
-      period = '2026-06',
+      period = '2026-07',
       assignee = ''
     } = req.query;
 
@@ -14636,7 +14636,7 @@ app.get(
   async (req, res) => {
     try {
       const period =
-        req.query.period || '2026-06';
+        req.query.period || '2026-07';
 
       const [year, month] = period
         .split('-')
