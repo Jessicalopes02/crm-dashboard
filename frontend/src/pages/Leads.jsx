@@ -309,36 +309,56 @@ appliedFilters.status !== '' ||
 appliedFilters.assignee ||
 appliedFilters.account;
 
+function getNutshellLeadNumber(lead) {
+  const name =
+    lead?.name ||
+    lead?.rawData?.name ||
+    '';
+
+  /*
+   * Aceita:
+   * Lead–1022
+   * Lead-1022
+   * Lead — 1022
+   */
+  const match = String(name).match(
+    /lead\s*[–—-]\s*(\d+)/i
+  );
+
+  return match?.[1] || null;
+}
+
 function openLeadInNutshell(lead) {
-const leadId =
-lead?.nutshell_id ||
-lead?.id;
+  const leadNumber =
+    getNutshellLeadNumber(lead);
 
-if (!leadId) {
-console.warn(
-'Lead sem nutshell_id:',
-lead
-);
+  const nutshellUrl = leadNumber
+    ? `https://app.nutshell.com/lead/${leadNumber}`
+    : lead?.htmlUrl ||
+      lead?.rawData?.htmlUrl ||
+      null;
 
+  if (!nutshellUrl) {
+    console.warn(
+      'Não foi possível montar o link da lead:',
+      lead
+    );
 
-return;
+    alert(
+      'Não foi possível encontrar o número/link dessa lead.'
+    );
 
+    return;
+  }
 
+  window.open(
+    nutshellUrl,
+    '_blank',
+    'noopener,noreferrer'
+  );
 }
 
-const nutshellUrl =
-lead?.htmlUrl ||
-`https://app.nutshell.com/lead/${leadId}`;
-
-window.open(
-nutshellUrl,
-'_blank',
-'noopener,noreferrer'
-);
-}
-
-
-return ( <div className="min-h-screen bg-slate-100 p-5 lg:p-8"> <div className="max-w-[1600px] mx-auto space-y-6"> <header className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5"> <div> <h1 className="text-4xl font-black text-slate-950">
+return ( <div className="leads-dark-page min-h-screen p-5 lg:p-8"> <div className="max-w-[1600px] mx-auto space-y-6"> <header className="flex flex-col xl:flex-row xl:items-end xl:justify-between gap-5"> <div> <h1 className="text-4xl font-black text-slate-950">
 Leads </h1>
 
         <p className="text-slate-500 mt-1">
