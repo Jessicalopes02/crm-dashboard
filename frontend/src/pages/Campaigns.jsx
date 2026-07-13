@@ -199,7 +199,7 @@ Ignorados: ${response.data.skipped || 0}`
 }
 
   return (
-    <div className="p-8 space-y-8">
+    <div className="campaigns-dark-page min-h-screen p-8 space-y-8">
 
       <div className="flex items-center justify-between">
         <div>
