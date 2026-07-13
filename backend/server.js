@@ -15593,6 +15593,268 @@ app.get(
   }
 );
 
+// ========================================
+// AUDITORIA - LEADS CRIADAS NO DIA
+// ========================================
+
+app.get('/api/audit/created-leads-day', async (req, res) => {
+  try {
+    const {
+      startDate,
+      endDate
+    } = req.query;
+
+    if (!startDate || !endDate) {
+      return res.status(400).json({
+        sucesso: false,
+        erro:
+          'Informe startDate e endDate. Exemplo: ?startDate=2026-07-07&endDate=2026-07-07'
+      });
+    }
+
+    const [startYear, startMonth, startDay] =
+      startDate.split('-').map(Number);
+
+    const [endYear, endMonth, endDay] =
+      endDate.split('-').map(Number);
+
+    const start = new Date(
+      Date.UTC(
+        startYear,
+        startMonth - 1,
+        startDay,
+        3,
+        0,
+        0,
+        0
+      )
+    );
+
+    const end = new Date(
+      Date.UTC(
+        endYear,
+        endMonth - 1,
+        endDay + 1,
+        3,
+        0,
+        0,
+        0
+      )
+    );
+
+    const leads = await Lead.find({
+      createdTime: {
+        $gte: start,
+        $lt: end,
+        $ne: null
+      }
+    })
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        createdTime: 1,
+        modifiedTime: 1,
+        closedTime: 1,
+        assignee: 1,
+        stageset: 1,
+        milestone: 1,
+        sources: 1,
+        htmlUrl: 1,
+        rawData: 1
+      })
+      .sort({
+        createdTime: 1
+      })
+      .lean();
+
+    const ignoredNames = [
+      'accounts grupo',
+      'transportes',
+      'geral',
+      'faturamento log & comex',
+      'sem responsável',
+      'sem responsavel',
+      'giovanna fernandes',
+      'pedro scarillo'
+    ];
+
+    const formatLead = (lead) => {
+      const assigneeName =
+        lead.assignee?.name ||
+        lead.rawData?.assignee?.name ||
+        'Sem responsável';
+
+      const pipelineName =
+        lead.stageset?.name ||
+        lead.rawData?.stageset?.name ||
+        null;
+
+      const normalizedAssignee =
+        String(assigneeName)
+          .trim()
+          .toLowerCase();
+
+      const isIgnored =
+        ignoredNames.includes(
+          normalizedAssignee
+        );
+
+      const isGlobalAlliance =
+        pipelineName ===
+        'Processo de Vendas - Global Alliance';
+
+      const entersPerformance =
+        Boolean(assigneeName) &&
+        !isIgnored &&
+        !isGlobalAlliance;
+
+      let reason = 'Entra na performance';
+
+      if (isGlobalAlliance) {
+        reason =
+          'Não entra: pipeline Global Alliance';
+      } else if (isIgnored) {
+        reason =
+          'Não entra: responsável ignorado na TV';
+      } else if (!assigneeName) {
+        reason =
+          'Não entra: sem responsável';
+      }
+
+      return {
+        nutshell_id:
+          lead.nutshell_id,
+
+        name:
+          lead.name,
+
+        status:
+          lead.status,
+
+        assignee:
+          assigneeName,
+
+        pipeline:
+          pipelineName,
+
+        milestone:
+          lead.milestone?.name ||
+          lead.rawData?.milestone?.name ||
+          null,
+
+        createdTime:
+          lead.createdTime,
+
+        createdTimeBR:
+          lead.createdTime
+            ? new Date(
+                lead.createdTime
+              ).toLocaleString('pt-BR', {
+                timeZone:
+                  'America/Sao_Paulo'
+              })
+            : null,
+
+        closedTime:
+          lead.closedTime || null,
+
+        source:
+          lead.sources?.[0]?.name ||
+          lead.rawData?.sources?.[0]?.name ||
+          null,
+
+        htmlUrl:
+          lead.htmlUrl ||
+          lead.rawData?.htmlUrl ||
+          null,
+
+        entersPerformance,
+        reason
+      };
+    };
+
+    const formatted =
+      leads.map(formatLead);
+
+    const byAssignee = formatted.reduce(
+      (acc, lead) => {
+        const key =
+          lead.assignee ||
+          'Sem responsável';
+
+        if (!acc[key]) {
+          acc[key] = {
+            total: 0,
+            entersPerformance: 0,
+            skipped: 0
+          };
+        }
+
+        acc[key].total += 1;
+
+        if (lead.entersPerformance) {
+          acc[key].entersPerformance += 1;
+        } else {
+          acc[key].skipped += 1;
+        }
+
+        return acc;
+      },
+      {}
+    );
+
+    res.json({
+      sucesso: true,
+
+      routeVersion:
+        'created-leads-day-audit-v1',
+
+      filters: {
+        startDate,
+        endDate
+      },
+
+      periodRange: {
+        startDate: start,
+        endDate: end
+      },
+
+      summary: {
+        totalCreatedInPeriod:
+          formatted.length,
+
+        totalEnteringPerformance:
+          formatted.filter(
+            (lead) =>
+              lead.entersPerformance
+          ).length,
+
+        totalSkipped:
+          formatted.filter(
+            (lead) =>
+              !lead.entersPerformance
+          ).length
+      },
+
+      byAssignee,
+
+      leads: formatted
+    });
+
+  } catch (error) {
+    console.error(
+      'ERRO AUDIT CREATED LEADS DAY:',
+      error
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 app.use((req, res, next) => {
   if (req.path.startsWith('/api')) {
     return res.status(404).json({
