@@ -101,3 +101,154 @@ body.tv-fullscreen .tv-content {
   height: 100%;
   object-fit: contain;
 }
+
+/* ================================
+   PÁGINA LEADS - MODO ESCURO
+================================ */
+
+.leads-dark-page {
+  background: #020617 !important;
+  color: #e5e7eb !important;
+}
+
+/* Estrutura principal */
+.leads-dark-page .bg-white,
+.leads-dark-page form.bg-white,
+.leads-dark-page section.bg-white,
+.leads-dark-page .bg-slate-50,
+.leads-dark-page .bg-slate-100 {
+  background: #0f172a !important;
+}
+
+/* Cabeçalho da tabela */
+.leads-dark-page thead {
+  background: #111827 !important;
+}
+
+/* Bordas */
+.leads-dark-page .border-slate-200,
+.leads-dark-page .border-slate-300 {
+  border-color: #334155 !important;
+}
+
+.leads-dark-page .divide-slate-200 > :not([hidden]) ~ :not([hidden]) {
+  border-color: #1e293b !important;
+}
+
+/* Textos principais */
+.leads-dark-page .text-slate-950,
+.leads-dark-page .text-slate-900,
+.leads-dark-page .text-slate-800,
+.leads-dark-page .text-slate-700 {
+  color: #f8fafc !important;
+}
+
+/* Textos secundários */
+.leads-dark-page .text-slate-600,
+.leads-dark-page .text-slate-500,
+.leads-dark-page .text-slate-400 {
+  color: #94a3b8 !important;
+}
+
+/* Inputs e selects */
+.leads-dark-page input,
+.leads-dark-page select {
+  background: #020617 !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+
+.leads-dark-page input::placeholder {
+  color: #64748b !important;
+}
+
+.leads-dark-page select option {
+  background: #020617;
+  color: #f8fafc;
+}
+
+/* Tabela */
+.leads-dark-page tbody tr {
+  background: #0f172a !important;
+}
+
+.leads-dark-page tbody tr:hover,
+.leads-dark-page .hover\:bg-blue-50:hover,
+.leads-dark-page .focus\:bg-blue-50:focus {
+  background: #1e293b !important;
+}
+
+/* Botões claros */
+.leads-dark-page button.bg-white,
+.leads-dark-page button.bg-slate-200 {
+  background: #1e293b !important;
+  color: #f8fafc !important;
+  border-color: #475569 !important;
+}
+
+.leads-dark-page button.bg-white:hover,
+.leads-dark-page button.bg-slate-200:hover {
+  background: #334155 !important;
+}
+
+/* Cards de resumo */
+.leads-dark-page .border-blue-200,
+.leads-dark-page .border-amber-200,
+.leads-dark-page .border-green-200,
+.leads-dark-page .border-red-200 {
+  border-color: #334155 !important;
+}
+
+.leads-dark-page .bg-blue-50 {
+  background: rgba(37, 99, 235, 0.12) !important;
+}
+
+.leads-dark-page .bg-amber-50 {
+  background: rgba(245, 158, 11, 0.12) !important;
+}
+
+.leads-dark-page .bg-green-50 {
+  background: rgba(34, 197, 94, 0.12) !important;
+}
+
+.leads-dark-page .bg-red-50 {
+  background: rgba(239, 68, 68, 0.12) !important;
+}
+
+/* Cores dos textos dos cards/status */
+.leads-dark-page .text-blue-700 {
+  color: #93c5fd !important;
+}
+
+.leads-dark-page .text-amber-700 {
+  color: #fcd34d !important;
+}
+
+.leads-dark-page .text-green-700 {
+  color: #86efac !important;
+}
+
+.leads-dark-page .text-red-700 {
+  color: #fca5a5 !important;
+}
+
+/* Badge Abrir */
+.leads-dark-page .group-hover\:opacity-100 {
+  color: #93c5fd !important;
+  border-color: #1d4ed8 !important;
+}
+
+/* Paginação */
+.leads-dark-page .border-t {
+  border-color: #334155 !important;
+}
+
+/* Sombra */
+.leads-dark-page .shadow-sm {
+  box-shadow: 0 18px 45px rgba(0, 0, 0, 0.35) !important;
+}
+
+/* Mensagem de carregamento/vazio */
+.leads-dark-page td {
+  color: #e5e7eb;
+}
