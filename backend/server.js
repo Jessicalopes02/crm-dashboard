@@ -8232,12 +8232,15 @@ const sourcesByAssignee =
       }
     },
 
-    /*
-     * Usa o primeiro source válido.
-     * Dessa forma uma lead não será contada
-     * duas vezes caso tenha mais de um source.
-     */
-   {
+ /*
+ * Usa o primeiro source válido.
+ * Aceita source em vários formatos:
+ * - { name: 'Site Process' }
+ * - 'Site Process'
+ * - rawData.sources
+ * - label/value, se vier nesses campos
+ */
+{
   $addFields: {
     allSources: {
       $concatArrays: [
@@ -8266,24 +8269,75 @@ const sourcesByAssignee =
 
 {
   $addFields: {
-    validSources: {
+    sourceNames: {
       $filter: {
-        input: '$allSources',
+        input: {
+          $map: {
+            input: '$allSources',
+            as: 'source',
+            in: {
+              $trim: {
+                input: {
+                  $switch: {
+                    branches: [
+                      {
+                        case: {
+                          $eq: [
+                            {
+                              $type: '$$source'
+                            },
+                            'string'
+                          ]
+                        },
+                        then: '$$source'
+                      },
+                      {
+                        case: {
+                          $eq: [
+                            {
+                              $type: '$$source.name'
+                            },
+                            'string'
+                          ]
+                        },
+                        then: '$$source.name'
+                      },
+                      {
+                        case: {
+                          $eq: [
+                            {
+                              $type: '$$source.label'
+                            },
+                            'string'
+                          ]
+                        },
+                        then: '$$source.label'
+                      },
+                      {
+                        case: {
+                          $eq: [
+                            {
+                              $type: '$$source.value'
+                            },
+                            'string'
+                          ]
+                        },
+                        then: '$$source.value'
+                      }
+                    ],
+                    default: ''
+                  }
+                }
+              }
+            }
+          }
+        },
 
-        as: 'source',
+        as: 'sourceName',
 
         cond: {
           $ne: [
-            {
-              $trim: {
-                input: {
-                  $ifNull: [
-                    '$$source.name',
-                    ''
-                  ]
-                }
-              }
-            },
+            '$$sourceName',
             ''
           ]
         }
@@ -8292,50 +8346,21 @@ const sourcesByAssignee =
   }
 },
 
-    {
-      $addFields: {
-        firstValidSource: {
+{
+  $addFields: {
+    sourceName: {
+      $ifNull: [
+        {
           $arrayElemAt: [
-            '$validSources',
+            '$sourceNames',
             0
           ]
-        }
-      }
-    },
-
-    {
-      $addFields: {
-        sourceName: {
-          $let: {
-            vars: {
-              cleanSource: {
-                $trim: {
-                  input: {
-                    $ifNull: [
-                      '$firstValidSource.name',
-                      ''
-                    ]
-                  }
-                }
-              }
-            },
-
-            in: {
-              $cond: [
-                {
-                  $eq: [
-                    '$$cleanSource',
-                    ''
-                  ]
-                },
-                'Sem source',
-                '$$cleanSource'
-              ]
-            }
-          }
-        }
-      }
-    },
+        },
+        'Sem source'
+      ]
+    }
+  }
+},
 
     {
       $group: {
