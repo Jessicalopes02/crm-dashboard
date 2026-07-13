@@ -7896,7 +7896,8 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
        'sem responsável',
        'sem responsavel',
        'giovanna fernandes',
-       'pedro scarillo'
+       'pedro scarillo',
+       'lucio lage'
     ]);
 
     // ========================================
