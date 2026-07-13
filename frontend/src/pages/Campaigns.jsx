@@ -2,6 +2,10 @@ import { useEffect, useState } from 'react';
 import api from '../services/api';
 
 function Campaigns() {
+  const currentPeriod = `${new Date().getFullYear()}-${String(
+    new Date().getMonth() + 1
+  ).padStart(2, '0')}`;
+
   const [campaigns, setCampaigns] = useState([]);
   const [achievement, setAchievement] = useState(null);
   const [period, setPeriod] = useState(currentPeriod);
