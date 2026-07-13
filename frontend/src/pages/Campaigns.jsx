@@ -4,7 +4,7 @@ import api from '../services/api';
 function Campaigns() {
   const [campaigns, setCampaigns] = useState([]);
   const [achievement, setAchievement] = useState(null);
-  const [period, setPeriod] = useState('2026-05');
+  const [period, setPeriod] = useState(currentPeriod);
   const [csvFile, setCsvFile] = useState(null);
 
   const [form, setForm] = useState({
@@ -23,7 +23,7 @@ function Campaigns() {
 });
 
 const [goalForm, setGoalForm] = useState({
-  period: '2026-05',
+  period: currentPeriod,
   campaignId: '',
   sector: 'closer',
   userName: '',
@@ -39,6 +39,13 @@ const [goalForm, setGoalForm] = useState({
     loadCampaigns();
     loadAchievement();
   }, []);
+
+  useEffect(() => {
+  setGoalForm((current) => ({
+    ...current,
+    period
+  }));
+}, [period]);
 
   async function loadCampaigns() {
     try {
@@ -138,7 +145,7 @@ const [goalForm, setGoalForm] = useState({
     });
 
     setGoalForm({
-      period: '2026-05',
+      period: currentPeriod,
       campaignId: '',
       sector: 'closer',
       userName: '',
@@ -560,7 +567,7 @@ Ignorados: ${response.data.skipped || 0}`
           Atingimento de Metas
         </h2>
 
-        <div className="bg-white rounded-2xl shadow overflow-hidden">
+        <div className="bg-white rounded-2xl shadow overflow-x-auto">
 
           <table className="w-full">
             <thead className="bg-slate-100">
