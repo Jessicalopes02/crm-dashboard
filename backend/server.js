@@ -9300,11 +9300,193 @@ pendingLeads: Number(
   )
 };
 });
+
+// ========================================
+// NORMALIZAÇÃO FINAL DE RESPONSÁVEIS
+// Remove duplicidades de nomes vindas do Nutshell
+// ========================================
+
+function normalizeResponsibleKey(name) {
+  const normalized = String(name || 'Sem responsável')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+
+  if (!normalized) {
+    return 'sem responsavel';
+  }
+
+  if (
+    normalized === 'beatriz costa' ||
+    normalized === 'beatriz costa costa'
+  ) {
+    return 'beatriz costa';
+  }
+
+  if (
+    normalized === 'marcus santana' ||
+    normalized === 'marcus vinicius dias santana' ||
+    normalized === 'marcus dias santana'
+  ) {
+    return 'marcus santana';
+  }
+
+  return normalized;
+}
+
+function getResponsibleDisplayName(name) {
+  const key = normalizeResponsibleKey(name);
+
+  const displayNames = {
+    'beatriz costa': 'Beatriz Costa',
+    'marcus santana': 'Marcus Santana'
+  };
+
+  return (
+    displayNames[key] ||
+    String(name || 'Sem responsável')
+      .replace(/\s+/g, ' ')
+      .trim()
+  );
+}
+
+function mergeActivityBreakdown(current = {}, next = {}) {
+  const keys = new Set([
+    ...Object.keys(current || {}),
+    ...Object.keys(next || {})
+  ]);
+
+  const merged = {};
+
+  keys.forEach((key) => {
+    merged[key] =
+      Number(current?.[key] || 0) +
+      Number(next?.[key] || 0);
+  });
+
+  return merged;
+}
+
+function mergeSourcesBreakdown(current = [], next = []) {
+  const map = new Map();
+
+  [...(current || []), ...(next || [])].forEach((source) => {
+    const name =
+      source?.name ||
+      'Sem source';
+
+    const existing =
+      map.get(name) || {
+        name,
+        total: 0
+      };
+
+    existing.total += Number(source?.total || 0);
+
+    map.set(name, existing);
+  });
+
+  return Array.from(map.values()).sort(
+    (a, b) =>
+      Number(b.total || 0) -
+      Number(a.total || 0)
+  );
+}
+
+function mergePerformanceRows(rows = []) {
+  const map = new Map();
+
+  rows.forEach((row) => {
+    const key = normalizeResponsibleKey(row._id);
+
+    const existing =
+      map.get(key) || {
+        ...row,
+        _id: getResponsibleDisplayName(row._id),
+        totalLeads: 0,
+        openLeads: 0,
+        pendingLeads: 0,
+        wonLeads: 0,
+        lostLeads: 0,
+        canceledLeads: 0,
+        totalRevenue: 0,
+        wonLeadsByCloseDate: 0,
+        activitiesCount: 0,
+        meetingsCount: 0,
+        staleOpenPending: 0,
+        totalLeadsBySource: 0,
+        activityBreakdown: {},
+        sourcesBreakdown: []
+      };
+
+    existing.totalLeads += Number(row.totalLeads || 0);
+    existing.openLeads += Number(row.openLeads || 0);
+    existing.pendingLeads += Number(row.pendingLeads || 0);
+    existing.wonLeads += Number(row.wonLeads || 0);
+    existing.lostLeads += Number(row.lostLeads || 0);
+    existing.canceledLeads += Number(row.canceledLeads || 0);
+    existing.totalRevenue += Number(row.totalRevenue || 0);
+    existing.wonLeadsByCloseDate += Number(row.wonLeadsByCloseDate || 0);
+    existing.activitiesCount += Number(row.activitiesCount || 0);
+    existing.meetingsCount += Number(row.meetingsCount || 0);
+    existing.staleOpenPending += Number(row.staleOpenPending || 0);
+    existing.totalLeadsBySource += Number(row.totalLeadsBySource || 0);
+
+    existing.activityBreakdown = mergeActivityBreakdown(
+      existing.activityBreakdown,
+      row.activityBreakdown
+    );
+
+    existing.sourcesBreakdown = mergeSourcesBreakdown(
+      existing.sourcesBreakdown,
+      row.sourcesBreakdown
+    );
+
+    existing.averageTicket =
+      existing.wonLeads > 0
+        ? existing.totalRevenue / existing.wonLeads
+        : 0;
+
+    existing.conversionRate =
+      existing.wonLeads + existing.lostLeads > 0
+        ? (existing.wonLeads /
+            (existing.wonLeads + existing.lostLeads)) *
+          100
+        : 0;
+
+    map.set(key, existing);
+  });
+
+  return Array.from(map.values()).sort(
+    (a, b) =>
+      Number(b.totalLeads || 0) -
+      Number(a.totalLeads || 0)
+  );
+}
+
+
+const mergedPerformance =
+  mergePerformanceRows(completePerformance);
+
+  // ========================================
+// SDRS ATIVOS
+// Apenas estes nomes entram na TV SDR
+// ========================================
+
+const normalizedSdrNames = new Set([
+  normalizeName('Gisele Santos Gama'),
+  normalizeName('Guilherme Velloso'),
+  normalizeName('Leticia Barbosa'),
+  normalizeName('Luma Farias Silva Santos')
+]);
+  
     // ========================================
     // SEPARAÇÃO CLOSERS E SDRS
     // ========================================
 
-    const closers = completePerformance
+    const closers = mergedPerformance
   .filter((item) =>
     normalizedCloserNames.has(
       normalizeName(item._id)
@@ -9320,29 +9502,19 @@ pendingLeads: Number(
       )
   );
 
-const sdrs = completePerformance
+const sdrs = mergedPerformance
   .filter((item) => {
     const normalizedName =
       normalizeName(item._id);
 
-    return (
-      normalizedName &&
-      !normalizedCloserNames.has(
-        normalizedName
-      ) &&
-      !ignoredNames.has(
-        normalizedName
-      )
+    return normalizedSdrNames.has(
+      normalizedName
     );
   })
   .sort(
     (first, second) =>
-      Number(
-        second.activitiesCount || 0
-      ) -
-      Number(
-        first.activitiesCount || 0
-      )
+      Number(second.activitiesCount || 0) -
+      Number(first.activitiesCount || 0)
   );
 
     res.json({
@@ -9374,7 +9546,7 @@ const sdrs = completePerformance
        * Mantido para não quebrar o frontend
        * antigo durante a alteração.
        */
-      performance: completePerformance
+      performance: mergedPerformance
     });
 
   } catch (error) {
