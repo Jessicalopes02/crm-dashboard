@@ -15644,6 +15644,79 @@ app.get(
 );
 
 // ========================================
+// CRON - SYNC AUTOMÁTICA DA PERFORMANCE
+// ========================================
+
+let performanceSyncRunning = false;
+
+function getBrazilDateString(date = new Date()) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'America/Sao_Paulo',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).formatToParts(date);
+
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day = parts.find((part) => part.type === 'day')?.value;
+
+  return `${year}-${month}-${day}`;
+}
+
+cron.schedule(
+  '*/30 * * * *',
+  async () => {
+    if (performanceSyncRunning) {
+      console.log(
+        '[PERFORMANCE SYNC CRON] Já existe uma sync rodando. Pulando execução.'
+      );
+      return;
+    }
+
+    try {
+      performanceSyncRunning = true;
+
+      const today = getBrazilDateString();
+
+      const baseUrl =
+        process.env.APP_BASE_URL ||
+        'https://crm-dashboard-ex08.onrender.com';
+
+      console.log(
+        `[PERFORMANCE SYNC CRON] Iniciando sync do dia ${today}`
+      );
+
+      await axios.get(
+        `${baseUrl}/api/sync/nutshell/performance-period`,
+        {
+          params: {
+            startDate: today,
+            endDate: today,
+            limit: 300,
+            pagesBack: 30
+          }
+        }
+      );
+
+      console.log(
+        `[PERFORMANCE SYNC CRON] Sync finalizada com sucesso para ${today}`
+      );
+    } catch (error) {
+      console.error(
+        '[PERFORMANCE SYNC CRON] Erro ao sincronizar performance:',
+        error.response?.data || error.message
+      );
+    } finally {
+      performanceSyncRunning = false;
+    }
+  },
+  {
+    timezone: 'America/Sao_Paulo'
+  }
+);
+
+// ========================================
 // AUDITORIA - LEADS CRIADAS NO DIA
 // ========================================
 
