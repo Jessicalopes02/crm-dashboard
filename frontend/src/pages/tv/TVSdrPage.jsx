@@ -43,7 +43,7 @@ function TVSdrPage() {
       0
     );
 
-    let endDate = new Date(
+    const endDate = new Date(
       now.getFullYear(),
       now.getMonth(),
       now.getDate(),
@@ -102,7 +102,9 @@ function TVSdrPage() {
 
   async function loadData() {
     try {
-      setLoading(true);
+      if (!data) {
+        setLoading(true);
+      }
 
       const {
         startDate,
@@ -324,7 +326,7 @@ function TVSdrPage() {
           Number(b.total || 0) -
           Number(a.total || 0)
       )
-      .slice(0, 6);
+      .slice(0, 5);
   }
 
   function buildFunnel(totals) {
@@ -389,7 +391,7 @@ function TVSdrPage() {
 
   if (!data || loading) {
     return (
-      <div className="h-screen bg-slate-950 text-white flex items-center justify-center text-3xl font-bold">
+      <div className="h-[100dvh] bg-slate-950 text-white flex items-center justify-center text-2xl font-bold overflow-hidden">
         Carregando TV SDR...
       </div>
     );
@@ -409,20 +411,20 @@ function TVSdrPage() {
       : 0;
 
   return (
-    <div className="h-screen text-white p-3 overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
-      <header className="flex items-center justify-between mb-2 bg-white/5 border border-white/10 rounded-2xl px-4 py-2 shadow-2xl backdrop-blur">
-        <div>
-          <h1 className="text-3xl font-black tracking-tight">
+    <div className="h-[100dvh] max-h-[100dvh] text-white p-2 overflow-hidden bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950">
+      <header className="flex items-center justify-between mb-2 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 shadow-2xl backdrop-blur h-[54px] overflow-hidden">
+        <div className="min-w-0">
+          <h1 className="text-2xl font-black tracking-tight leading-none truncate">
             ProcessLog&Comex - SDR
           </h1>
 
-          <p className="text-slate-400 text-sm mt-1">
+          <p className="text-slate-400 text-xs mt-1 truncate">
             Performance de recebimento, atendimento e atividades comerciais
           </p>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5">
             {[
               {
                 key: 'day',
@@ -446,7 +448,7 @@ function TVSdrPage() {
                 onClick={() =>
                   setPeriod(item.key)
                 }
-                className={`px-4 py-2 rounded-2xl font-bold transition text-sm ${
+                className={`px-3 py-1.5 rounded-xl font-bold transition text-xs ${
                   period === item.key
                     ? 'bg-blue-600 text-white'
                     : 'bg-slate-800 text-slate-300'
@@ -457,24 +459,24 @@ function TVSdrPage() {
             ))}
           </div>
 
-          <div className="text-right ml-4">
-            <div className="text-xs text-slate-400">
+          <div className="text-right ml-2">
+            <div className="text-[10px] text-slate-400">
               {formatPeriodLabel()}
             </div>
 
-            <div className="text-base font-bold text-blue-400">
+            <div className="text-xs font-bold text-blue-400">
               Atualiza a cada 60s
             </div>
 
-            <div className="flex items-center justify-end gap-2 mt-1 text-green-400 text-xs font-bold">
-              <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
+            <div className="flex items-center justify-end gap-1.5 mt-0.5 text-green-400 text-[10px] font-bold">
+              <span className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse" />
               AO VIVO
             </div>
           </div>
         </div>
       </header>
 
-      <section className="grid grid-cols-5 gap-3 mb-3">
+      <section className="grid grid-cols-5 gap-2 mb-2">
         <BigKpi
           title="Leads Recebidas"
           value={formatNumber(
@@ -496,7 +498,7 @@ function TVSdrPage() {
           value={formatNumber(
             totals.activitiesCount
           )}
-          subtitle="Executadas no período"
+          subtitle="Executadas"
         />
 
         <BigKpi
@@ -512,12 +514,12 @@ function TVSdrPage() {
           value={formatNumber(
             totals.noShow
           )}
-          subtitle="Ausências registradas"
+          subtitle="Ausências"
           danger={totals.noShow > 0}
         />
       </section>
 
-      <section className="grid grid-cols-12 grid-rows-2 gap-3 h-[calc(100vh-178px)]">
+      <section className="grid grid-cols-12 grid-rows-2 gap-2 h-[calc(100dvh-134px)] overflow-hidden">
         <Card
           title="Ranking SDRs"
           className="col-span-6 row-span-2"
@@ -543,7 +545,7 @@ function TVSdrPage() {
           title="Atividades por Tipo"
           className="col-span-3"
         >
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <MiniKpi
               label="WhatsApp diálogo"
               value={formatNumber(
@@ -592,7 +594,7 @@ function TVSdrPage() {
           title="Top Sources"
           className="col-span-3"
         >
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {data.sources.length > 0 ? (
               data.sources.map(
                 (source, index) => (
@@ -613,7 +615,7 @@ function TVSdrPage() {
           title="Qualidade / Atenção"
           className="col-span-3"
         >
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 gap-1.5">
             <MiniKpi
               label="Lost"
               value={formatNumber(
@@ -662,18 +664,18 @@ function BigKpi({
         opacity: 1,
         scale: 1
       }}
-      className={`bg-white/10 backdrop-blur rounded-3xl p-4 h-[86px] border shadow-2xl overflow-hidden ${
+      className={`bg-white/10 backdrop-blur rounded-2xl px-3 py-2 h-[66px] border shadow-2xl overflow-hidden ${
         danger
           ? 'border-red-400/30'
           : 'border-white/10'
       }`}
     >
-      <div className="text-slate-400 text-xs font-bold uppercase tracking-wide">
+      <div className="text-slate-400 text-[10px] font-bold uppercase tracking-wide truncate">
         {title}
       </div>
 
       <div
-        className={`text-2xl xl:text-3xl font-black mt-1 leading-tight truncate ${
+        className={`text-xl xl:text-2xl font-black mt-1 leading-none truncate ${
           danger
             ? 'text-red-300'
             : 'text-white'
@@ -682,7 +684,7 @@ function BigKpi({
         {value}
       </div>
 
-      <div className="text-slate-500 mt-1 text-xs">
+      <div className="text-slate-500 mt-1 text-[10px] truncate">
         {subtitle}
       </div>
     </motion.div>
@@ -698,15 +700,15 @@ function Card({
     <motion.div
       initial={{
         opacity: 0,
-        y: 20
+        y: 16
       }}
       animate={{
         opacity: 1,
         y: 0
       }}
-      className={`${className} bg-white/10 backdrop-blur rounded-2xl p-3 border border-white/10 shadow-2xl min-w-0 overflow-hidden`}
+      className={`${className} bg-white/10 backdrop-blur rounded-xl p-2 border border-white/10 shadow-2xl min-w-0 overflow-hidden`}
     >
-      <h2 className="text-base font-black mb-3 text-white">
+      <h2 className="text-sm font-black mb-2 text-white leading-none truncate">
         {title}
       </h2>
 
@@ -717,12 +719,12 @@ function Card({
 
 function MiniKpi({ label, value }) {
   return (
-    <div className="bg-slate-950/50 rounded-2xl p-3 border border-white/5 min-h-[72px]">
-      <div className="text-slate-400 text-[11px] font-bold uppercase leading-tight">
+    <div className="bg-slate-950/50 rounded-xl px-3 py-2 border border-white/5 min-h-[50px] overflow-hidden">
+      <div className="text-slate-400 text-[9px] font-bold uppercase leading-tight truncate">
         {label}
       </div>
 
-      <div className="text-xl font-black mt-2">
+      <div className="text-lg font-black mt-1 leading-none truncate">
         {value}
       </div>
     </div>
@@ -741,26 +743,31 @@ function SdrRanking({
 
   return (
     <div className="h-full overflow-hidden">
-      <div className="grid grid-cols-[1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.7fr] gap-2 px-3 py-2 text-[11px] uppercase font-black text-slate-400 border-b border-white/10">
+      <div className="grid grid-cols-[1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.7fr] gap-2 px-2 py-1.5 text-[10px] uppercase font-black text-slate-400 border-b border-white/10">
         <div>SDR</div>
+
         <div className="text-center">
           Leads
         </div>
+
         <div className="text-center">
           Open
         </div>
+
         <div className="text-center">
           Ativ.
         </div>
+
         <div className="text-center">
           Reuniões
         </div>
+
         <div className="text-center">
           No Show
         </div>
       </div>
 
-      <div className="space-y-2 mt-2">
+      <div className="space-y-1.5 mt-1.5">
         {users.slice(0, 8).map(
           (user, index) => (
             <motion.div
@@ -776,15 +783,15 @@ function SdrRanking({
               transition={{
                 delay: index * 0.06
               }}
-              className="grid grid-cols-[1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.7fr] gap-2 items-center bg-slate-950/45 border border-white/5 rounded-2xl px-3 py-2"
+              className="grid grid-cols-[1.5fr_0.7fr_0.7fr_0.8fr_0.8fr_0.7fr] gap-2 items-center bg-slate-950/45 border border-white/5 rounded-xl px-2 py-1.5"
             >
               <div className="min-w-0">
                 <div className="flex items-center gap-2">
-                  <span className="w-7 h-7 rounded-full bg-blue-600/30 border border-blue-400/30 flex items-center justify-center text-xs font-black text-blue-200">
+                  <span className="w-6 h-6 rounded-full bg-blue-600/30 border border-blue-400/30 flex items-center justify-center text-[11px] font-black text-blue-200 shrink-0">
                     {index + 1}
                   </span>
 
-                  <span className="font-black text-sm truncate">
+                  <span className="font-black text-xs truncate">
                     {user._id}
                   </span>
                 </div>
@@ -838,7 +845,7 @@ function NumberCell({
 }) {
   return (
     <div
-      className={`text-center font-black text-base ${
+      className={`text-center font-black text-sm leading-none ${
         danger
           ? 'text-red-300'
           : 'text-white'
@@ -855,7 +862,7 @@ function FunnelBlock({
   formatNumber
 }) {
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col gap-1.5 overflow-hidden">
       {(funnel || []).map((item, index) => {
         const percent =
           total > 0
@@ -892,20 +899,20 @@ function FunnelBlock({
             }}
             className="mx-auto"
           >
-            <div className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl px-3 py-2 shadow-lg shadow-blue-900/30">
+            <div className="bg-gradient-to-r from-blue-600 to-cyan-500 rounded-xl px-3 py-1.5 shadow-lg shadow-blue-900/30">
               <div className="flex items-center justify-between gap-2">
                 <span className="font-bold text-xs truncate">
                   {item.label}
                 </span>
 
-                <span className="font-black text-base">
+                <span className="font-black text-sm">
                   {formatNumber(
                     item.total
                   )}
                 </span>
               </div>
 
-              <div className="text-[10px] text-blue-100 mt-0.5">
+              <div className="text-[9px] text-blue-100 mt-0.5">
                 {percent.toFixed(1)}%
                 das recebidas
               </div>
@@ -922,18 +929,18 @@ function SourceLine({
   leads
 }) {
   return (
-    <div className="bg-slate-950/50 rounded-2xl px-3 py-2 border border-white/5">
+    <div className="bg-slate-950/50 rounded-xl px-3 py-1.5 border border-white/5">
       <div className="flex justify-between gap-3">
-        <span className="text-sm font-semibold truncate">
+        <span className="text-xs font-semibold truncate">
           {name}
         </span>
 
-        <span className="text-sm text-blue-300 font-bold">
+        <span className="text-xs text-blue-300 font-bold">
           {leads}
         </span>
       </div>
 
-      <div className="text-xs text-slate-500">
+      <div className="text-[10px] text-slate-500 truncate">
         leads recebidas no período
       </div>
     </div>
@@ -942,7 +949,7 @@ function SourceLine({
 
 function EmptyInfo({ text }) {
   return (
-    <div className="h-full flex items-center justify-center text-center text-slate-400 text-sm bg-slate-950/40 rounded-2xl p-4 border border-white/5">
+    <div className="h-full flex items-center justify-center text-center text-slate-400 text-xs bg-slate-950/40 rounded-xl p-3 border border-white/5">
       {text}
     </div>
   );
