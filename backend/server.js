@@ -7922,23 +7922,35 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
       baseFilter.status = Number(status);
     }
 
-   // ========================================
-// LEADS ABERTAS NO PERÍODO
-// TOTAL LEADS, OPEN E PENDING
-// REGRA: CREATED TIME
+  // ========================================
+// RECEBIDAS INBOUND NO PERÍODO
+// REGRA: CREATED TIME OU MODIFIED TIME
+// Serve para contar leads criadas ou movidas
+// para o responsável dentro do período.
 // ========================================
 
-const openedPerformance =
+const receivedInboundPerformance =
   await Lead.aggregate([
     {
       $match: {
         ...baseFilter,
 
-        createdTime: {
-          $gte: start,
-          $lt: end,
-          $ne: null
-        }
+        $or: [
+          {
+            createdTime: {
+              $gte: start,
+              $lt: end,
+              $ne: null
+            }
+          },
+          {
+            modifiedTime: {
+              $gte: start,
+              $lt: end,
+              $ne: null
+            }
+          }
+        ]
       }
     },
 
@@ -7946,50 +7958,8 @@ const openedPerformance =
       $group: {
         _id: '$assignee.name',
 
-        /*
-         * Total de leads abertas no período,
-         * independentemente do status atual.
-         */
         totalLeads: {
           $sum: 1
-        },
-
-        /*
-         * Leads abertas no período
-         * que permanecem Open.
-         */
-        openLeads: {
-          $sum: {
-            $cond: [
-              {
-                $eq: [
-                  '$status',
-                  0
-                ]
-              },
-              1,
-              0
-            ]
-          }
-        },
-
-        /*
-         * Leads abertas no período
-         * que permanecem Pending.
-         */
-        pendingLeads: {
-          $sum: {
-            $cond: [
-              {
-                $eq: [
-                  '$status',
-                  1
-                ]
-              },
-              1,
-              0
-            ]
-          }
         }
       }
     },
@@ -8000,10 +7970,59 @@ const openedPerformance =
       }
     }
   ]);
+
+// ========================================
+// OPEN / PENDING ATUAL
+// REGRA: TODAS AS LEADS ATUAIS DO CLOSER
+// Não depende do período selecionado.
+// ========================================
+
+const currentOpenPerformance =
+  await Lead.aggregate([
+    {
+      $match: {
+        ...baseFilter,
+
+        status: {
+          $in: [0, 1]
+        }
+      }
+    },
+
+    {
+      $group: {
+        _id: '$assignee.name',
+
+        openLeads: {
+          $sum: {
+            $cond: [
+              {
+                $eq: ['$status', 0]
+              },
+              1,
+              0
+            ]
+          }
+        },
+
+        pendingLeads: {
+          $sum: {
+            $cond: [
+              {
+                $eq: ['$status', 1]
+              },
+              1,
+              0
+            ]
+          }
+        }
+      }
+    }
+  ]);
 // ========================================
 // FECHAMENTOS NO PERÍODO
 // WON / LOST / CANCELADO
-// REGRA: CLOSED TIME
+// REGRA: CLOSED TIME OU MODIFIED TIME
 // ========================================
 
 const closedPerformance =
@@ -8013,14 +8032,37 @@ const closedPerformance =
         ...baseFilter,
 
         status: {
-          $in: [
-            10,
-            11,
-            12
+          $in: [10, 11, 12]
+        }
+      }
+    },
+
+    {
+      $addFields: {
+        statusDate: {
+          $ifNull: [
+            '$closedTime',
+            '$modifiedTime'
           ]
         },
 
-        closedTime: {
+        performanceRevenue: {
+          $ifNull: [
+            '$value.amount',
+            {
+              $ifNull: [
+                '$rawData.value.amount',
+                0
+              ]
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      $match: {
+        statusDate: {
           $gte: start,
           $lt: end,
           $ne: null
@@ -8036,10 +8078,7 @@ const closedPerformance =
           $sum: {
             $cond: [
               {
-                $eq: [
-                  '$status',
-                  10
-                ]
+                $eq: ['$status', 10]
               },
               1,
               0
@@ -8051,10 +8090,7 @@ const closedPerformance =
           $sum: {
             $cond: [
               {
-                $eq: [
-                  '$status',
-                  11
-                ]
+                $eq: ['$status', 11]
               },
               1,
               0
@@ -8066,10 +8102,7 @@ const closedPerformance =
           $sum: {
             $cond: [
               {
-                $eq: [
-                  '$status',
-                  12
-                ]
+                $eq: ['$status', 12]
               },
               1,
               0
@@ -8081,24 +8114,9 @@ const closedPerformance =
           $sum: {
             $cond: [
               {
-                $eq: [
-                  '$status',
-                  10
-                ]
+                $eq: ['$status', 10]
               },
-
-              {
-                $ifNull: [
-                  '$value.amount',
-                  {
-                    $ifNull: [
-                      '$rawData.value.amount',
-                      0
-                    ]
-                  }
-                ]
-              },
-
+              '$performanceRevenue',
               0
             ]
           }
@@ -8110,31 +8128,16 @@ const closedPerformance =
               {
                 $and: [
                   {
-                    $eq: [
-                      '$status',
-                      10
-                    ]
+                    $eq: ['$status', 10]
                   },
-
                   {
                     $gt: [
-                      {
-                        $ifNull: [
-                          '$value.amount',
-                          {
-                            $ifNull: [
-                              '$rawData.value.amount',
-                              0
-                            ]
-                          }
-                        ]
-                      },
+                      '$performanceRevenue',
                       0
                     ]
                   }
                 ]
               },
-
               1,
               0
             ]
@@ -8145,7 +8148,6 @@ const closedPerformance =
 
     {
       $addFields: {
-
         averageTicket: {
           $cond: [
             {
@@ -8154,14 +8156,12 @@ const closedPerformance =
                 0
               ]
             },
-
             {
               $divide: [
                 '$totalRevenue',
                 '$totalWonWithValue'
               ]
             },
-
             0
           ]
         },
@@ -8176,11 +8176,9 @@ const closedPerformance =
                     '$lostLeads'
                   ]
                 },
-
                 0
               ]
             },
-
             {
               $multiply: [
                 {
@@ -8194,11 +8192,9 @@ const closedPerformance =
                     }
                   ]
                 },
-
                 100
               ]
             },
-
             0
           ]
         }
@@ -9049,14 +9045,14 @@ const sourcesMap = new Map(
     );
 
  
-   // ========================================
-// MAPA DAS LEADS ABERTAS
-// CREATED TIME
+// ========================================
+// MAPA DAS RECEBIDAS INBOUND
+// CREATED TIME OU MODIFIED TIME
 // ========================================
 
-const openedPerformanceMap =
+const receivedInboundPerformanceMap =
   new Map(
-    openedPerformance.map((item) => [
+    receivedInboundPerformance.map((item) => [
       normalizeName(item._id),
 
       {
@@ -9066,7 +9062,25 @@ const openedPerformanceMap =
 
         totalLeads: Number(
           item.totalLeads || 0
-        ),
+        )
+      }
+    ])
+  );
+
+// ========================================
+// MAPA DOS OPEN / PENDING ATUAIS
+// STATUS ATUAL, SEM FILTRO DE DATA
+// ========================================
+
+const currentOpenPerformanceMap =
+  new Map(
+    currentOpenPerformance.map((item) => [
+      normalizeName(item._id),
+
+      {
+        _id:
+          item._id ||
+          'Sem responsável',
 
         openLeads: Number(
           item.openLeads || 0
@@ -9129,7 +9143,8 @@ const closedPerformanceMap =
  * mas realizou atividades, aparece no módulo.
  */
 const allResponsibleNames = new Set([
-  ...openedPerformanceMap.keys(),
+  ...receivedInboundPerformanceMap.keys(),
+  ...currentOpenPerformanceMap.keys(),
   ...closedPerformanceMap.keys(),
   ...activitiesMap.keys(),
   ...sourcesMap.keys()
@@ -9138,10 +9153,15 @@ const allResponsibleNames = new Set([
 const completePerformance = Array.from(
   allResponsibleNames
 ).map((normalizedName) => {
-  const openedData =
-    openedPerformanceMap.get(
-      normalizedName
-    );
+  const receivedData =
+  receivedInboundPerformanceMap.get(
+    normalizedName
+  );
+
+const currentOpenData =
+  currentOpenPerformanceMap.get(
+    normalizedName
+  );
 
   const closedData =
     closedPerformanceMap.get(
@@ -9160,27 +9180,31 @@ const completePerformance = Array.from(
 
 return {
   _id:
-    openedData?._id ||
-    closedData?._id ||
-    activity?.displayName ||
-    'Sem responsável',
+  receivedData?._id ||
+  currentOpenData?._id ||
+  closedData?._id ||
+  activity?.displayName ||
+  'Sem responsável',
 
   /*
-   * LEADS ABERTAS NO PERÍODO
-   * createdTime
-   */
-  totalLeads: Number(
-    openedData?.totalLeads || 0
-  ),
+ * RECEBIDAS INBOUND NO PERÍODO
+ * Regra: createdTime ou modifiedTime
+ */
+totalLeads: Number(
+  receivedData?.totalLeads || 0
+),
 
-  openLeads: Number(
-    openedData?.openLeads || 0
-  ),
+/*
+ * OPEN / PENDING ATUAIS DO RESPONSÁVEL
+ * Regra: status atual, sem filtro de data
+ */
+openLeads: Number(
+  currentOpenData?.openLeads || 0
+),
 
-  pendingLeads: Number(
-    openedData?.pendingLeads || 0
-  ),
-
+pendingLeads: Number(
+  currentOpenData?.pendingLeads || 0
+),
   /*
    * LEADS FECHADAS NO PERÍODO
    * closedTime
