@@ -1332,7 +1332,7 @@ function PersonPerformanceCard({
       <div className="mb-4 grid w-full min-w-0 grid-cols-4 gap-3">
 
         <Metric
-          label="Total Leads"
+          label="Recebidas Inbound"
           value={item.totalLeads}
           clickable
           onClick={onOpenSources}
