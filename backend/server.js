@@ -8219,14 +8219,27 @@ const sourcesByAssignee =
 },
 
     {
-      $match: {
-        performanceDate: {
+  $match: {
+    ...baseFilter,
+
+    $or: [
+      {
+        createdTime: {
+          $gte: start,
+          $lt: end,
+          $ne: null
+        }
+      },
+      {
+        modifiedTime: {
           $gte: start,
           $lt: end,
           $ne: null
         }
       }
-    },
+    ]
+  }
+},
 
  /*
  * Usa o primeiro source válido.
