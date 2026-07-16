@@ -8033,27 +8033,106 @@ const closedPerformance = await Lead.aggregate([
   },
 
     {
-      $addFields: {
-        statusDate: {
-          $ifNull: [
-            '$closedTime',
-            '$modifiedTime'
-          ]
+  $addFields: {
+    statusDate: {
+      $ifNull: [
+        '$closedTime',
+        '$modifiedTime'
+      ]
+    },
+
+    performanceAssigneeName: {
+      $let: {
+        vars: {
+          assigneeName: {
+            $trim: {
+              input: {
+                $ifNull: [
+                  '$assignee.name',
+                  ''
+                ]
+              }
+            }
+          },
+
+          rawAssigneeName: {
+            $trim: {
+              input: {
+                $ifNull: [
+                  '$rawData.assignee.name',
+                  ''
+                ]
+              }
+            }
+          },
+
+          lastActivityOwner: {
+            $trim: {
+              input: {
+                $ifNull: [
+                  {
+                    $arrayElemAt: [
+                      '$activities.loggedBy.name',
+                      -1
+                    ]
+                  },
+                  ''
+                ]
+              }
+            }
+          }
         },
 
-        performanceRevenue: {
-          $ifNull: [
-            '$value.amount',
+        in: {
+          $cond: [
             {
-              $ifNull: [
-                '$rawData.value.amount',
-                0
+              $ne: [
+                '$$assigneeName',
+                ''
+              ]
+            },
+            '$$assigneeName',
+            {
+              $cond: [
+                {
+                  $ne: [
+                    '$$rawAssigneeName',
+                    ''
+                  ]
+                },
+                '$$rawAssigneeName',
+                {
+                  $cond: [
+                    {
+                      $ne: [
+                        '$$lastActivityOwner',
+                        ''
+                      ]
+                    },
+                    '$$lastActivityOwner',
+                    'Sem responsável'
+                  ]
+                }
               ]
             }
           ]
         }
       }
     },
+
+    performanceRevenue: {
+      $ifNull: [
+        '$value.amount',
+        {
+          $ifNull: [
+            '$rawData.value.amount',
+            0
+          ]
+        }
+      ]
+    }
+  }
+},
 
     {
       $match: {
@@ -8067,7 +8146,7 @@ const closedPerformance = await Lead.aggregate([
 
     {
       $group: {
-        _id: '$assignee.name',
+        _id: '$performanceAssigneeName',
 
         wonLeads: {
           $sum: {
@@ -9516,7 +9595,7 @@ const sdrs = mergedPerformance
       sucesso: true,
 
       routeVersion:
-        'performance-by-assignee-v2',
+        'performance-by-assignee-v3-lost-fallback',
 
       period: selectedPeriod,
 
