@@ -8025,17 +8025,12 @@ const currentOpenPerformance =
 // REGRA: CLOSED TIME OU MODIFIED TIME
 // ========================================
 
-const closedPerformance =
-  await Lead.aggregate([
-    {
-      $match: {
-        ...baseFilter,
-
-        status: {
-          $in: [10, 11, 12]
-        }
-      }
-    },
+const closedPerformance = await Lead.aggregate([
+  {
+    $match: {
+      status: { $in: [10, 11, 12] }
+    }
+  },
 
     {
       $addFields: {
