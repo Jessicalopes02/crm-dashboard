@@ -1,22 +1,68 @@
-import { useState } from 'react';
+import {
+  Suspense,
+  lazy,
+  useState
+} from 'react';
+
 import {
   useIsAuthenticated,
   useMsal
 } from '@azure/msal-react';
 
 import Sidebar from './components/Sidebar';
-import Dashboard from './pages/Dashboard';
-import Leads from './pages/Leads';
-import Performance from './pages/Performance';
-import Campaigns from './pages/Campaigns';
-import Reports from './pages/Reports';
 import Login from './pages/Login';
 
-import TVGeneralPage from './pages/tv/TVGeneralPage';
-import TVCloserPage from './pages/tv/TVCloserPage';
-import TVSdrPage from './pages/tv/TVSdrPage';
-import TVOperationalPage from './pages/tv/TVOperationalPage';
-import TVFullSimplePage from './pages/tv/TVFullSimplePage';
+const Dashboard = lazy(() =>
+  import('./pages/Dashboard')
+);
+
+const Leads = lazy(() =>
+  import('./pages/Leads')
+);
+
+const Performance = lazy(() =>
+  import('./pages/Performance')
+);
+
+const Campaigns = lazy(() =>
+  import('./pages/Campaigns')
+);
+
+const Reports = lazy(() =>
+  import('./pages/Reports')
+);
+
+const TVGeneralPage = lazy(() =>
+  import('./pages/tv/TVGeneralPage')
+);
+
+const TVCloserPage = lazy(() =>
+  import('./pages/tv/TVCloserPage')
+);
+
+const TVSdrPage = lazy(() =>
+  import('./pages/tv/TVSdrPage')
+);
+
+const TVOperationalPage = lazy(() =>
+  import('./pages/tv/TVOperationalPage')
+);
+
+const TVFullSimplePage = lazy(() =>
+  import('./pages/tv/TVFullSimplePage')
+);
+
+function PageLoader() {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-100">
+      <div className="rounded-2xl bg-white px-6 py-4 shadow-sm border border-slate-200">
+        <p className="text-sm font-medium text-slate-700">
+          Carregando...
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function App() {
   const [activePage, setActivePage] =
@@ -44,27 +90,47 @@ function App() {
    * para não quebrar as telas em produção.
    */
   if (tvPage === 'general') {
-    return <TVGeneralPage tvMode={isFullscreen} />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <TVGeneralPage tvMode={isFullscreen} />
+      </Suspense>
+    );
   }
 
   if (tvPage === 'closer') {
-    return <TVCloserPage tvMode={isFullscreen} />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <TVCloserPage tvMode={isFullscreen} />
+      </Suspense>
+    );
   }
 
   if (tvPage === 'sdr') {
-    return <TVSdrPage tvMode={isFullscreen} />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <TVSdrPage tvMode={isFullscreen} />
+      </Suspense>
+    );
   }
 
   if (tvPage === 'operacional') {
-    return <TVOperationalPage tvMode={isFullscreen} />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <TVOperationalPage tvMode={isFullscreen} />
+      </Suspense>
+    );
   }
 
   if (tvPage === 'full') {
-    return <TVFullSimplePage />;
+    return (
+      <Suspense fallback={<PageLoader />}>
+        <TVFullSimplePage />
+      </Suspense>
+    );
   }
 
   /*
-   * Login só fica obrigatório quando
+   * Login obrigatório quando
    * VITE_AUTH_ENABLED=true
    */
   if (authEnabled && !isAuthenticated) {
@@ -116,16 +182,18 @@ function App() {
           </div>
         )}
 
-        {activePage === 'dashboard' && <Dashboard />}
-        {activePage === 'leads' && <Leads />}
-        {activePage === 'performance' && <Performance />}
-        {activePage === 'campaigns' && <Campaigns />}
-        {activePage === 'reports' && <Reports />}
+        <Suspense fallback={<PageLoader />}>
+          {activePage === 'dashboard' && <Dashboard />}
+          {activePage === 'leads' && <Leads />}
+          {activePage === 'performance' && <Performance />}
+          {activePage === 'campaigns' && <Campaigns />}
+          {activePage === 'reports' && <Reports />}
 
-        {activePage === 'tv-general' && <TVGeneralPage />}
-        {activePage === 'tv-closer' && <TVCloserPage />}
-        {activePage === 'tv-sdr' && <TVSdrPage />}
-        {activePage === 'tv-operacional' && <TVOperationalPage />}
+          {activePage === 'tv-general' && <TVGeneralPage />}
+          {activePage === 'tv-closer' && <TVCloserPage />}
+          {activePage === 'tv-sdr' && <TVSdrPage />}
+          {activePage === 'tv-operacional' && <TVOperationalPage />}
+        </Suspense>
       </main>
     </div>
   );
