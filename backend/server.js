@@ -15987,6 +15987,1356 @@ app.get('/api/reports/clients-and-loss-reasons', async (req, res) => {
       SDR_NAMES.map(normalizeName)
     );
 
+    // ========================================
+// RELATÓRIO COMERCIAL COMPLETO
+// NÃO APARECE NO DASHBOARD
+// ========================================
+
+app.get('/api/reports/commercial-complete-summary', async (req, res) => {
+  try {
+    const {
+      startDate,
+      endDate
+    } = req.query;
+
+    const now = new Date();
+
+    const rangeEnd = endDate
+      ? new Date(`${endDate}T23:59:59.999`)
+      : now;
+
+    const rangeStart = startDate
+      ? new Date(`${startDate}T00:00:00.000`)
+      : new Date(
+          now.getFullYear() - 1,
+          now.getMonth(),
+          now.getDate(),
+          0,
+          0,
+          0,
+          0
+        );
+
+    if (
+      Number.isNaN(rangeStart.getTime()) ||
+      Number.isNaN(rangeEnd.getTime())
+    ) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Datas inválidas. Use startDate=YYYY-MM-DD&endDate=YYYY-MM-DD.'
+      });
+    }
+
+    const monthsInRange = Math.max(
+      1,
+      (rangeEnd.getFullYear() - rangeStart.getFullYear()) * 12 +
+        (rangeEnd.getMonth() - rangeStart.getMonth()) +
+        1
+    );
+
+    const ignoredPipelineFilter = {
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      }
+    };
+
+    const SDR_NAMES = [
+      'Gisele Santos Gama',
+      'Guilherme Velloso',
+      'Leticia Barbosa',
+      'Luma Farias Silva Santos'
+    ];
+
+    const NOVOS_NEGOCIOS_NAMES = [
+      'Alba Danielly Rezende Lima',
+      'Beatriz Costa',
+      'Beatriz Costa Costa',
+      'Beatriz Costa  Costa',
+      'Edson da Silva Bomfim Júnior',
+      'Edson da Silva Bomfim Junior',
+      'Fabiane Carvalho Nascimento',
+      'Fábio Souza',
+      'Fabio Souza',
+      'Gabriel Lopes',
+      'Luiza Carvalho',
+      'Marcus Santana',
+      'Marcus Vinicius Dias Santana'
+    ];
+
+    const ACCOUNTS_NAMES = [
+      'Accounts Grupo'
+    ];
+
+    function normalizeName(value) {
+      return String(value || '')
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .toLowerCase();
+    }
+
+    const sdrSet = new Set(SDR_NAMES.map(normalizeName));
+    const novosNegociosSet = new Set(NOVOS_NEGOCIOS_NAMES.map(normalizeName));
+    const accountsSet = new Set(ACCOUNTS_NAMES.map(normalizeName));
+
+    function getTeamByResponsible(name) {
+      const normalized = normalizeName(name);
+
+      if (sdrSet.has(normalized)) {
+        return 'sdr';
+      }
+
+      if (novosNegociosSet.has(normalized)) {
+        return 'novosNegocios';
+      }
+
+      if (accountsSet.has(normalized)) {
+        return 'accounts';
+      }
+
+      return 'outros';
+    }
+
+    function clientNameExpression() {
+      return {
+        $trim: {
+          input: {
+            $toString: {
+              $ifNull: [
+                '$primaryAccount.name',
+                {
+                  $ifNull: [
+                    '$rawData.primaryAccount.name',
+                    {
+                      $ifNull: [
+                        '$rawData.primaryAccountName',
+                        {
+                          $ifNull: [
+                            '$description',
+                            '$name'
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      };
+    }
+
+    function responsibleNameExpression() {
+      return {
+        $trim: {
+          input: {
+            $toString: {
+              $ifNull: [
+                '$assignee.name',
+                {
+                  $ifNull: [
+                    '$rawData.assignee.name',
+                    {
+                      $ifNull: [
+                        {
+                          $arrayElemAt: [
+                            '$activities.loggedBy.name',
+                            -1
+                          ]
+                        },
+                        'Sem responsável'
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      };
+    }
+
+    function revenueExpression() {
+      return {
+        $ifNull: [
+          '$value.amount',
+          {
+            $ifNull: [
+              '$normalizedValue.amount',
+              {
+                $ifNull: [
+                  '$estimatedValue.amount',
+                  {
+                    $ifNull: [
+                      '$rawData.value.amount',
+                      0
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        ]
+      };
+    }
+
+    function lostReasonExpression() {
+      return {
+        $trim: {
+          input: {
+            $toString: {
+              $ifNull: [
+                '$outcome.description',
+                {
+                  $ifNull: [
+                    '$rawData.outcome.description',
+                    {
+                      $ifNull: [
+                        '$lostReason',
+                        {
+                          $ifNull: [
+                            '$rawData.lostReason',
+                            {
+                              $ifNull: [
+                                '$customFields.Lost reason',
+                                {
+                                  $ifNull: [
+                                    '$customFields.Motivo de perda',
+                                    'Sem motivo informado'
+                                  ]
+                                }
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      };
+    }
+
+    function sourceNameStages() {
+      return [
+        {
+          $addFields: {
+            allSources: {
+              $concatArrays: [
+                {
+                  $cond: [
+                    {
+                      $isArray: '$sources'
+                    },
+                    '$sources',
+                    []
+                  ]
+                },
+                {
+                  $cond: [
+                    {
+                      $isArray: '$rawData.sources'
+                    },
+                    '$rawData.sources',
+                    []
+                  ]
+                }
+              ]
+            }
+          }
+        },
+
+        {
+          $addFields: {
+            sourceNames: {
+              $filter: {
+                input: {
+                  $map: {
+                    input: '$allSources',
+                    as: 'source',
+                    in: {
+                      $trim: {
+                        input: {
+                          $switch: {
+                            branches: [
+                              {
+                                case: {
+                                  $eq: [
+                                    {
+                                      $type: '$$source'
+                                    },
+                                    'string'
+                                  ]
+                                },
+                                then: '$$source'
+                              },
+                              {
+                                case: {
+                                  $eq: [
+                                    {
+                                      $type: '$$source.name'
+                                    },
+                                    'string'
+                                  ]
+                                },
+                                then: '$$source.name'
+                              },
+                              {
+                                case: {
+                                  $eq: [
+                                    {
+                                      $type: '$$source.label'
+                                    },
+                                    'string'
+                                  ]
+                                },
+                                then: '$$source.label'
+                              },
+                              {
+                                case: {
+                                  $eq: [
+                                    {
+                                      $type: '$$source.value'
+                                    },
+                                    'string'
+                                  ]
+                                },
+                                then: '$$source.value'
+                              }
+                            ],
+                            default: ''
+                          }
+                        }
+                      }
+                    }
+                  }
+                },
+                as: 'sourceName',
+                cond: {
+                  $ne: [
+                    '$$sourceName',
+                    ''
+                  ]
+                }
+              }
+            }
+          }
+        },
+
+        {
+          $addFields: {
+            channelName: {
+              $ifNull: [
+                {
+                  $arrayElemAt: [
+                    '$sourceNames',
+                    0
+                  ]
+                },
+                'Sem source'
+              ]
+            }
+          }
+        }
+      ];
+    }
+
+    function activityBaseStages() {
+      return [
+        {
+          $match: {
+            activities: {
+              $exists: true,
+              $ne: []
+            }
+          }
+        },
+
+        {
+          $unwind: '$activities'
+        },
+
+        {
+          $addFields: {
+            activityDate: {
+              $convert: {
+                input: {
+                  $ifNull: [
+                    '$activities.startTime',
+                    {
+                      $ifNull: [
+                        '$activities.endTime',
+                        {
+                          $ifNull: [
+                            '$activities.createdTime',
+                            '$activities.modifiedTime'
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                },
+                to: 'date',
+                onError: null,
+                onNull: null
+              }
+            },
+
+            activityOwner: {
+              $ifNull: [
+                '$activities.loggedBy.name',
+                {
+                  $ifNull: [
+                    '$activities.user.name',
+                    {
+                      $ifNull: [
+                        '$activities.owner.name',
+                        {
+                          $ifNull: [
+                            '$activities.assignee.name',
+                            {
+                              $arrayElemAt: [
+                                '$activities.participants.name',
+                                0
+                              ]
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+
+            activityText: {
+              $toLower: {
+                $concat: [
+                  {
+                    $ifNull: [
+                      '$activities.name',
+                      ''
+                    ]
+                  },
+                  ' ',
+                  {
+                    $ifNull: [
+                      '$activities.activityType.name',
+                      ''
+                    ]
+                  },
+                  ' ',
+                  {
+                    $ifNull: [
+                      '$activities.description',
+                      ''
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+
+        {
+          $match: {
+            activityDate: {
+              $gte: rangeStart,
+              $lte: rangeEnd,
+              $ne: null
+            },
+
+            activityOwner: {
+              $exists: true,
+              $nin: [null, '']
+            }
+          }
+        }
+      ];
+    }
+
+    // ========================================
+    // 1. CLIENTES ATIVOS / OPEN
+    // ========================================
+
+    const activeClientsRaw = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          status: 0
+        }
+      },
+
+      {
+        $addFields: {
+          responsibleName: responsibleNameExpression(),
+          clientName: clientNameExpression()
+        }
+      },
+
+      {
+        $project: {
+          nutshell_id: 1,
+          name: 1,
+          responsibleName: 1,
+          clientName: 1
+        }
+      }
+    ]);
+
+    const activeSummary = {
+      geral: {
+        openLeads: activeClientsRaw.length,
+        uniqueClientsSet: new Set(
+          activeClientsRaw.map((lead) => lead.clientName)
+        )
+      },
+
+      sdr: {
+        openLeads: 0,
+        uniqueClientsSet: new Set()
+      },
+
+      novosNegocios: {
+        openLeads: 0,
+        uniqueClientsSet: new Set()
+      },
+
+      accounts: {
+        openLeads: 0,
+        uniqueClientsSet: new Set()
+      },
+
+      outros: {
+        openLeads: 0,
+        uniqueClientsSet: new Set()
+      }
+    };
+
+    activeClientsRaw.forEach((lead) => {
+      const team = getTeamByResponsible(
+        lead.responsibleName
+      );
+
+      activeSummary[team].openLeads++;
+      activeSummary[team].uniqueClientsSet.add(
+        lead.clientName
+      );
+    });
+
+    const activeClients = {
+      geral: {
+        openLeads: activeSummary.geral.openLeads,
+        uniqueClients: activeSummary.geral.uniqueClientsSet.size
+      },
+
+      sdr: {
+        openLeads: activeSummary.sdr.openLeads,
+        uniqueClients: activeSummary.sdr.uniqueClientsSet.size
+      },
+
+      novosNegocios: {
+        openLeads: activeSummary.novosNegocios.openLeads,
+        uniqueClients: activeSummary.novosNegocios.uniqueClientsSet.size
+      },
+
+      accounts: {
+        openLeads: activeSummary.accounts.openLeads,
+        uniqueClients: activeSummary.accounts.uniqueClientsSet.size
+      },
+
+      outros: {
+        openLeads: activeSummary.outros.openLeads,
+        uniqueClients: activeSummary.outros.uniqueClientsSet.size
+      }
+    };
+
+    // ========================================
+    // 2. NOVOS CLIENTES NOS ÚLTIMOS 12 MESES
+    // Regra: primeira venda WON do cliente dentro do período
+    // ========================================
+
+    const newClientsRaw = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          status: 10,
+          closedTime: {
+            $ne: null
+          }
+        }
+      },
+
+      {
+        $addFields: {
+          clientName: clientNameExpression()
+        }
+      },
+
+      {
+        $match: {
+          clientName: {
+            $nin: [null, '']
+          }
+        }
+      },
+
+      {
+        $group: {
+          _id: '$clientName',
+          firstWonDate: {
+            $min: '$closedTime'
+          }
+        }
+      },
+
+      {
+        $match: {
+          firstWonDate: {
+            $gte: rangeStart,
+            $lte: rangeEnd
+          }
+        }
+      },
+
+      {
+        $count: 'total'
+      }
+    ]);
+
+    const newClientsLast12Months =
+      Number(newClientsRaw[0]?.total || 0);
+
+    // ========================================
+    // 3. CLIENTES PERDIDOS NOS ÚLTIMOS 12 MESES
+    // ========================================
+
+    const lostClientsRaw = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          status: 11,
+          closedTime: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
+            $ne: null
+          }
+        }
+      },
+
+      {
+        $addFields: {
+          clientName: clientNameExpression()
+        }
+      },
+
+      {
+        $group: {
+          _id: '$clientName',
+          lostLeads: {
+            $sum: 1
+          }
+        }
+      }
+    ]);
+
+    const lostClientsLast12Months = {
+      lostLeads: lostClientsRaw.reduce(
+        (sum, item) => sum + Number(item.lostLeads || 0),
+        0
+      ),
+
+      uniqueClients: lostClientsRaw.length
+    };
+
+    // ========================================
+    // 4. PRINCIPAIS MOTIVOS DE PERDA
+    // ========================================
+
+    const lossReasons = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          status: 11,
+          closedTime: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
+            $ne: null
+          }
+        }
+      },
+
+      {
+        $addFields: {
+          lostReason: lostReasonExpression()
+        }
+      },
+
+      {
+        $group: {
+          _id: {
+            $cond: [
+              {
+                $eq: [
+                  '$lostReason',
+                  ''
+                ]
+              },
+              'Sem motivo informado',
+              '$lostReason'
+            ]
+          },
+
+          total: {
+            $sum: 1
+          }
+        }
+      },
+
+      {
+        $sort: {
+          total: -1
+        }
+      }
+    ]);
+
+    const totalLostReasons = lossReasons.reduce(
+      (sum, item) => sum + Number(item.total || 0),
+      0
+    );
+
+    // ========================================
+    // 5. TOP 20 CLIENTES POR FATURAMENTO
+    // ========================================
+
+    const top20Clients = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          status: 10,
+          closedTime: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
+            $ne: null
+          }
+        }
+      },
+
+      {
+        $addFields: {
+          clientName: clientNameExpression(),
+          revenueAmount: revenueExpression(),
+          revenueYear: {
+            $year: '$closedTime'
+          }
+        }
+      },
+
+      {
+        $group: {
+          _id: {
+            clientName: '$clientName',
+            year: '$revenueYear'
+          },
+
+          annualRevenue: {
+            $sum: '$revenueAmount'
+          },
+
+          wonLeads: {
+            $sum: 1
+          }
+        }
+      },
+
+      {
+        $group: {
+          _id: '$_id.clientName',
+
+          totalRevenue: {
+            $sum: '$annualRevenue'
+          },
+
+          totalWonLeads: {
+            $sum: '$wonLeads'
+          },
+
+          annualRevenue: {
+            $push: {
+              year: '$_id.year',
+              revenue: '$annualRevenue',
+              wonLeads: '$wonLeads'
+            }
+          }
+        }
+      },
+
+      {
+        $sort: {
+          totalRevenue: -1
+        }
+      },
+
+      {
+        $limit: 20
+      }
+    ]);
+
+    const totalRevenueCompanyRaw = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          status: 10,
+          closedTime: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
+            $ne: null
+          }
+        }
+      },
+
+      {
+        $addFields: {
+          revenueAmount: revenueExpression()
+        }
+      },
+
+      {
+        $group: {
+          _id: null,
+          totalRevenue: {
+            $sum: '$revenueAmount'
+          },
+          wonLeads: {
+            $sum: 1
+          }
+        }
+      }
+    ]);
+
+    const totalCompanyRevenue =
+      Number(totalRevenueCompanyRaw[0]?.totalRevenue || 0);
+
+    const biggestClient = top20Clients[0] || null;
+
+    const revenueConcentration = biggestClient
+      ? {
+          client: biggestClient._id,
+          revenue: Number(biggestClient.totalRevenue || 0),
+          companyRevenue: totalCompanyRevenue,
+          concentrationPercent:
+            totalCompanyRevenue > 0
+              ? (
+                  Number(biggestClient.totalRevenue || 0) /
+                  totalCompanyRevenue
+                ) * 100
+              : 0
+        }
+      : null;
+
+    // ========================================
+    // 6. PROPOSTAS POR MÊS
+    // ========================================
+
+    const proposalsByMonth = await Lead.aggregate([
+      ...activityBaseStages(),
+
+      {
+        $match: {
+          activityText: {
+            $regex: 'proposta|proposal',
+            $options: 'i'
+          }
+        }
+      },
+
+      {
+        $group: {
+          _id: {
+            year: {
+              $year: '$activityDate'
+            },
+            month: {
+              $month: '$activityDate'
+            }
+          },
+
+          proposals: {
+            $sum: 1
+          }
+        }
+      },
+
+      {
+        $sort: {
+          '_id.year': 1,
+          '_id.month': 1
+        }
+      }
+    ]);
+
+    const totalProposals = proposalsByMonth.reduce(
+      (sum, item) => sum + Number(item.proposals || 0),
+      0
+    );
+
+    const averageProposalsPerMonth =
+      totalProposals / monthsInRange;
+
+    // ========================================
+    // 7. TAXA MÉDIA DE CONVERSÃO
+    // Won / Won + Lost + Cancelado
+    // ========================================
+
+    const conversionRaw = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          status: {
+            $in: [10, 11, 12]
+          },
+          closedTime: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
+            $ne: null
+          }
+        }
+      },
+
+      {
+        $group: {
+          _id: null,
+
+          won: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    '$status',
+                    10
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          lost: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    '$status',
+                    11
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          },
+
+          cancelled: {
+            $sum: {
+              $cond: [
+                {
+                  $eq: [
+                    '$status',
+                    12
+                  ]
+                },
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
+    const conversionBase = conversionRaw[0] || {
+      won: 0,
+      lost: 0,
+      cancelled: 0
+    };
+
+    const closedDecisions =
+      Number(conversionBase.won || 0) +
+      Number(conversionBase.lost || 0) +
+      Number(conversionBase.cancelled || 0);
+
+    const averageConversionRate =
+      closedDecisions > 0
+        ? (
+            Number(conversionBase.won || 0) /
+            closedDecisions
+          ) * 100
+        : 0;
+
+    // ========================================
+    // 8. REUNIÕES E PROPOSTAS POR COLABORADOR
+    // ========================================
+
+    const collaboratorActivities = await Lead.aggregate([
+      ...activityBaseStages(),
+
+      {
+        $addFields: {
+          isMeeting: {
+            $regexMatch: {
+              input: '$activityText',
+              regex: 'reuni|meeting|call de diagnostico|call de diagnóstico',
+              options: 'i'
+            }
+          },
+
+          isProposal: {
+            $regexMatch: {
+              input: '$activityText',
+              regex: 'proposta|proposal',
+              options: 'i'
+            }
+          }
+        }
+      },
+
+      {
+        $group: {
+          _id: '$activityOwner',
+
+          meetings: {
+            $sum: {
+              $cond: [
+                '$isMeeting',
+                1,
+                0
+              ]
+            }
+          },
+
+          proposals: {
+            $sum: {
+              $cond: [
+                '$isProposal',
+                1,
+                0
+              ]
+            }
+          }
+        }
+      }
+    ]);
+
+    const collaboratorContracts = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          status: 10,
+          closedTime: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
+            $ne: null
+          }
+        }
+      },
+
+      {
+        $addFields: {
+          responsibleName: responsibleNameExpression(),
+          revenueAmount: revenueExpression()
+        }
+      },
+
+      {
+        $group: {
+          _id: '$responsibleName',
+
+          contractsClosed: {
+            $sum: 1
+          },
+
+          revenue: {
+            $sum: '$revenueAmount'
+          }
+        }
+      }
+    ]);
+
+    const collaboratorMap = new Map();
+
+    collaboratorActivities.forEach((item) => {
+      const key = normalizeName(item._id);
+
+      collaboratorMap.set(key, {
+        collaborator: item._id || 'Sem responsável',
+        meetings: Number(item.meetings || 0),
+        proposals: Number(item.proposals || 0),
+        contractsClosed: 0,
+        revenue: 0
+      });
+    });
+
+    collaboratorContracts.forEach((item) => {
+      const key = normalizeName(item._id);
+
+      const current =
+        collaboratorMap.get(key) || {
+          collaborator: item._id || 'Sem responsável',
+          meetings: 0,
+          proposals: 0,
+          contractsClosed: 0,
+          revenue: 0
+        };
+
+      current.contractsClosed += Number(item.contractsClosed || 0);
+      current.revenue += Number(item.revenue || 0);
+
+      collaboratorMap.set(key, current);
+    });
+
+    const collaborators = Array.from(
+      collaboratorMap.values()
+    ).sort(
+      (a, b) =>
+        Number(b.revenue || 0) -
+        Number(a.revenue || 0)
+    );
+
+    // ========================================
+    // 9. CANAIS
+    // Faturamento, leads gerados e clientes convertidos
+    // ========================================
+
+    const channelLeadsGenerated = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          createdTime: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
+            $ne: null
+          }
+        }
+      },
+
+      {
+        $addFields: {
+          clientName: clientNameExpression()
+        }
+      },
+
+      ...sourceNameStages(),
+
+      {
+        $group: {
+          _id: '$channelName',
+
+          leadsGenerated: {
+            $sum: 1
+          },
+
+          uniqueClientsGenerated: {
+            $addToSet: '$clientName'
+          }
+        }
+      }
+    ]);
+
+    const channelConversions = await Lead.aggregate([
+      {
+        $match: {
+          ...ignoredPipelineFilter,
+          status: 10,
+          closedTime: {
+            $gte: rangeStart,
+            $lte: rangeEnd,
+            $ne: null
+          }
+        }
+      },
+
+      {
+        $addFields: {
+          clientName: clientNameExpression(),
+          revenueAmount: revenueExpression()
+        }
+      },
+
+      ...sourceNameStages(),
+
+      {
+        $group: {
+          _id: '$channelName',
+
+          wonLeads: {
+            $sum: 1
+          },
+
+          convertedClients: {
+            $addToSet: '$clientName'
+          },
+
+          revenue: {
+            $sum: '$revenueAmount'
+          }
+        }
+      }
+    ]);
+
+    const channelMap = new Map();
+
+    channelLeadsGenerated.forEach((item) => {
+      channelMap.set(item._id || 'Sem source', {
+        channel: item._id || 'Sem source',
+        leadsGenerated: Number(item.leadsGenerated || 0),
+        uniqueClientsGenerated:
+          item.uniqueClientsGenerated?.length || 0,
+        wonLeads: 0,
+        convertedClients: 0,
+        revenue: 0
+      });
+    });
+
+    channelConversions.forEach((item) => {
+      const channel = item._id || 'Sem source';
+
+      const current =
+        channelMap.get(channel) || {
+          channel,
+          leadsGenerated: 0,
+          uniqueClientsGenerated: 0,
+          wonLeads: 0,
+          convertedClients: 0,
+          revenue: 0
+        };
+
+      current.wonLeads += Number(item.wonLeads || 0);
+      current.convertedClients +=
+        item.convertedClients?.length || 0;
+      current.revenue += Number(item.revenue || 0);
+
+      channelMap.set(channel, current);
+    });
+
+    const channels = Array.from(
+      channelMap.values()
+    ).sort(
+      (a, b) =>
+        Number(b.revenue || 0) -
+        Number(a.revenue || 0)
+    );
+
+    // ========================================
+    // RESPOSTA FINAL
+    // ========================================
+
+    res.json({
+      sucesso: true,
+
+      routeVersion:
+        'commercial-complete-summary-v1',
+
+      filters: {
+        startDate: rangeStart,
+        endDate: rangeEnd,
+        monthsInRange
+      },
+
+      rules: {
+        activeClients:
+          'Clientes ativos = leads Open / status 0',
+        newClients:
+          'Novos clientes = primeira lead Won do cliente dentro do período',
+        lostClients:
+          'Clientes perdidos = clientes únicos com lead Lost dentro do período',
+        lossReasons:
+          'Motivos de perda = Lost reason / outcome.description',
+        revenue:
+          'Faturamento = soma de value.amount das leads Won',
+        proposals:
+          'Propostas = atividades com nome contendo proposta/proposal',
+        meetings:
+          'Reuniões = atividades contendo reunião/meeting/call',
+        conversionRate:
+          'Taxa de conversão = Won / (Won + Lost + Cancelado)',
+        channel:
+          'Canal = primeiro source da lead'
+      },
+
+      answers: {
+        activeClients,
+
+        newClientsLast12Months,
+
+        lostClientsLast12Months,
+
+        lossReasons: {
+          totalLost: totalLostReasons,
+          totalReasons: lossReasons.length,
+          reasons: lossReasons.map((item) => ({
+            reason: item._id,
+            total: Number(item.total || 0),
+            percent:
+              totalLostReasons > 0
+                ? (
+                    Number(item.total || 0) /
+                    totalLostReasons
+                  ) * 100
+                : 0
+          }))
+        },
+
+        top20Clients: top20Clients.map((item) => ({
+          client: item._id,
+          totalRevenue: Number(item.totalRevenue || 0),
+          totalWonLeads: Number(item.totalWonLeads || 0),
+          annualRevenue: item.annualRevenue
+        })),
+
+        revenueConcentration,
+
+        proposals: {
+          totalProposals,
+          averageProposalsPerMonth,
+          byMonth: proposalsByMonth.map((item) => ({
+            year: item._id.year,
+            month: item._id.month,
+            proposals: Number(item.proposals || 0)
+          }))
+        },
+
+        averageConversionRate: {
+          won: Number(conversionBase.won || 0),
+          lost: Number(conversionBase.lost || 0),
+          cancelled: Number(conversionBase.cancelled || 0),
+          closedDecisions,
+          conversionRate: averageConversionRate
+        },
+
+        collaborators,
+
+        channels
+      }
+    });
+  } catch (error) {
+    console.error(
+      'ERRO COMMERCIAL COMPLETE SUMMARY:',
+      error
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+    
     const novosNegociosSet = new Set(
       NOVOS_NEGOCIOS_NAMES.map(normalizeName)
     );
