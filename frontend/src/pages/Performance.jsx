@@ -335,6 +335,11 @@ function Performance() {
             item.staleOpenPending
           );
 
+        total.activeRegisteredLeads +=
+          safeNumber(
+            item.activeRegisteredLeads
+          );  
+
         total.totalRevenue +=
           safeNumber(
             item.totalRevenue
@@ -414,6 +419,7 @@ function Performance() {
         activitiesCount: 0,
         meetingsCount: 0,
         staleOpenPending: 0,
+        activeRegisteredLeads: 0,
         totalRevenue: 0,
         effectiveCall: 0,
         nonEffectiveCall: 0,
@@ -737,10 +743,10 @@ const generalConversion =
       </div>
 
       <div className="mb-6 w-full min-w-0 max-w-full overflow-x-auto pb-2">
-        <div className="grid min-w-[980px] grid-cols-8 gap-2">
+        <div className="grid min-w-[1120px] grid-cols-9 gap-2">
 
         <SummaryCard
-          title="Total de Leads"
+          title="Recebidas Inbound"
           value={summary.totalLeads}
           clickable
           onClick={() =>
@@ -754,6 +760,12 @@ const generalConversion =
                 generalSourcesBreakdown
             })
           }
+        />
+
+        <SummaryCard
+          title="Ativos cadastrados"
+          value={summary.activeRegisteredLeads}
+          accent="amber"
         />
 
         <SummaryCard
@@ -1339,6 +1351,12 @@ function PersonPerformanceCard({
         />
 
         <Metric
+          label="Ativos cadastrados"
+          value={item.activeRegisteredLeads}
+          accent="amber"
+        />
+
+        <Metric
           label="Open"
           value={item.openLeads}
           accent="blue"
@@ -1522,12 +1540,13 @@ function PerformanceTable({
       </div>
 
       <div className="overflow-x-auto">
-        <table className="w-full min-w-[1400px]">
+        <table className="w-full min-w-[1500px]">
           <thead className="bg-slate-800">
             <tr className="text-left text-xs text-slate-300">
               <th className="px-3 py-4 text-center">#</th>
               <th className="px-3 py-4">Responsável</th>
-              <th className="px-3 py-4 text-center">Leads</th>
+              <th className="px-3 py-4 text-center">Recebidas</th>
+              <th className="px-3 py-4 text-center">Ativos cadastrados</th>
               <th className="px-3 py-4 text-center">Open</th>
               <th className="px-3 py-4 text-center">Won</th>
               <th className="px-3 py-4 text-center">Lost</th>
@@ -1577,6 +1596,10 @@ function PerformanceTable({
 
                   <td className="px-3 py-4 text-center">
                     {safeNumber(item.totalLeads)}
+                  </td>
+
+                  <td className="px-3 py-4 text-center font-semibold text-amber-300">
+                    {safeNumber(item.activeRegisteredLeads)}
                   </td>
 
                   <td className="px-3 py-4 text-center font-semibold text-blue-400">
