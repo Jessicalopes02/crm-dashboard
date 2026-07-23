@@ -8791,24 +8791,45 @@ const activitiesByAssignee =
         },
 
         activityDescription: {
-          $toLower: {
-            $concat: [
-              {
-                $ifNull: [
-                  '$activities.name',
-                  ''
-                ]
-              },
-              ' ',
-              {
-                $ifNull: [
-                  '$activities.activityType.name',
-                  ''
-                ]
-              }
-            ]
-          }
-        }
+  $toLower: {
+    $concat: [
+      {
+        $ifNull: [
+          '$activities.name',
+          ''
+        ]
+      },
+      ' ',
+      {
+        $ifNull: [
+          '$activities.activityType.name',
+          ''
+        ]
+      },
+      ' ',
+      {
+        $ifNull: [
+          '$activities.description',
+          ''
+        ]
+      },
+      ' ',
+      {
+        $ifNull: [
+          '$activities.logDescription',
+          ''
+        ]
+      },
+      ' ',
+      {
+        $ifNull: [
+          '$activities.logNote.note',
+          ''
+        ]
+      }
+    ]
+  }
+}
       }
     },
 
@@ -8818,18 +8839,31 @@ const activitiesByAssignee =
           $switch: {
             branches: [
               // No Show
-              {
-                case: {
-                  $regexMatch: {
-                    input:
-                      '$activityDescription',
-                    regex:
-                      'no\\s*show|no-show|nao\\s*compareceu|não\\s*compareceu',
-                    options: 'i'
-                  }
-                },
-                then: 'noShow'
-              },
+{
+  case: {
+    $or: [
+      {
+        $eq: [
+          {
+            $toString:
+              '$activities.activityType.id'
+          },
+          '88'
+        ]
+      },
+      {
+        $regexMatch: {
+          input:
+            '$activityDescription',
+          regex:
+            'no\\s*show|no-show|noshow|nao\\s*compareceu|não\\s*compareceu',
+          options: 'i'
+        }
+      }
+    ]
+  },
+  then: 'noShow'
+},
               // Proposta de projeto — Simulação
               {
                 case: {
