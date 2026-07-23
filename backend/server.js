@@ -8484,6 +8484,213 @@ const sourcesByAssignee =
     }
   ]);
 
+
+// ========================================
+// ATIVOS CADASTRADOS PELO CLOSER
+// Regra: lead criada no período + source Ativo + opened by/creator
+// ========================================
+
+const activeRegisteredByCloser =
+  await Lead.aggregate([
+    {
+      $match: {
+        'stageset.name': {
+          $ne: 'Processo de Vendas - Global Alliance'
+        },
+
+        createdTime: {
+          $gte: start,
+          $lt: end,
+          $ne: null
+        }
+      }
+    },
+
+    {
+      $addFields: {
+        openedByName: {
+          $trim: {
+            input: {
+              $toString: {
+                $ifNull: [
+                  '$creator.name',
+                  {
+                    $ifNull: [
+                      '$rawData.creator.name',
+                      {
+                        $ifNull: [
+                          '$createdBy.name',
+                          {
+                            $ifNull: [
+                              '$rawData.createdBy.name',
+                              {
+                                $ifNull: [
+                                  '$openedBy.name',
+                                  {
+                                    $ifNull: [
+                                      '$rawData.openedBy.name',
+                                      'Sem responsável'
+                                    ]
+                                  }
+                                ]
+                              }
+                            ]
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        },
+
+        allSources: {
+          $concatArrays: [
+            {
+              $cond: [
+                {
+                  $isArray: '$sources'
+                },
+                '$sources',
+                []
+              ]
+            },
+            {
+              $cond: [
+                {
+                  $isArray: '$rawData.sources'
+                },
+                '$rawData.sources',
+                []
+              ]
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      $addFields: {
+        sourceNames: {
+          $filter: {
+            input: {
+              $map: {
+                input: '$allSources',
+                as: 'source',
+                in: {
+                  $trim: {
+                    input: {
+                      $switch: {
+                        branches: [
+                          {
+                            case: {
+                              $eq: [
+                                {
+                                  $type: '$$source'
+                                },
+                                'string'
+                              ]
+                            },
+                            then: '$$source'
+                          },
+                          {
+                            case: {
+                              $eq: [
+                                {
+                                  $type: '$$source.name'
+                                },
+                                'string'
+                              ]
+                            },
+                            then: '$$source.name'
+                          },
+                          {
+                            case: {
+                              $eq: [
+                                {
+                                  $type: '$$source.label'
+                                },
+                                'string'
+                              ]
+                            },
+                            then: '$$source.label'
+                          },
+                          {
+                            case: {
+                              $eq: [
+                                {
+                                  $type: '$$source.value'
+                                },
+                                'string'
+                              ]
+                            },
+                            then: '$$source.value'
+                          }
+                        ],
+                        default: ''
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            as: 'sourceName',
+            cond: {
+              $ne: [
+                '$$sourceName',
+                ''
+              ]
+            }
+          }
+        }
+      }
+    },
+
+    {
+      $addFields: {
+        hasActiveSource: {
+          $gt: [
+            {
+              $size: {
+                $filter: {
+                  input: '$sourceNames',
+                  as: 'sourceName',
+                  cond: {
+                    $eq: [
+                      {
+                        $toLower: '$$sourceName'
+                      },
+                      'ativo'
+                    ]
+                  }
+                }
+              }
+            },
+            0
+          ]
+        }
+      }
+    },
+
+    {
+      $match: {
+        hasActiveSource: true
+      }
+    },
+
+    {
+      $group: {
+        _id: '$openedByName',
+
+        activeRegisteredLeads: {
+          $sum: 1
+        }
+      }
+    }
+  ]);  
+
 // ========================================
 // ATIVIDADES REALIZADAS NO PERÍODO
 // AGRUPADAS POR QUEM EXECUTOU
@@ -9222,6 +9429,27 @@ const closedPerformanceMap =
     ])
   );
 
+// ========================================
+// MAPA DOS ATIVOS CADASTRADOS
+// ========================================
+
+const activeRegisteredMap =
+  new Map(
+    activeRegisteredByCloser.map((item) => [
+      normalizeName(item._id),
+
+      {
+        _id:
+          item._id ||
+          'Sem responsável',
+
+        activeRegisteredLeads: Number(
+          item.activeRegisteredLeads || 0
+        )
+      }
+    ])
+  );
+
 /*
  * Junta responsáveis encontrados na pipeline
  * com responsáveis encontrados nas atividades.
@@ -9234,7 +9462,8 @@ const allResponsibleNames = new Set([
   ...currentOpenPerformanceMap.keys(),
   ...closedPerformanceMap.keys(),
   ...activitiesMap.keys(),
-  ...sourcesMap.keys()
+  ...sourcesMap.keys(),
+  ...activeRegisteredMap.keys()
 ]);
 
 const completePerformance = Array.from(
@@ -9264,6 +9493,11 @@ const currentOpenData =
     sourcesMap.get(
       normalizedName
     ); 
+
+  const activeRegisteredData =
+    activeRegisteredMap.get(
+      normalizedName
+    );
 
 return {
   _id:
@@ -9368,6 +9602,10 @@ pendingLeads: Number(
   totalLeadsBySource: Number(
     sourceData?.totalLeadsBySource || 0
   ),
+
+  activeRegisteredLeads: Number(
+  activeRegisteredData?.activeRegisteredLeads || 0
+),
 
   staleOpenPending: Number(
     staleMap.get(normalizedName) || 0
@@ -9491,6 +9729,7 @@ function mergePerformanceRows(rows = []) {
         meetingsCount: 0,
         staleOpenPending: 0,
         totalLeadsBySource: 0,
+        activeRegisteredLeads: 0,
         activityBreakdown: {},
         sourcesBreakdown: []
       };
@@ -9507,6 +9746,9 @@ function mergePerformanceRows(rows = []) {
     existing.meetingsCount += Number(row.meetingsCount || 0);
     existing.staleOpenPending += Number(row.staleOpenPending || 0);
     existing.totalLeadsBySource += Number(row.totalLeadsBySource || 0);
+    existing.activeRegisteredLeads += Number(
+      row.activeRegisteredLeads || 0
+    );
 
     existing.activityBreakdown = mergeActivityBreakdown(
       existing.activityBreakdown,
@@ -9595,7 +9837,7 @@ const sdrs = mergedPerformance
       sucesso: true,
 
       routeVersion:
-        'performance-by-assignee-v3-lost-fallback',
+         'performance-by-assignee-v4-active-registered',
 
       period: selectedPeriod,
 
