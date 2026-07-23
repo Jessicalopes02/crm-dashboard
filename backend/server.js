@@ -8509,26 +8509,42 @@ const activeRegisteredByCloser =
     {
       $addFields: {
         openedByName: {
-          $trim: {
-            input: {
-              $toString: {
+  $trim: {
+    input: {
+      $toString: {
+        $ifNull: [
+          '$creator.name',
+          {
+            $ifNull: [
+              '$rawData.creator.name',
+              {
                 $ifNull: [
-                  '$creator.name',
+                  '$createdBy.name',
                   {
                     $ifNull: [
-                      '$rawData.creator.name',
+                      '$rawData.createdBy.name',
                       {
                         $ifNull: [
-                          '$createdBy.name',
+                          '$openedBy.name',
                           {
                             $ifNull: [
-                              '$rawData.createdBy.name',
+                              '$rawData.openedBy.name',
                               {
                                 $ifNull: [
-                                  '$openedBy.name',
+                                  {
+                                    $arrayElemAt: [
+                                      '$activities.loggedBy.name',
+                                      0
+                                    ]
+                                  },
                                   {
                                     $ifNull: [
-                                      '$rawData.openedBy.name',
+                                      {
+                                        $arrayElemAt: [
+                                          '$activities.logNote.user.name',
+                                          0
+                                        ]
+                                      },
                                       'Sem responsável'
                                     ]
                                   }
@@ -8542,9 +8558,13 @@ const activeRegisteredByCloser =
                   }
                 ]
               }
-            }
+            ]
           }
-        },
+        ]
+      }
+    }
+  }
+},
 
         allSources: {
           $concatArrays: [
@@ -17568,6 +17588,108 @@ cron.schedule(
     timezone: 'America/Sao_Paulo'
   }
 );
+
+
+// ========================================
+// SYNC - LEAD ESPECÍFICA COMPLETA
+// Corrige source, assignee, tags e dados completos
+// ========================================
+
+app.get('/api/sync/nutshell/lead/:leadId', async (req, res) => {
+  try {
+    const leadId = Number(req.params.leadId);
+
+    if (!leadId) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Informe um leadId válido.'
+      });
+    }
+
+    const response = await axios.post(
+      'https://app.nutshell.com/api/v1/json',
+      {
+        method: 'getLead',
+        params: {
+          leadId
+        },
+        id: 1
+      },
+      {
+        auth: {
+          username: NUTSHELL_EMAIL,
+          password: NUTSHELL_API_KEY
+        }
+      }
+    );
+
+    const fullLead = response.data?.result;
+
+    if (!fullLead) {
+      return res.status(404).json({
+        sucesso: false,
+        erro: 'Lead não encontrada no Nutshell.'
+      });
+    }
+
+    await saveFullLead(fullLead);
+
+    const updatedLead = await Lead.findOne({
+      nutshell_id: leadId
+    })
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        description: 1,
+        status: 1,
+        assignee: 1,
+        sources: 1,
+        rawData: 1,
+        activities: 1,
+        createdTime: 1,
+        modifiedTime: 1,
+        synced_at: 1
+      })
+      .lean();
+
+    res.json({
+      sucesso: true,
+      routeVersion: 'sync-single-lead-v1',
+      message: 'Lead sincronizada com dados completos.',
+      nutshellLead: {
+        id: fullLead.id,
+        name: fullLead.name,
+        assignee: fullLead.assignee?.name || null,
+        sources: Array.isArray(fullLead.sources)
+          ? fullLead.sources.map((source) => source?.name || source)
+          : []
+      },
+      mongoLead: {
+        nutshell_id: updatedLead?.nutshell_id,
+        name: updatedLead?.name,
+        assignee: updatedLead?.assignee?.name || null,
+        sources: Array.isArray(updatedLead?.sources)
+          ? updatedLead.sources.map((source) => source?.name || source)
+          : [],
+        firstActivityOwner:
+          updatedLead?.activities?.[0]?.loggedBy?.name ||
+          updatedLead?.activities?.[0]?.logNote?.user?.name ||
+          null,
+        synced_at: updatedLead?.synced_at
+      }
+    });
+  } catch (error) {
+    console.error(
+      'ERRO SYNC LEAD ESPECÍFICA:',
+      error.response?.data || error.message
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
+    });
+  }
+});
 
 // ========================================
 // AUDITORIA - LEADS CRIADAS NO DIA
