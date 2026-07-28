@@ -8892,6 +8892,33 @@ const activitiesByAssignee =
                 then: 'standaloneProposal'
               },
 
+              // Reunião Agendada
+              {
+                case: {
+                  $or: [
+                   {
+                    $regexMatch: {
+                      input:
+                        '$activityDescription',
+                      regex:
+                        'reuniao agendada|reunião agendada|google meeting|meeting agendado',
+                      options: 'i'
+                    }
+                  },
+                  {
+                    $eq: [
+                      {
+                        $toString:
+                          '$activities.activityType.id'
+                      },
+                      '3'
+                    ]
+                  }
+                ]
+              },
+              then: 'scheduledMeeting'
+            },
+
               // Reunião — Primeiro contato
               {
                 case: {
@@ -8905,6 +8932,7 @@ const activitiesByAssignee =
                 },
                 then: 'firstContactMeeting'
               },
+              
 
               // Reunião — Follow-up
               {
@@ -9052,6 +9080,21 @@ const activitiesByAssignee =
             ]
           }
         },
+
+        scheduledMeetingsCount: {
+          $sum: {
+            $cond: [
+              {
+               $eq: [
+                 '$activityCategory',
+                 'scheduledMeeting'
+               ]
+             },
+             1,
+             0
+           ]
+         }
+      },
 
         firstContactMeetingsCount: {
           $sum: {
@@ -9355,6 +9398,10 @@ const sourcesMap = new Map(
 
         meetings: Number(
           item.meetingsCount || 0
+        ),
+
+        scheduledMeetings: Number(
+          item.scheduledMeetingsCount || 0
         ),
 
         firstContactMeetings: Number(
@@ -9881,6 +9928,24 @@ const sdrs = mergedPerformance
       normalizedName
     );
   })
+  .map((item) => {
+    const scheduledMeetings = Number(
+      item.activityBreakdown?.scheduledMeetings || 0
+    );
+
+    return {
+      ...item,
+
+      // Para SDR, reuniões = somente Reunião Agendada
+      meetingsCount: scheduledMeetings,
+
+      activityBreakdown: {
+        ...(item.activityBreakdown || {}),
+
+        meetings: scheduledMeetings
+      }
+    };
+  })
   .sort(
     (first, second) =>
       Number(second.activitiesCount || 0) -
@@ -9891,7 +9956,7 @@ const sdrs = mergedPerformance
       sucesso: true,
 
       routeVersion:
-         'performance-by-assignee-v4-active-registered',
+         'performance-by-assignee-v6-sdr-scheduled-meetings',
 
       period: selectedPeriod,
 
