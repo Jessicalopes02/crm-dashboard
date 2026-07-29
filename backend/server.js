@@ -17791,6 +17791,219 @@ app.get('/api/sync/nutshell/lead/:leadId', async (req, res) => {
 });
 
 // ========================================
+// AUDITORIA - PROCURAR EVENTOS DE REASSIGN
+// Verifica se o Mongo tem histórico de mudança de assignee
+// ========================================
+
+app.get('/api/audit/find-reassign-events', async (req, res) => {
+  try {
+    const {
+      leadId,
+      search,
+      limit = 20
+    } = req.query;
+
+    const mongoLimit =
+      Math.min(
+        Math.max(Number(limit) || 20, 1),
+        100
+      );
+
+    const filter = {};
+
+    if (leadId) {
+      filter.nutshell_id =
+        Number(leadId);
+    }
+
+    if (search) {
+      const regex =
+        new RegExp(
+          String(search).replace(
+            /[.*+?^${}()|[\]\\]/g,
+            '\\$&'
+          ),
+          'i'
+        );
+
+      filter.$or = [
+        { name: regex },
+        { description: regex },
+        { 'rawData.name': regex },
+        { 'rawData.description': regex },
+        { 'rawData.primaryAccountName': regex }
+      ];
+    }
+
+    const leads = await Lead.find(filter)
+      .limit(mongoLimit)
+      .lean();
+
+    const keywords = [
+      'reassign',
+      'reassigned',
+      'reassignment',
+      'assigned',
+      'assignee changed',
+      'changed assignee',
+      'responsável',
+      'responsavel',
+      'reatrib',
+      'atribuiu',
+      'transferiu'
+    ];
+
+    function isInterestingText(value) {
+      const normalized =
+        String(value || '')
+          .normalize('NFD')
+          .replace(/[\u0300-\u036f]/g, '')
+          .toLowerCase();
+
+      return keywords.some((keyword) =>
+        normalized.includes(
+          keyword
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, '')
+            .toLowerCase()
+        )
+      );
+    }
+
+    function safePreview(value) {
+      const text =
+        typeof value === 'string'
+          ? value
+          : JSON.stringify(value);
+
+      return String(text || '')
+        .slice(0, 500);
+    }
+
+    function scanObject({
+      value,
+      path,
+      matches,
+      depth
+    }) {
+      if (
+        value === null ||
+        value === undefined ||
+        depth > 10
+      ) {
+        return;
+      }
+
+      if (
+        typeof value === 'string' ||
+        typeof value === 'number' ||
+        typeof value === 'boolean'
+      ) {
+        if (isInterestingText(value)) {
+          matches.push({
+            path,
+            type: typeof value,
+            preview: safePreview(value)
+          });
+        }
+
+        return;
+      }
+
+      if (Array.isArray(value)) {
+        value.forEach((item, index) => {
+          scanObject({
+            value: item,
+            path: `${path}[${index}]`,
+            matches,
+            depth: depth + 1
+          });
+        });
+
+        return;
+      }
+
+      if (typeof value === 'object') {
+        Object.entries(value).forEach(
+          ([key, childValue]) => {
+            const childPath =
+              path
+                ? `${path}.${key}`
+                : key;
+
+            if (isInterestingText(key)) {
+              matches.push({
+                path: childPath,
+                type: 'key',
+                preview: safePreview(childValue)
+              });
+            }
+
+            scanObject({
+              value: childValue,
+              path: childPath,
+              matches,
+              depth: depth + 1
+            });
+          }
+        );
+      }
+    }
+
+    const results = leads.map((lead) => {
+      const matches = [];
+
+      scanObject({
+        value: lead,
+        path: '',
+        matches,
+        depth: 0
+      });
+
+      return {
+        nutshell_id: lead.nutshell_id,
+        name: lead.name,
+        description: lead.description,
+        assigneeName:
+          lead.assignee?.name ||
+          lead.rawData?.assignee?.name ||
+          null,
+        matches
+      };
+    });
+
+    res.json({
+      sucesso: true,
+      routeVersion:
+        'find-reassign-events-v1',
+      message:
+        'Se matches vier vazio, o histórico de mudança de assignee não está salvo no Mongo.',
+      filters: {
+        leadId: leadId || null,
+        search: search || null,
+        limit: mongoLimit
+      },
+      totalLeadsChecked: results.length,
+      leadsWithMatches: results.filter(
+        (item) => item.matches.length > 0
+      ).length,
+      results
+    });
+  } catch (error) {
+    console.error(
+      'ERRO FIND REASSIGN EVENTS:',
+      error
+    );
+
+    res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
+
+// ========================================
 // AUDITORIA - LEADS CRIADAS NO DIA
 // ========================================
 
