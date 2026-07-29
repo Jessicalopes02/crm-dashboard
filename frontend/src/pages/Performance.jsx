@@ -88,9 +88,6 @@ function getDisplayMeetingsCount(item, viewMode) {
     ) +
     safeNumber(
       breakdown.followUpMeetings
-    ) +
-    safeNumber(
-      breakdown.generalMeetings
     )
   );
 }
@@ -458,7 +455,7 @@ function Performance() {
         other: 0
       }
     );
-  }, [filteredPerformance]);
+  }, [filteredPerformance, viewMode]);
 
   const generalSourcesBreakdown =
     useMemo(() => {
