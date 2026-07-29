@@ -7922,41 +7922,142 @@ app.get('/api/dashboard/performance-by-assignee', async (req, res) => {
       baseFilter.status = Number(status);
     }
 
-  // ========================================
-// RECEBIDAS INBOUND NO PERÍODO
-// REGRA: CREATED TIME OU MODIFIED TIME
-// Serve para contar leads criadas ou movidas
-// para o responsável dentro do período.
+
+    // ========================================
+// BASE - RECEBIDAS INBOUND
+// Regra:
+// atividade Reunião Agendada no período
+// conta para o assignee atual da lead
 // ========================================
 
-const receivedInboundPerformance =
-  await Lead.aggregate([
-    {
-      $match: {
-        ...baseFilter,
+const receivedInboundBaseStages = [
+  {
+    $unwind: {
+      path: '$activities',
+      preserveNullAndEmptyArrays: false
+    }
+  },
 
-        $or: [
-          {
-            createdTime: {
-              $gte: start,
-              $lt: end,
-              $ne: null
-            }
+  {
+    $addFields: {
+      inboundActivityDate: {
+        $convert: {
+          input: {
+            $ifNull: [
+              '$activities.startTime',
+              '$activities.createdTime'
+            ]
           },
-          {
-            modifiedTime: {
-              $gte: start,
-              $lt: end,
-              $ne: null
+          to: 'date',
+          onError: null,
+          onNull: null
+        }
+      },
+
+      inboundActivityName: {
+        $toLower: {
+          $trim: {
+            input: {
+              $concat: [
+                {
+                  $ifNull: [
+                    '$activities.name',
+                    ''
+                  ]
+                },
+                ' ',
+                {
+                  $ifNull: [
+                    '$activities.activityType.name',
+                    ''
+                  ]
+                }
+              ]
             }
           }
-        ]
+        }
+      },
+
+      inboundAssigneeName: {
+        $trim: {
+          input: {
+            $ifNull: [
+              '$assignee.name',
+              {
+                $ifNull: [
+                  '$rawData.assignee.name',
+                  'Sem responsável'
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+
+  {
+    $match: {
+      'stageset.name': {
+        $ne: 'Processo de Vendas - Global Alliance'
+      },
+
+      inboundActivityDate: {
+        $gte: start,
+        $lt: end,
+        $ne: null
+      },
+
+      $or: [
+        {
+          'activities.activityType.id': {
+            $in: [
+              3,
+              '3'
+            ]
+          }
+        },
+        {
+          inboundActivityName: {
+            $regex:
+              'reuniao agendada|reunião agendada|google meeting|meeting agendado',
+            $options: 'i'
+          }
+        }
+      ]
+    }
+  }
+];
+  
+  // ========================================
+
+
+  const receivedInboundPerformance =
+  await Lead.aggregate([
+    ...receivedInboundBaseStages,
+
+    /*
+     * Evita duplicar a mesma lead caso tenha
+     * mais de uma reunião agendada no período.
+     */
+    {
+      $group: {
+        _id: {
+          assigneeName:
+            '$inboundAssigneeName',
+          leadId:
+            '$nutshell_id'
+        },
+
+        firstScheduledMeetingAt: {
+          $min: '$inboundActivityDate'
+        }
       }
     },
 
     {
       $group: {
-        _id: '$assignee.name',
+        _id: '$_id.assigneeName',
 
         totalLeads: {
           $sum: 1
@@ -8282,177 +8383,175 @@ const closedPerformance = await Lead.aggregate([
 
 const sourcesByAssignee =
   await Lead.aggregate([
+    ...receivedInboundBaseStages,
+
+    /*
+     * Deduplica por lead antes de contar sources.
+     */
     {
-      $match: baseFilter
+      $group: {
+        _id: {
+          assigneeName:
+            '$inboundAssigneeName',
+          leadId:
+            '$nutshell_id'
+        },
+
+        sources: {
+          $first: '$sources'
+        },
+
+        rawSources: {
+          $first: '$rawData.sources'
+        }
+      }
     },
 
     {
-  $addFields: {
-    performanceDate: '$createdTime'
-  }
-},
-
-    {
-  $match: {
-    ...baseFilter,
-
-    $or: [
-      {
-        createdTime: {
-          $gte: start,
-          $lt: end,
-          $ne: null
-        }
-      },
-      {
-        modifiedTime: {
-          $gte: start,
-          $lt: end,
-          $ne: null
+      $addFields: {
+        allSources: {
+          $concatArrays: [
+            {
+              $cond: [
+                {
+                  $isArray: '$sources'
+                },
+                '$sources',
+                []
+              ]
+            },
+            {
+              $cond: [
+                {
+                  $isArray: '$rawSources'
+                },
+                '$rawSources',
+                []
+              ]
+            }
+          ]
         }
       }
-    ]
-  }
-},
+    },
 
- /*
- * Usa o primeiro source válido.
- * Aceita source em vários formatos:
- * - { name: 'Site Process' }
- * - 'Site Process'
- * - rawData.sources
- * - label/value, se vier nesses campos
- */
-{
-  $addFields: {
-    allSources: {
-      $concatArrays: [
-        {
-          $cond: [
-            {
-              $isArray: '$sources'
-            },
-            '$sources',
-            []
-          ]
-        },
-        {
-          $cond: [
-            {
-              $isArray: '$rawData.sources'
-            },
-            '$rawData.sources',
-            []
-          ]
-        }
-      ]
-    }
-  }
-},
-
-{
-  $addFields: {
-    sourceNames: {
-      $filter: {
-        input: {
-          $map: {
-            input: '$allSources',
-            as: 'source',
-            in: {
-              $trim: {
-                input: {
-                  $switch: {
-                    branches: [
-                      {
-                        case: {
-                          $eq: [
-                            {
-                              $type: '$$source'
+    {
+      $addFields: {
+        mappedSourceNames: {
+          $filter: {
+            input: {
+              $map: {
+                input: '$allSources',
+                as: 'source',
+                in: {
+                  $trim: {
+                    input: {
+                      $switch: {
+                        branches: [
+                          {
+                            case: {
+                              $eq: [
+                                {
+                                  $type: '$$source'
+                                },
+                                'string'
+                              ]
                             },
-                            'string'
-                          ]
-                        },
-                        then: '$$source'
-                      },
-                      {
-                        case: {
-                          $eq: [
-                            {
-                              $type: '$$source.name'
+                            then: '$$source'
+                          },
+                          {
+                            case: {
+                              $eq: [
+                                {
+                                  $type:
+                                    '$$source.name'
+                                },
+                                'string'
+                              ]
                             },
-                            'string'
-                          ]
-                        },
-                        then: '$$source.name'
-                      },
-                      {
-                        case: {
-                          $eq: [
-                            {
-                              $type: '$$source.label'
+                            then: '$$source.name'
+                          },
+                          {
+                            case: {
+                              $eq: [
+                                {
+                                  $type:
+                                    '$$source.label'
+                                },
+                                'string'
+                              ]
                             },
-                            'string'
-                          ]
-                        },
-                        then: '$$source.label'
-                      },
-                      {
-                        case: {
-                          $eq: [
-                            {
-                              $type: '$$source.value'
+                            then: '$$source.label'
+                          },
+                          {
+                            case: {
+                              $eq: [
+                                {
+                                  $type:
+                                    '$$source.value'
+                                },
+                                'string'
+                              ]
                             },
-                            'string'
-                          ]
-                        },
-                        then: '$$source.value'
+                            then: '$$source.value'
+                          }
+                        ],
+                        default: ''
                       }
-                    ],
-                    default: ''
+                    }
                   }
                 }
               }
+            },
+            as: 'sourceName',
+            cond: {
+              $ne: [
+                '$$sourceName',
+                ''
+              ]
             }
           }
-        },
+        }
+      }
+    },
 
-        as: 'sourceName',
-
-        cond: {
-          $ne: [
-            '$$sourceName',
-            ''
+    {
+      $addFields: {
+        sourceNames: {
+          $cond: [
+            {
+              $gt: [
+                {
+                  $size:
+                    '$mappedSourceNames'
+                },
+                0
+              ]
+            },
+            {
+              $setUnion: [
+                '$mappedSourceNames',
+                []
+              ]
+            },
+            [
+              'Sem source'
+            ]
           ]
         }
       }
-    }
-  }
-},
+    },
 
-{
-  $addFields: {
-    sourceName: {
-      $ifNull: [
-        {
-          $arrayElemAt: [
-            '$sourceNames',
-            0
-          ]
-        },
-        'Sem source'
-      ]
-    }
-  }
-},
+    {
+      $unwind: '$sourceNames'
+    },
 
     {
       $group: {
         _id: {
-          assignee:
-            '$assignee.name',
-
-          source:
-            '$sourceName'
+          assigneeName:
+            '$_id.assigneeName',
+          sourceName:
+            '$sourceNames'
         },
 
         total: {
@@ -8463,22 +8562,17 @@ const sourcesByAssignee =
 
     {
       $group: {
-        _id:
-          '$_id.assignee',
+        _id: '$_id.assigneeName',
 
-        sources: {
+        sourcesBreakdown: {
           $push: {
-            name:
-              '$_id.source',
-
-            total:
-              '$total'
+            name: '$_id.sourceName',
+            total: '$total'
           }
         },
 
         totalLeadsBySource: {
-          $sum:
-            '$total'
+          $sum: '$total'
         }
       }
     }
@@ -9334,9 +9428,9 @@ const sourcesMap = new Map(
       ),
 
       sources: Array.isArray(
-        item.sources
+        item.sourcesBreakdown
       )
-        ? [...item.sources].sort(
+        ? [...item.sourcesBreakdown].sort(
             (first, second) =>
               Number(
                 second.total || 0
@@ -9956,7 +10050,7 @@ const sdrs = mergedPerformance
       sucesso: true,
 
       routeVersion:
-         'performance-by-assignee-v6-sdr-scheduled-meetings',
+        'performance-by-assignee-v8-inbound-by-scheduled-meeting',
 
       period: selectedPeriod,
 
