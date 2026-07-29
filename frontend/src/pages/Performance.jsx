@@ -72,6 +72,29 @@ function formatPercent(value) {
   return `${safeNumber(value).toFixed(1)}%`;
 }
 
+function getDisplayMeetingsCount(item, viewMode) {
+  const breakdown =
+    item.activityBreakdown || {};
+
+  if (viewMode === 'sdr') {
+    return safeNumber(
+      breakdown.meetings
+    );
+  }
+
+  return (
+    safeNumber(
+      breakdown.firstContactMeetings
+    ) +
+    safeNumber(
+      breakdown.followUpMeetings
+    ) +
+    safeNumber(
+      breakdown.generalMeetings
+    )
+  );
+}
+
 function Performance() {
   const [loading, setLoading] =
     useState(true);
@@ -326,8 +349,9 @@ function Performance() {
           );
 
         total.meetingsCount +=
-          safeNumber(
-            item.meetingsCount
+          getDisplayMeetingsCount(
+            item,
+            viewMode
           );
 
         total.staleOpenPending +=
@@ -1392,10 +1416,13 @@ function PersonPerformanceCard({
         <Metric
           label="Reuniões"
           value={
-            item.meetingsCount
-          }
-          accent="amber"
-        />
+            getDisplayMeetingsCount(
+              item,
+              viewMode
+            )
+        }
+        accent="amber"
+      />
 
         {viewMode === 'closer' && (
           <Metric
