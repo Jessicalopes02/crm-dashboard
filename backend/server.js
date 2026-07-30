@@ -2052,8 +2052,14 @@ async function getLeadActivitiesByLeadId(leadId) {
       {
         method: 'findActivities',
         params: {
-          query: String(leadId),
-          limit: 100
+          query: {
+            leadId: Number(leadId)
+          },
+          orderBy: 'startTime',
+          orderDirection: 'ASC',
+          limit: 100,
+          page: 1,
+          stubResponses: false
         },
         id: 1
       },
@@ -2065,14 +2071,12 @@ async function getLeadActivitiesByLeadId(leadId) {
       }
     );
 
-    const activities = response.data.result || [];
+    const activities = Array.isArray(response.data?.result)
+      ? response.data.result
+      : [];
 
     return activities.filter((activity) =>
-      normalizeText(
-        activity?.name ||
-        activity?.activityType?.name ||
-        ''
-      ).includes('reunião')
+      isMeetingActivity(activity)
     );
 
   } catch (error) {
@@ -4012,17 +4016,31 @@ function normalizeName(text) {
 
 function isMeetingActivity(activity) {
   const activityName = normalizeName(
-    activity?.name ||
-    activity?.activityType?.name ||
-    ''
+    [
+      activity?.name,
+      activity?.activityType?.name,
+      activity?.type,
+      activity?.description,
+      activity?.logDescription,
+      activity?.logNote?.note
+    ]
+      .filter(Boolean)
+      .join(' ')
   );
 
-  return (
+  const isMeeting =
     activityName.includes('reuniao efetiva') ||
     activityName.includes('reuniao agendada') ||
     activityName.includes('reuniao reagendada') ||
-    activityName.includes('reuniao realizada')
-  );
+    activityName.includes('reuniao realizada') ||
+    activityName.includes('meeting agendado') ||
+    activityName.includes('scheduled meeting');
+
+  const isCancelled =
+    activityName.includes('cancelada') ||
+    activityName.includes('cancelado');
+
+  return isMeeting && !isCancelled;
 }
 
 function hasRoadToGloryTag(tags = []) {
@@ -12217,12 +12235,20 @@ Object.entries(teams).forEach(([teamKey, users]) => {
 
     const isMeetingActivity = (activity) => {
   const activityName = normalizeName(
-    activity?.name ||
-    activity?.activityType?.name ||
-    ''
+    [
+      activity?.name,
+      activity?.activityType?.name,
+      activity?.type,
+      activity?.description,
+      activity?.logDescription,
+      activity?.logNote?.note
+    ]
+      .filter(Boolean)
+      .join(' ')
   );
 
   const isMeeting =
+    activityName.includes('reuniao efetiva') ||
     activityName.includes('reuniao agendada') ||
     activityName.includes('reuniao reagendada') ||
     activityName.includes('reuniao realizada') ||
@@ -12235,7 +12261,6 @@ Object.entries(teams).forEach(([teamKey, users]) => {
 
   return isMeeting && !isCancelled;
 };
-
     const hasMeetingStage = (lead) => {
       const milestoneName = normalizeName(
         lead.milestone?.name ||
