@@ -3941,7 +3941,7 @@ async function getNutshellLastPage(limit = 20) {
 // FUNÇÕES AUXILIARES
 // ========================================
 
-const ROAD_TO_GLORY_TAG = 'Road to the Glory - Junho';
+const ROAD_TO_GLORY_TAG = 'Road to the Glory - Julho';
 
 function createMonthRange(period = '2026-07') {
   const match = String(period).match(/^(\d{4})-(\d{2})$/);
@@ -6428,7 +6428,7 @@ app.get(
   async (req, res) => {
     try {
       const campaignTag =
-        'Road to the Glory - Junho';
+        'Road to the Glory - Julho';
 
       const limit = Math.min(
         Math.max(Number(req.query.limit) || 50, 1),
@@ -6569,8 +6569,10 @@ app.get(
         await Lead.find({
           tags: {
             $elemMatch: {
-              $regex:
-                '^Road to the Glory - Junho$',
+              $regex: `^${campaignTag.replace(
+                /[.*+?^${}()|[\]\\]/g,
+                '\\$&'
+              )}$`,
               $options: 'i'
             }
           }
@@ -6652,7 +6654,7 @@ app.get('/api/sync/nutshell/road-to-glory-meetings', async (req, res) => {
       tags: {
         $in: [
          
-          'Road to the Glory - Junho'
+          'Road to the Glory - Julho'
         ]
       }
     })
@@ -12044,11 +12046,11 @@ app.get('/api/audit/goals-achievement-detail', async (req, res) => {
 
 async function getRoadToGloryProgress(req, res) {
   try {
-    const start = new Date('2026-07-31T03:00:00.000Z');
+    const start = new Date('2026-07-30T03:00:00.000Z');
     const end = new Date('2026-08-01T02:59:59.999Z');
 
-    const limitMiles = 6000;
-    const campaignTag = 'Road to the Glory - Agosto';
+    const limitMiles = 1200;
+    const campaignTag = 'Road to the Glory - Julho';
 
     const normalizeName = (value) =>
       String(value || '')
@@ -12067,13 +12069,12 @@ async function getRoadToGloryProgress(req, res) {
 
   mercedes: [
     'fabio souza',
-    'edson da silva bomfim junior',
     'guilherme velloso',
     'leticia barbosa'
   ],
 
   ferrari: [
-    'giovanna fernandes',
+    'edson da silva bomfim junior',
     'pedro scarillo',
     'luma farias silva santos',
     'luiza carvalho'
@@ -12261,7 +12262,10 @@ Object.entries(teams).forEach(([teamKey, users]) => {
     const leads = await Lead.find({
       tags: {
         $elemMatch: {
-          $regex: '^Road to the Glory - Junho$',
+          $regex: `^${campaignTag.replace(
+            /[.*+?^${}()|[\]\\]/g,
+            '\\$&'
+          )}$`,
           $options: 'i'
         }
       }
@@ -12594,19 +12598,6 @@ Object.entries(teams).forEach(([teamKey, users]) => {
       }
     }
 
-    const manualAdjustments = {
-  ferrari: 350,
-  redbull:760,
-  mercedes:460
-};
-
-// aplica ajuste ANTES do ranking
-Object.keys(result).forEach((team) => {
-  result[team].miles =
-    (result[team].miles || 0) +
-    (manualAdjustments[team] || 0);
-});
-
     const ranking = Object.values(result)
       .sort(
         (first, second) =>
@@ -12704,7 +12695,7 @@ app.get(
 
 app.get('/api/audit/road-to-glory-summary', async (req, res) => {
   const leads = await Lead.find({
-    tags: { $in: ['Road to the Glory - Junho'] }
+    tags: { $in: ['Road to the Glory - Julho'] }
   }).select('name assignee.name tags milestone.name stageset.name activities value status').lean();
 
   const normalizeName = (name) =>
@@ -12751,7 +12742,7 @@ app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
         {
           method: 'findLeads',
           params: {
-            query: 'Road to the Glory - Junho',
+            query: 'Road to the Glory - Julho',
             limit,
             page
         },
@@ -12793,7 +12784,7 @@ app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
       const normalizedTag = String(tag || '').toLowerCase();
 
       return (
-        normalizedTag.includes('road to the glory - junho') 
+        normalizedTag.includes('road to the glory - julho') 
        );
      });
 
@@ -13296,7 +13287,7 @@ app.get(
   async (req, res) => {
     try {
       const campaignTag =
-        'Road to the Glory - Junho';
+        'Road to the Glory - Julho';
 
       const limit = Math.min(
         Math.max(Number(req.query.limit) || 100, 1),
@@ -14256,8 +14247,7 @@ const campaignPeriods = {
       ferrari: {
         name: 'Ferrari',
         members: [
-          'giovanna fernandes',
-          'pedro scarillo',
+          'edson da silva bomfim junior',
           'luma farias silva santos',
           'gabriel lopes'
         ]
@@ -14266,7 +14256,6 @@ const campaignPeriods = {
       mercedes: {
         name: 'Mercedes',
         members: [
-          'edson da silva bomfim junior',
           'fabio souza',
           'guilherme velloso',
           'leticia barbosa'
