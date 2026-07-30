@@ -4019,10 +4019,7 @@ function isMeetingActivity(activity) {
     [
       activity?.name,
       activity?.activityType?.name,
-      activity?.type,
-      activity?.description,
-      activity?.logDescription,
-      activity?.logNote?.note
+      activity?.type
     ]
       .filter(Boolean)
       .join(' ')
@@ -4036,11 +4033,17 @@ function isMeetingActivity(activity) {
     activityName.includes('meeting agendado') ||
     activityName.includes('scheduled meeting');
 
-  const isCancelled =
+  const isNotMeeting =
     activityName.includes('cancelada') ||
-    activityName.includes('cancelado');
+    activityName.includes('cancelado') ||
+    activityName.includes('whatsapp') ||
+    activityName.includes('mensagem') ||
+    activityName.includes('ligacao') ||
+    activityName.includes('ligação') ||
+    activityName.includes('e-mail') ||
+    activityName.includes('email');
 
-  return isMeeting && !isCancelled;
+  return isMeeting && !isNotMeeting;
 }
 
 function hasRoadToGloryTag(tags = []) {
