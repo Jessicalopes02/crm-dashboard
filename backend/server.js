@@ -12063,7 +12063,7 @@ async function getRoadToGloryProgress(req, res) {
     const teams = {
   redbull: [
     'alba danielly rezende lima',
-    'fabiane carvalho nascimento',
+    'lucio lage',
     'gisele santos gama'
   ],
 
@@ -12075,7 +12075,6 @@ async function getRoadToGloryProgress(req, res) {
 
   ferrari: [
     'edson da silva bomfim junior',
-    'pedro scarillo',
     'luma farias silva santos',
     'luiza carvalho'
   ]
@@ -12194,13 +12193,19 @@ Object.entries(teams).forEach(([teamKey, users]) => {
 
     const getActivityUser = (activity, lead) => {
       const activityUser = getTeamFromNames([
+        activity?.loggedBy?.name,
+        activity?.rawData?.loggedBy?.name,
+
         activity?.user?.name,
         activity?.assignee?.name,
         activity?.owner?.name,
         activity?.createdBy?.name,
+
         activity?.logNote?.user?.name,
         activity?.rawData?.user?.name,
-        activity?.rawData?.logNote?.user?.name
+        activity?.rawData?.logNote?.user?.name,
+
+        activity?.participants?.[0]?.name
       ]);
 
       if (activityUser.teamKey) {
@@ -12240,7 +12245,10 @@ Object.entries(teams).forEach(([teamKey, users]) => {
 
       return (
         milestoneName.includes('reuniao agendada') ||
-        milestoneName.includes('reuniao reagendada')
+        milestoneName.includes('reuniao reagendada') ||
+        milestoneName.includes('reuniao realizada') ||
+        milestoneName.includes('meeting agendado') ||
+        milestoneName.includes('scheduled meeting')
       );
     };
 
@@ -12867,7 +12875,7 @@ app.get('/api/audit/redbull-meetings', async (req, res) => {
     'assignee.name': {
       $in: [
         'Alba Danielly Rezende Lima',
-        'Fabiane Carvalho Nascimento',
+        'lucio lage',
         'Gisele Santos Gama'
       ]
     },
@@ -14249,7 +14257,8 @@ const campaignPeriods = {
         members: [
           'edson da silva bomfim junior',
           'luma farias silva santos',
-          'gabriel lopes'
+          'gabriel lopes',
+          'luiza carvalho'
         ]
       },
 
@@ -14267,7 +14276,8 @@ const campaignPeriods = {
         members: [
           'gisele santos gama',
           'alba danielly rezende lima',
-          'luiza carvalho'
+          'lucio lage',
+          'lúcio lage'
         ]
       }
     };
