@@ -48,8 +48,8 @@ const TVOperationalPage = lazy(() =>
   import('./pages/tv/TVOperationalPage')
 );
 
-const TVFullSimplePage = lazy(() =>
-  import('./pages/tv/TVFullSimplePage')
+const TVFullPage = lazy(() =>
+  import('./pages/tv/TVFullPage')
 );
 
 function PageLoader() {
@@ -122,12 +122,12 @@ function App() {
   }
 
   if (tvPage === 'full') {
-    return (
-      <Suspense fallback={<PageLoader />}>
-        <TVFullSimplePage />
-      </Suspense>
-    );
-  }
+  return (
+    <Suspense fallback={<PageLoader />}>
+      <TVFullPage tvMode={isFullscreen} />
+    </Suspense>
+  );
+}
 
   /*
    * Login obrigatório quando
