@@ -12099,7 +12099,8 @@ async function getRoadToGloryProgress(req, res) {
   ferrari: [
     'edson da silva bomfim junior',
     'luma farias silva santos',
-    'luiza carvalho'
+    'luiza carvalho',
+    'gabriel lopes'
   ]
 };
     const result = {
