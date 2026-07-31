@@ -12070,7 +12070,7 @@ async function getRoadToGloryProgress(req, res) {
     const start = new Date('2026-07-30T03:00:00.000Z');
     const end = new Date('2026-08-01T02:59:59.999Z');
 
-    const limitMiles = 2000;
+    const limitMiles = 2500;
     const campaignTag = 'Road to the Glory - Julho';
 
     const normalizeName = (value) =>
