@@ -12092,7 +12092,8 @@ async function getRoadToGloryProgress(req, res) {
   mercedes: [
     'fabio souza',
     'guilherme velloso',
-    'leticia barbosa'
+    'leticia barbosa',
+    'beatriz costa'
   ],
 
   ferrari: [
@@ -14296,7 +14297,8 @@ const campaignPeriods = {
         members: [
           'fabio souza',
           'guilherme velloso',
-          'leticia barbosa'
+          'leticia barbosa',
+          'beatriz costa'
         ]
       },
 
