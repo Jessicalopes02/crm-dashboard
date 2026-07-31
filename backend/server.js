@@ -12085,7 +12085,8 @@ async function getRoadToGloryProgress(req, res) {
   redbull: [
     'alba danielly rezende lima',
     'lucio lage',
-    'gisele santos gama'
+    'gisele santos gama',
+    'fabiane carvalho nascimento'
   ],
 
   mercedes: [
@@ -14305,7 +14306,8 @@ const campaignPeriods = {
           'gisele santos gama',
           'alba danielly rezende lima',
           'lucio lage',
-          'lúcio lage'
+          'lúcio lage',
+          'fabiane carvalho nascimento'
         ]
       }
     };
