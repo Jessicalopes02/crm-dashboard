@@ -12566,35 +12566,35 @@ Object.entries(teams).forEach(([teamKey, users]) => {
         isInsidePeriod(closedDate);
 
       /*
-       * REGRA 4:
-       * Lead nova fechada no mesmo dia = +200.
-       */
-      if (
-        isWon &&
-        isNewLead &&
-        closedInPeriod &&
-        isSameBrazilDay(
-          createdDate,
-          closedDate
-        )
-      ) {
-        if (leadUser.teamKey) {
-          result[leadUser.teamKey].miles += 200;
+ * REGRA 4:
+ * Bônus de lead nova fechada na campanha = +200.
+ *
+ * A lead precisa ter sido criada dentro dos dias da campanha
+ * e fechada dentro dos dias da campanha.
+ * Não precisa ser no mesmo dia.
+ */
+if (
+  isWon &&
+  isNewLead &&
+  closedInPeriod
+) {
+  if (leadUser.teamKey) {
+    result[leadUser.teamKey].miles += 200;
 
-          details.push({
-            leadId: lead.nutshell_id,
-            leadName: lead.name,
-            event: 'new_lead_won_same_day',
-            miles: 200,
-            team:
-              result[leadUser.teamKey].team,
-            user:
-              leadUser.userName,
-            createdDate,
-            closedDate
-          });
-        }
-      }
+    details.push({
+      leadId: lead.nutshell_id,
+      leadName: lead.name,
+      event: 'new_lead_won_campaign_period',
+      miles: 200,
+      team:
+        result[leadUser.teamKey].team,
+      user:
+        leadUser.userName,
+      createdDate,
+      closedDate
+    });
+  }
+}
 
       /*
        * REGRA 5:
@@ -12676,7 +12676,7 @@ Object.entries(teams).forEach(([teamKey, users]) => {
         newLead: 10,
         scheduledMeeting: 50,
         newLeadMeetingSameDay: 100,
-        newLeadWonSameDayBonus: 200
+        newLeadWonCampaignPeriodBonus: 200
       },
 
       limit: limitMiles,
