@@ -12333,6 +12333,41 @@ Object.entries(teams).forEach(([teamKey, users]) => {
 
       const leadUser = getLeadUser(lead);
 
+      const normalizedLeadUserName =
+  normalizeName(leadUser.userName);
+
+const isGabrielLead =
+  normalizedLeadUserName ===
+  normalizeName('Gabriel Lopes');
+
+const isBeatrizLead =
+  normalizedLeadUserName ===
+    normalizeName('Beatriz Costa') ||
+  normalizedLeadUserName ===
+    normalizeName('Beatriz Costa Costa');
+
+/*
+ * Gabriel:
+ * só pontua venda.
+ */
+const canScoreNewLead =
+  !isGabrielLead;
+
+/*
+ * Gabriel e Beatriz:
+ * não pontuam reunião +50
+ * e não pontuam bônus lead nova + reunião +100.
+ */
+const canScoreMeetingBonus =
+  !isGabrielLead && !isBeatrizLead;
+
+/*
+ * Gabriel e Beatriz:
+ * não pontuam bônus won +200.
+ */
+const canScoreWonBonus =
+  !isGabrielLead && !isBeatrizLead;
+
       const activities = Array.isArray(lead.activities)
         ? lead.activities
         : [];
@@ -12478,7 +12513,10 @@ Object.entries(teams).forEach(([teamKey, users]) => {
        * Lead nova + reunião no mesmo dia = 100.
        * Nesse caso não soma 10 + 50.
        */
-      if (sameDayMeeting) {
+      if (
+        canScoreMeetingBonus &&
+        sameDayMeeting
+      ) {
         result[sameDayMeeting.teamKey].miles += 100;
 
         details.push({
@@ -12502,7 +12540,10 @@ Object.entries(teams).forEach(([teamKey, users]) => {
          * REGRA 2:
          * Lead nova = 10.
          */
-        if (isNewLead) {
+        if (
+          canScoreNewLead &&
+          isNewLead
+        ) {
           if (leadUser.teamKey) {
             result[leadUser.teamKey].miles += 10;
 
@@ -12538,26 +12579,28 @@ Object.entries(teams).forEach(([teamKey, users]) => {
          *
          * Mesmo uma lead antiga pode pontuar.
          */
-        meetingEvents.forEach((meeting) => {
-          result[meeting.teamKey].miles += 50;
+        if (canScoreMeetingBonus) {
+          meetingEvents.forEach((meeting) => {
+            result[meeting.teamKey].miles += 50;
 
-          details.push({
-            leadId: lead.nutshell_id,
-            leadName: lead.name,
-            event: 'scheduled_meeting',
-            miles: 50,
-            team:
-              result[meeting.teamKey].team,
-            user:
-              meeting.userName,
-            source:
-              meeting.source,
-            meetingDate:
-              meeting.date,
-            activityName:
-              meeting.activityName
-          });
-        });
+            details.push({
+              leadId: lead.nutshell_id,
+              leadName: lead.name,
+              event: 'scheduled_meeting',
+              miles: 50,
+              team:
+                result[meeting.teamKey].team,
+              user:
+                meeting.userName,
+              source:
+                meeting.source,
+              meetingDate:
+                meeting.date,
+              activityName:
+                meeting.activityName
+           });
+         });
+       }
       }
 
       const isWon =
@@ -12575,6 +12618,7 @@ Object.entries(teams).forEach(([teamKey, users]) => {
  * Não precisa ser no mesmo dia.
  */
 if (
+  canScoreWonBonus &&
   isWon &&
   isNewLead &&
   closedInPeriod
@@ -12606,8 +12650,10 @@ if (
         closedInPeriod
       ) {
         const amount = Number(
-          lead.value?.amount ||
-          lead.rawData?.value?.amount ||
+          lead.value?.amount ??
+          lead.normalizedValue?.amount ??
+          lead.rawData?.value?.amount ??
+          lead.rawData?.normalizedValue?.amount ??
           0
         );
 
