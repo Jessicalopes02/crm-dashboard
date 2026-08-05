@@ -392,15 +392,21 @@ function CloserScreenTwo({ campaignProgress }) {
   const percent = getPercent(team);
   const carImage = carMap[teamName];
 
-  const visualPercent = Math.min(
-    Math.max(percent, 0),
-    100
-  );
+const visualPercent = Math.min(
+  Math.max(percent, 0),
+  100
+);
 
-  const carRightOffset =
-    teamName === 'Ferrari' ? '-55px' : '0px';
+const carRightOffsetMap = {
+  Ferrari: '-55px',
+  Mercedes: '-60px',
+  'Red Bull': '-55px'
+};
 
-  return (
+const carRightOffset =
+  carRightOffsetMap[teamName] || '0px';
+
+return (
           <div
             key={`${teamName}-${index}`}
             className="absolute left-[3.7%] w-[91.5%]"
