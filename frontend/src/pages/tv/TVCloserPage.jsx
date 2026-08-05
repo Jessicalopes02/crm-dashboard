@@ -397,6 +397,9 @@ function CloserScreenTwo({ campaignProgress }) {
     100
   );
 
+  const carRightOffset =
+    teamName === 'Ferrari' ? '-55px' : '0px';
+
   return (
           <div
             key={`${teamName}-${index}`}
@@ -422,7 +425,7 @@ function CloserScreenTwo({ campaignProgress }) {
       alt={teamName}
       className="absolute h-[68px] object-contain drop-shadow-2xl transition-all duration-1000 ease-out"
       style={{
-        right: '0px',
+        right: carRightOffset,
         top: '56%',
         transform: 'translate(0%, -50%)'
       }}
