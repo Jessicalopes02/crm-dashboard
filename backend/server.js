@@ -12704,66 +12704,54 @@ if (
       }
     }
 
-   /*
- * AJUSTES MANUAIS DEFINITIVOS
+/*
+ * PLACAR DEFINITIVO DA CAMPANHA
  *
- * Ferrari:
- * +90 pontos para manter a Lead–28535
- * como nova lead com reunião no mesmo dia.
- *
- * Red Bull:
- * +50 pontos para manter a reunião
- * anteriormente pontuada da Lead–28229.
+ * Estes valores não mudam mesmo que os dados
+ * automáticos do Nutshell sejam atualizados.
  */
-const manualAdjustments = {
-  ferrari: {
-    miles: 90,
-    reason:
-      'Correção da Lead–28535: manter nova lead com reunião no mesmo dia'
-  },
-
-  mercedes: {
-    miles: 0,
-    reason: ''
-  },
-
-  redbull: {
-    miles: 50,
-    reason:
-      'Correção da Lead–28229: manter reunião anteriormente pontuada'
-  }
+const finalTeamMiles = {
+  ferrari: 1812,
+  mercedes: 1673,
+  redbull: 1595
 };
 
-for (
-  const [teamKey, adjustment]
-  of Object.entries(manualAdjustments)
-) {
+for (const teamKey of Object.keys(result)) {
+  const automaticMiles =
+    Number(result[teamKey].miles || 0);
+
+  const finalMiles =
+    Number(finalTeamMiles[teamKey] || 0);
+
   const manualMiles =
-    Number(adjustment.miles || 0);
+    finalMiles - automaticMiles;
 
   result[teamKey].automaticMiles =
-    Number(result[teamKey].miles || 0);
+    automaticMiles;
 
   result[teamKey].manualMiles =
     manualMiles;
 
-  if (manualMiles === 0) {
-    continue;
+  /*
+   * Substitui o resultado automático pelo
+   * placar definitivo da campanha.
+   */
+  result[teamKey].miles =
+    finalMiles;
+
+  if (manualMiles !== 0) {
+    details.push({
+      leadId: null,
+      leadName: 'Ajuste manual',
+      event: 'manual_adjustment',
+      miles: manualMiles,
+      teamKey,
+      team: result[teamKey].team,
+      user: 'Ajuste administrativo',
+      reason:
+        'Ajuste para manter o placar definitivo da campanha'
+    });
   }
-
-  result[teamKey].miles +=
-    manualMiles;
-
-  details.push({
-    leadId: null,
-    leadName: 'Ajuste manual',
-    event: 'manual_adjustment',
-    miles: manualMiles,
-    teamKey,
-    team: result[teamKey].team,
-    user: 'Ajuste administrativo',
-    reason: adjustment.reason
-  });
 }
 
     const ranking = Object.values(result)
