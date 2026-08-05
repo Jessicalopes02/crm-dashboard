@@ -12073,6 +12073,27 @@ async function getRoadToGloryProgress(req, res) {
     const limitMiles = 1800;
     const campaignTag = 'Road to the Glory - Julho';
 
+    const scoreAdjustments =
+  await CampaignScoreAdjustment.find({
+    campaignTag
+  })
+    .sort({ createdAt: 1 })
+    .lean();
+
+const getManualPoints = (teamKey) => {
+  return scoreAdjustments
+    .filter(
+      (adjustment) =>
+        adjustment.teamKey === teamKey
+    )
+    .reduce(
+      (total, adjustment) =>
+        total +
+        Number(adjustment.points || 0),
+      0
+    );
+};
+
     const normalizeName = (value) =>
       String(value || '')
         .normalize('NFD')
@@ -12682,6 +12703,68 @@ if (
         }
       }
     }
+
+   /*
+ * AJUSTES MANUAIS DEFINITIVOS
+ *
+ * Ferrari:
+ * +90 pontos para manter a Lead–28535
+ * como nova lead com reunião no mesmo dia.
+ *
+ * Red Bull:
+ * +50 pontos para manter a reunião
+ * anteriormente pontuada da Lead–28229.
+ */
+const manualAdjustments = {
+  ferrari: {
+    miles: 90,
+    reason:
+      'Correção da Lead–28535: manter nova lead com reunião no mesmo dia'
+  },
+
+  mercedes: {
+    miles: 0,
+    reason: ''
+  },
+
+  redbull: {
+    miles: 50,
+    reason:
+      'Correção da Lead–28229: manter reunião anteriormente pontuada'
+  }
+};
+
+for (
+  const [teamKey, adjustment]
+  of Object.entries(manualAdjustments)
+) {
+  const manualMiles =
+    Number(adjustment.miles || 0);
+
+  result[teamKey].automaticMiles =
+    Number(result[teamKey].miles || 0);
+
+  result[teamKey].manualMiles =
+    manualMiles;
+
+  if (manualMiles === 0) {
+    continue;
+  }
+
+  result[teamKey].miles +=
+    manualMiles;
+
+  details.push({
+    leadId: null,
+    leadName: 'Ajuste manual',
+    event: 'manual_adjustment',
+    miles: manualMiles,
+    teamKey,
+    team: result[teamKey].team,
+    user: 'Ajuste administrativo',
+    reason: adjustment.reason
+  });
+}
 
     const ranking = Object.values(result)
       .sort(
