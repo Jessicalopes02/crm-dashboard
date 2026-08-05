@@ -388,11 +388,23 @@ function CloserScreenTwo({ campaignProgress }) {
 
       {/* Pistas e carros */}
       {ranking.map((team, index) => {
-        const teamName = getTeamName(team);
-        const percent = getPercent(team);
-        const carImage = carMap[teamName];
+  const teamName = getTeamName(team);
+  const percent = getPercent(team);
+  const carImage = carMap[teamName];
 
-        return (
+  /*
+   * Percentual visual da pista.
+   * Limita a barra e o carro no mesmo ponto,
+   * para o carro não ficar atrás do final da barra.
+   */
+  const visualPercent = Math.min(
+    Math.max(percent, 0),
+    94
+  );
+
+  const carLeft = `${Math.max(visualPercent, 7)}%`;
+
+  return (
           <div
             key={`${teamName}-${index}`}
             className="absolute left-[3.7%] w-[91.5%]"
@@ -408,7 +420,7 @@ function CloserScreenTwo({ campaignProgress }) {
               <div
                 className="absolute left-0 top-0 h-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)] transition-[width] duration-1000 ease-out"
                 style={{
-                  width: `${percent}%`
+                  width: `${visualPercent}%`
                 }}
               />
 
@@ -419,7 +431,7 @@ function CloserScreenTwo({ campaignProgress }) {
   alt={teamName}
   className="absolute h-[68px] -translate-x-1/2 object-contain drop-shadow-2xl transition-[left] duration-1000 ease-out"
   style={{
-    left: `clamp(7%, ${percent}% + 7%, 94%)`,
+    left: carLeft,
     top: '56%',
     transform: 'translate(-100%, -50%)'
   }}
