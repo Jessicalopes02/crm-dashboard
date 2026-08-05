@@ -392,17 +392,10 @@ function CloserScreenTwo({ campaignProgress }) {
   const percent = getPercent(team);
   const carImage = carMap[teamName];
 
-  /*
-   * Percentual visual da pista.
-   * Limita a barra e o carro no mesmo ponto,
-   * para o carro não ficar atrás do final da barra.
-   */
   const visualPercent = Math.min(
     Math.max(percent, 0),
-    94
+    100
   );
-
-  const carLeft = `${Math.max(visualPercent, 7)}%`;
 
   return (
           <div
@@ -416,27 +409,26 @@ function CloserScreenTwo({ campaignProgress }) {
               {/* Fundo da barra */}
               <div className="absolute inset-0 rounded-full bg-white/5 border-[2px] border-white/80 shadow-[0_0_8px_rgba(255,255,255,0.4)]" />
 
-              {/* Progresso */}
-              <div
-                className="absolute left-0 top-0 h-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)] transition-[width] duration-1000 ease-out"
-                style={{
-                  width: `${visualPercent}%`
-                }}
-              />
-
-              {/* Carro */}
-              {carImage && (
-                <img
-  src={carImage}
-  alt={teamName}
-  className="absolute h-[68px] -translate-x-1/2 object-contain drop-shadow-2xl transition-[left] duration-1000 ease-out"
+              {/* Progresso + carro juntos */}
+<div
+  className="absolute left-0 top-0 h-full rounded-full bg-white shadow-[0_0_20px_rgba(255,255,255,0.9)] transition-[width] duration-1000 ease-out overflow-visible"
   style={{
-    left: carLeft,
-    top: '56%',
-    transform: 'translate(-100%, -50%)'
+    width: `${visualPercent}%`
   }}
-/>
-              )}
+>
+  {carImage && (
+    <img
+      src={carImage}
+      alt={teamName}
+      className="absolute h-[68px] object-contain drop-shadow-2xl transition-all duration-1000 ease-out"
+      style={{
+        right: '0px',
+        top: '56%',
+        transform: 'translate(0%, -50%)'
+      }}
+    />
+  )}
+</div>
             </div>
           </div>
         );
