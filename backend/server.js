@@ -12711,9 +12711,9 @@ if (
  * automáticos do Nutshell sejam atualizados.
  */
 const finalTeamMiles = {
-  ferrari: 1812,
-  mercedes: 1673,
-  redbull: 1595
+  ferrari: 1776,
+  mercedes: 1640,
+  redbull: 1564
 };
 
 for (const teamKey of Object.keys(result)) {
