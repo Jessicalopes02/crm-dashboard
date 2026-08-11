@@ -25,8 +25,13 @@ const upload = multer({ dest: 'uploads/' });
 const allowedOrigins = [
   'http://localhost:5173',
   'http://localhost:3000',
+
+  // Front antigo
   'https://crm-dashboard-1-rtpd.onrender.com',
-  'https://crm-dashboard-ex08.onrender.com'
+  'https://crm-dashboard-ex08.onrender.com',
+
+  // Front atual
+  'https://crm-dashboard-1-9aa7.onrender.com'
 ];
 
 app.use(
