@@ -4533,21 +4533,26 @@ async function getTeamPerformanceDashboard({
           {
             $addFields: {
               performanceRevenue: {
-                $ifNull: [
-                  '$value.amount',
-                  {
-                    $ifNull: [
-                      '$normalizedValue.amount',
-                      {
-                        $ifNull: [
-                          '$rawData.value.amount',
-                          0
-                        ]
-                      }
-                    ]
-                  }
-                ]
-              }
+  $max: [
+    {
+      $ifNull: [
+        '$value.amount',
+        {
+          $ifNull: [
+            '$normalizedValue.amount',
+            {
+              $ifNull: [
+                '$rawData.value.amount',
+                0
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    0
+  ]
+}
             }
           },
 
