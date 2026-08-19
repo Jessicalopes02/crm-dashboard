@@ -1778,11 +1778,19 @@ async function getFunnelDashboard(startDate, endDate) {
       }
     },
     {
-      $group: {
-        _id: null,
-        revenue: { $sum: '$value.amount' }
+  $group: {
+    _id: null,
+    revenue: {
+      $sum: {
+        $cond: [
+          { $gt: ['$value.amount', 0] },
+          '$value.amount',
+          0
+        ]
       }
     }
+  }
+}
   ]);
 
   const wonRevenue = wonRevenueResult[0]?.revenue || 0;
