@@ -12921,153 +12921,6 @@ app.get('/api/audit/road-to-glory-summary', async (req, res) => {
   });
 });
 
-app.post('/api/sync/nutshell/repair-won-without-assignee', async (req, res) => {
-  try {
-    const { year, month } = req.body;
-
-    if (!year || !month) {
-      return res.status(400).json({
-        sucesso: false,
-        erro: 'Informe year e month. Exemplo: { "year": 2026, "month": 8 }'
-      });
-    }
-
-    const startDate = new Date(
-      Date.UTC(Number(year), Number(month) - 1, 1, 3, 0, 0, 0)
-    );
-
-    const endDate = new Date(
-      Date.UTC(Number(year), Number(month), 1, 3, 0, 0, 0)
-    );
-
-    const leads = await Lead.find({
-      status: 10,
-
-      closedTime: {
-        $gte: startDate,
-        $lt: endDate
-      },
-
-      $or: [
-        { 'assignee.name': { $exists: false } },
-        { 'assignee.name': null },
-        { 'assignee.name': '' }
-      ]
-    })
-      .select('nutshell_id name value closedTime assignee')
-      .lean();
-
-    const results = [];
-
-    for (const lead of leads) {
-      try {
-        if (!lead.nutshell_id) {
-          results.push({
-            nutshell_id: null,
-            name: lead.name,
-            sucesso: false,
-            erro: 'Lead sem nutshell_id'
-          });
-
-          continue;
-        }
-
-        console.log(
-          `[REPAIR ASSIGNEE] Sincronizando lead ${lead.nutshell_id}...`
-        );
-
-        const fullLead = await nutshellService.getLead(
-          lead.nutshell_id
-        );
-
-        if (!fullLead) {
-          results.push({
-            nutshell_id: lead.nutshell_id,
-            name: lead.name,
-            sucesso: false,
-            erro: 'Lead não encontrada no Nutshell'
-          });
-
-          continue;
-        }
-
-        const assigneeName =
-          fullLead.assignee?.name ||
-          null;
-
-        if (!assigneeName) {
-          results.push({
-            nutshell_id: lead.nutshell_id,
-            name: lead.name,
-            sucesso: false,
-            erro: 'Nutshell também retornou a lead sem assignee'
-          });
-
-          continue;
-        }
-
-        await saveFullLead(fullLead);
-
-        results.push({
-          nutshell_id: lead.nutshell_id,
-          name: lead.name,
-          sucesso: true,
-          assignee: assigneeName
-        });
-
-      } catch (error) {
-        console.error(
-          `[REPAIR ASSIGNEE] Erro na lead ${lead.nutshell_id}:`,
-          error
-        );
-
-        results.push({
-          nutshell_id: lead.nutshell_id,
-          name: lead.name,
-          sucesso: false,
-          erro: error.message
-        });
-      }
-    }
-
-    const corrigidas = results.filter(
-      item => item.sucesso
-    ).length;
-
-    const erros = results.filter(
-      item => !item.sucesso
-    ).length;
-
-    return res.json({
-      sucesso: true,
-      routeVersion: 'repair-won-without-assignee-v1',
-
-      period: {
-        year: Number(year),
-        month: Number(month),
-        startDate,
-        endDate
-      },
-
-      encontradas: leads.length,
-      corrigidas,
-      erros,
-
-      details: results
-    });
-
-  } catch (error) {
-    console.error(
-      '[REPAIR ASSIGNEE] Erro geral:',
-      error
-    );
-
-    return res.status(500).json({
-      sucesso: false,
-      erro: error.message
-    });
-  }
-});
 
 app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
   try {
@@ -18214,6 +18067,193 @@ app.get('/api/sync/nutshell/lead/:leadId', async (req, res) => {
     );
 
     res.status(500).json({
+      sucesso: false,
+      erro: error.response?.data || error.message
+    });
+  }
+});
+
+
+app.get('/api/sync/nutshell/repair-won-without-assignee', async (req, res) => {
+  try {
+    const year = Number(req.query.year);
+    const month = Number(req.query.month);
+
+    if (!year || !month || month < 1 || month > 12) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Informe year e month válidos. Exemplo: ?year=2026&month=8'
+      });
+    }
+
+    const startDate = new Date(
+      Date.UTC(year, month - 1, 1, 3, 0, 0, 0)
+    );
+
+    const endDate = new Date(
+      Date.UTC(year, month, 1, 3, 0, 0, 0)
+    );
+
+    // Busca apenas Won do mês que estão sem responsável
+    const leads = await Lead.find({
+      status: 10,
+
+      closedTime: {
+        $gte: startDate,
+        $lt: endDate
+      },
+
+      $or: [
+        { 'assignee.name': { $exists: false } },
+        { 'assignee.name': null },
+        { 'assignee.name': '' }
+      ]
+    })
+      .select({
+        nutshell_id: 1,
+        name: 1,
+        status: 1,
+        value: 1,
+        closedTime: 1,
+        assignee: 1
+      })
+      .lean();
+
+    console.log(
+      `[REPAIR WON ASSIGNEE] Encontradas ${leads.length} leads sem assignee.`
+    );
+
+    const details = [];
+
+    for (const lead of leads) {
+      try {
+        const leadId = Number(lead.nutshell_id);
+
+        if (!leadId) {
+          details.push({
+            nutshell_id: lead.nutshell_id || null,
+            name: lead.name,
+            sucesso: false,
+            erro: 'Lead sem nutshell_id válido.'
+          });
+
+          continue;
+        }
+
+        console.log(
+          `[REPAIR WON ASSIGNEE] Buscando lead ${leadId} no Nutshell...`
+        );
+
+        const response = await axios.post(
+          'https://app.nutshell.com/api/v1/json',
+          {
+            method: 'getLead',
+            params: {
+              leadId
+            },
+            id: 1
+          },
+          {
+            auth: {
+              username: NUTSHELL_EMAIL,
+              password: NUTSHELL_API_KEY
+            }
+          }
+        );
+
+        const fullLead = response.data?.result;
+
+        if (!fullLead) {
+          details.push({
+            nutshell_id: leadId,
+            name: lead.name,
+            sucesso: false,
+            erro: 'Lead não encontrada no Nutshell.'
+          });
+
+          continue;
+        }
+
+        const assigneeName =
+          fullLead.assignee?.name || null;
+
+        // O Nutshell também não retornou responsável
+        if (!assigneeName) {
+          details.push({
+            nutshell_id: leadId,
+            name: lead.name,
+            sucesso: false,
+            erro: 'Nutshell também retornou a lead sem assignee.'
+          });
+
+          continue;
+        }
+
+        // Usa exatamente a mesma função da sincronização individual
+        await saveFullLead(fullLead);
+
+        details.push({
+          nutshell_id: leadId,
+          name: fullLead.name,
+          sucesso: true,
+          assignee: assigneeName,
+          value: fullLead.value?.amount || 0
+        });
+
+        console.log(
+          `[REPAIR WON ASSIGNEE] Lead ${leadId} corrigida: ${assigneeName}`
+        );
+
+      } catch (error) {
+        console.error(
+          `[REPAIR WON ASSIGNEE] Erro na lead ${lead.nutshell_id}:`,
+          error.response?.data || error.message
+        );
+
+        details.push({
+          nutshell_id: lead.nutshell_id,
+          name: lead.name,
+          sucesso: false,
+          erro: error.response?.data || error.message
+        });
+      }
+    }
+
+    const corrigidas = details.filter(
+      item => item.sucesso
+    ).length;
+
+    const erros = details.filter(
+      item => !item.sucesso
+    ).length;
+
+    return res.json({
+      sucesso: true,
+      routeVersion: 'repair-won-without-assignee-v1',
+
+      period: {
+        year,
+        month,
+        start: startDate,
+        end: endDate
+      },
+
+      summary: {
+        encontradas: leads.length,
+        corrigidas,
+        erros
+      },
+
+      details
+    });
+
+  } catch (error) {
+    console.error(
+      '[REPAIR WON ASSIGNEE] ERRO GERAL:',
+      error.response?.data || error.message
+    );
+
+    return res.status(500).json({
       sucesso: false,
       erro: error.response?.data || error.message
     });
