@@ -11419,7 +11419,7 @@ const defaultEndDate = new Date(
   Date.UTC(year, month, 1, 3, 0, 0, 0)
 );
 
-    const goalFilter = { period };
+    const goalFilter = { period: '2026-07' };
 
     if (userName) goalFilter.userName = userName;
     if (sector) goalFilter.sector = sector;
@@ -11550,38 +11550,18 @@ const cleanName = cleanNameParts
       _id: null,
       revenue: {
   $sum: {
-    $cond: [
-      {
-        $gt: [
-          {
-            $ifNull: [
-              '$value.amount',
-              {
-                $ifNull: [
-                  '$rawData.value.amount',
-                  0
-                ]
-              }
-            ]
-          },
-          0
-        ]
-      },
+    $ifNull: [
+      '$value.amount',
       {
         $ifNull: [
-          '$value.amount',
-          {
-            $ifNull: [
-              '$rawData.value.amount',
-              0
-            ]
-          }
+          '$rawData.value.amount',
+          0
         ]
-      },
-      0
+      }
     ]
   }
-},   leads: { $sum: 1 },
+},
+   leads: { $sum: 1 },
       won: { $sum: 1 }
     }
   }
