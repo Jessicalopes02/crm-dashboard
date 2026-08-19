@@ -12921,6 +12921,154 @@ app.get('/api/audit/road-to-glory-summary', async (req, res) => {
   });
 });
 
+app.post('/api/sync/nutshell/repair-won-without-assignee', async (req, res) => {
+  try {
+    const { year, month } = req.body;
+
+    if (!year || !month) {
+      return res.status(400).json({
+        sucesso: false,
+        erro: 'Informe year e month. Exemplo: { "year": 2026, "month": 8 }'
+      });
+    }
+
+    const startDate = new Date(
+      Date.UTC(Number(year), Number(month) - 1, 1, 3, 0, 0, 0)
+    );
+
+    const endDate = new Date(
+      Date.UTC(Number(year), Number(month), 1, 3, 0, 0, 0)
+    );
+
+    const leads = await Lead.find({
+      status: 10,
+
+      closedTime: {
+        $gte: startDate,
+        $lt: endDate
+      },
+
+      $or: [
+        { 'assignee.name': { $exists: false } },
+        { 'assignee.name': null },
+        { 'assignee.name': '' }
+      ]
+    })
+      .select('nutshell_id name value closedTime assignee')
+      .lean();
+
+    const results = [];
+
+    for (const lead of leads) {
+      try {
+        if (!lead.nutshell_id) {
+          results.push({
+            nutshell_id: null,
+            name: lead.name,
+            sucesso: false,
+            erro: 'Lead sem nutshell_id'
+          });
+
+          continue;
+        }
+
+        console.log(
+          `[REPAIR ASSIGNEE] Sincronizando lead ${lead.nutshell_id}...`
+        );
+
+        const fullLead = await nutshellService.getLead(
+          lead.nutshell_id
+        );
+
+        if (!fullLead) {
+          results.push({
+            nutshell_id: lead.nutshell_id,
+            name: lead.name,
+            sucesso: false,
+            erro: 'Lead não encontrada no Nutshell'
+          });
+
+          continue;
+        }
+
+        const assigneeName =
+          fullLead.assignee?.name ||
+          null;
+
+        if (!assigneeName) {
+          results.push({
+            nutshell_id: lead.nutshell_id,
+            name: lead.name,
+            sucesso: false,
+            erro: 'Nutshell também retornou a lead sem assignee'
+          });
+
+          continue;
+        }
+
+        await saveFullLead(fullLead);
+
+        results.push({
+          nutshell_id: lead.nutshell_id,
+          name: lead.name,
+          sucesso: true,
+          assignee: assigneeName
+        });
+
+      } catch (error) {
+        console.error(
+          `[REPAIR ASSIGNEE] Erro na lead ${lead.nutshell_id}:`,
+          error
+        );
+
+        results.push({
+          nutshell_id: lead.nutshell_id,
+          name: lead.name,
+          sucesso: false,
+          erro: error.message
+        });
+      }
+    }
+
+    const corrigidas = results.filter(
+      item => item.sucesso
+    ).length;
+
+    const erros = results.filter(
+      item => !item.sucesso
+    ).length;
+
+    return res.json({
+      sucesso: true,
+      routeVersion: 'repair-won-without-assignee-v1',
+
+      period: {
+        year: Number(year),
+        month: Number(month),
+        startDate,
+        endDate
+      },
+
+      encontradas: leads.length,
+      corrigidas,
+      erros,
+
+      details: results
+    });
+
+  } catch (error) {
+    console.error(
+      '[REPAIR ASSIGNEE] Erro geral:',
+      error
+    );
+
+    return res.status(500).json({
+      sucesso: false,
+      erro: error.message
+    });
+  }
+});
+
 app.get('/api/sync/nutshell/road-to-glory-open-date', async (req, res) => {
   try {
     const limit = Number(req.query.limit) || 100;
