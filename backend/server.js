@@ -11419,7 +11419,7 @@ const defaultEndDate = new Date(
   Date.UTC(year, month, 1, 3, 0, 0, 0)
 );
 
-    const goalFilter = { period: '2026-07' };
+    const goalFilter = { period };
 
     if (userName) goalFilter.userName = userName;
     if (sector) goalFilter.sector = sector;
