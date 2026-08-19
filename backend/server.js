@@ -11550,14 +11550,35 @@ const cleanName = cleanNameParts
       _id: null,
       revenue: {
   $sum: {
-    $ifNull: [
-      '$value.amount',
+    $cond: [
       {
-        $ifNull: [
-          '$rawData.value.amount',
+        $gt: [
+          {
+            $ifNull: [
+              '$value.amount',
+              {
+                $ifNull: [
+                  '$rawData.value.amount',
+                  0
+                ]
+              }
+            ]
+          },
           0
         ]
-      }
+      },
+      {
+        $ifNull: [
+          '$value.amount',
+          {
+            $ifNull: [
+              '$rawData.value.amount',
+              0
+            ]
+          }
+        ]
+      },
+      0
     ]
   }
 },
